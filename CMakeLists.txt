@@ -52,6 +52,8 @@ target_sources(
     src/core/config.cpp
     src/core/director.cpp
     src/obs/audio_level_monitor.cpp
+    src/obs/config_loader.cpp
+    src/obs/scene_switcher.cpp
     src/ui/sd_dock.cpp
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)

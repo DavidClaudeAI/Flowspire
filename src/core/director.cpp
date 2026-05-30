@@ -135,6 +135,19 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         return out;
     }
 
+    // 1bis) VARIETE AU TEMPS-MAX : si on tient le plan courant depuis plus de
+    //   maxShotSeconds, on invalide la situation memoisee pour FORCER un nouveau
+    //   tirage pondere ci-dessous. Sans cela, tant que le contexte ne change pas
+    //   (silence prolonge, ou meme locuteur le plus fort), la decision restait
+    //   figee et AUCUNE variete n'apparaissait : en silence on ne repassait jamais
+    //   au plan large, meme apres 30 s. Le re-tirage rejoue alors whenSilence /
+    //   whenMultiple selon leurs poids. (En contexte Single c'est sans effet : la
+    //   cible y est deterministe ; la variete du plan vient deja du re-tirage du
+    //   pool fait plus bas au temps-max.)
+    if (!currentScene_.empty() && (now - lastSwitch_) >= cfg_.timing.maxShotSeconds) {
+        decisionKey_.clear();
+    }
+
     // 2) Determiner la cible desiree (owner ou plan large), avec memoisation par
     //    "situation" pour ne pas re-tirer un plan a chaque tick (anti-scintillement).
     std::string desiredOwner;
@@ -165,8 +178,23 @@ Decision Director::update(double now, const std::map<std::string, double>& level
                 cachedOwner_.clear();
                 cachedWide_ = true;
             } else if (choice == "current") {
-                cachedOwner_ = currentOwner_;
-                cachedWide_ = currentOwner_.empty() && !currentScene_.empty();
+                // "Rester sur le plan courant". Le modele cible ne sait exprimer
+                // qu'un owner OU le plan large : on mappe selon ce qu'est vraiment
+                // le plan courant.
+                if (!currentOwner_.empty()) {
+                    cachedOwner_ = currentOwner_;  // plan d'un locuteur : on le garde
+                    cachedWide_ = false;
+                } else if (!currentScene_.empty() && currentScene_ == cfg_.wideShotScene) {
+                    cachedOwner_.clear();          // le plan courant EST le plan large
+                    cachedWide_ = true;
+                } else {
+                    // Plan courant non representable (scene forcee sans owner, non
+                    // wide) : on ne peut pas "rester" fidelement -> defaut sur le
+                    // plus fort, qui est un choix sur en contexte Multiple (evite de
+                    // partir par erreur sur le plan large).
+                    cachedOwner_ = loudest;
+                    cachedWide_ = false;
+                }
             } else {
                 cachedOwner_ = loudest;
                 cachedWide_ = false;
@@ -306,6 +334,25 @@ Decision Director::forceScene(double now, const std::string& scene, const std::s
     Decision out;
     out.context = lastContext_;
     commit(now, scene, owner, /*hold=*/true, out);
+    decisionKey_.clear();  // un forçage reinitialise la situation memorisee
+    return out;
+}
+
+Decision Director::forceSpeaker(double now, const std::string& speakerId) {
+    Decision out;
+    out.context = lastContext_;
+    out.scene = currentScene_;
+    out.owner = currentOwner_;
+
+    const Speaker* sp = findSpeaker(speakerId);
+    if (!sp) {
+        return out;  // intervenant inconnu : on ne touche a rien.
+    }
+    const std::string scene = drawSceneFromPool(sp->scenes);
+    if (scene.empty()) {
+        return out;  // pas de scene jouable pour cet intervenant.
+    }
+    commit(now, scene, speakerId, /*hold=*/true, out);
     decisionKey_.clear();  // un forçage reinitialise la situation memorisee
     return out;
 }

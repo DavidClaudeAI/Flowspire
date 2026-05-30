@@ -63,6 +63,12 @@ public:
     // Le plan force est un "hold" : il tient le temps-mini avant d'etre remplace.
     Decision forceScene(double now, const std::string& scene, const std::string& owner = "");
 
+    // Force le plan d'un intervenant precis : tire une scene dans SON pool
+    // (meme tirage pondere que le contexte A). C'est un "hold", comme forceScene.
+    // No-op (Decision.switched == false, scene courante inchangee) si l'intervenant
+    // est inconnu ou n'a aucune scene jouable.
+    Decision forceSpeaker(double now, const std::string& speakerId);
+
     const std::string& currentScene() const { return currentScene_; }
     Context lastContext() const { return lastContext_; }
 

@@ -278,6 +278,36 @@ TEST_CASE("director : rafraichissement au temps-max (variete des plans)") {
     CHECK(d.switched == true);
 }
 
+TEST_CASE("director : silence prolonge — variete au temps-max (re-tirage du choix)") {
+    // Regression (observe en reel par David) : en silence, le choix last/wide
+    // etait tire UNE fois puis fige -> on ne repassait jamais au plan large, meme
+    // apres 30 s. Au temps-max, le choix doit etre RE-TIRE.
+    Config c = twoSpeakerConfig();           // wideShotScene = "Plateau", maxShot 12s
+    auto rngState = std::make_shared<double>(0.0);  // 1er tirage silence -> 'last'
+    Director::Rng rng = [rngState]() { return *rngState; };
+    Director dir(c, rng);
+
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A parle -> A_close, lastSwitch=0.1
+    REQUIRE(dir.currentScene() == "A_close");
+
+    // Silence : relachement (8 frames) puis le choix 'last' garde A_close.
+    Decision d;
+    for (int i = 0; i < 10; ++i) {
+        d = dir.update(1.0 + i * 0.1, {{"A", kDbFloor}, {"B", kDbFloor}});
+    }
+    REQUIRE(d.context == Context::Silence);
+    CHECK(dir.currentScene() == "A_close");  // 'last' -> dernier locuteur, fige
+
+    // On bascule le RNG vers 'wide' et on depasse le temps-max : le choix doit
+    // etre re-tire -> passage au plan large (ce qui ne se produisait jamais avant).
+    *rngState = 0.99;
+    d = dir.update(20.0, {{"A", kDbFloor}, {"B", kDbFloor}});
+    CHECK(d.context == Context::Silence);
+    CHECK(d.scene == "Plateau");
+    CHECK(d.switched == true);
+}
+
 TEST_CASE("director : single ne re-tire pas a chaque tick (anti-scintillement)") {
     // A a 2 scenes ; le RNG renverrait des scenes differentes a chaque tick s'il
     // etait appele. On verifie que la scene NE change PAS tant qu'on reste sous
@@ -371,4 +401,71 @@ TEST_CASE("director : memoire des derniers locuteurs (anti ping-pong)") {
     CHECK(recent[1] == "A");
     // au-dela de la fenetre (12s), l'historique s'oublie
     CHECK(dir.recentSpeakers(20.0).empty());
+}
+
+TEST_CASE("director : forceSpeaker tire une scene du pool de l'intervenant") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));  // 0.0 -> 1er du pool de A = A_close
+    Decision d = dir.forceSpeaker(1.0, "A");
+    CHECK(d.switched == true);
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_close");
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : forceSpeaker respecte le pool pondere") {
+    // Pool A = A_close(90)/A_wide(10), total 100. rng=0.95 -> tranche [90,100) = A_wide.
+    Director dir(twoSpeakerConfig(), seq({0.95}));
+    Decision d = dir.forceSpeaker(1.0, "A");
+    CHECK(d.scene == "A_wide");
+}
+
+TEST_CASE("director : forceSpeaker sur intervenant inconnu ne change rien") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche
+    Decision d = dir.forceSpeaker(1.0, "ZZZ");
+    CHECK(d.switched == false);
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : forceSpeaker sans scene dans le pool ne change rien") {
+    Config c = twoSpeakerConfig();
+    c.speakers[1].scenes.clear();  // B n'a plus de scene
+    Director dir(c, seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche
+    Decision d = dir.forceSpeaker(1.0, "B");
+    CHECK(d.switched == false);
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : contexte B 'current' apres plan force sans owner ne part pas en plan large") {
+    // Regression (revue Run 3) : apres forceScene(scene, owner=""), le plan courant
+    // n'a pas d'owner et n'est PAS le plan large. Si le tirage Multiple donne
+    // 'current' (rng dans [45,75[ -> 0.5), on ne doit PAS basculer sur le plan
+    // large ; on retombe sur le plus fort (choix sur), jamais sur "Plateau".
+    Director dir(twoSpeakerConfig(), seq({0.5}));
+    dir.forceScene(0.0, "A_close", "");  // plan courant sans owner, != wideShotScene
+    // Laisser tomber le verrou (minShot 3s) puis faire parler A+B.
+    for (int i = 0; i < 8; ++i) {
+        dir.update(0.2 + i * 0.05, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
+    }
+    Decision d = dir.update(4.0, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
+    CHECK(d.context == Context::Multiple);
+    CHECK(d.scene != "Plateau");   // surtout PAS le plan large par erreur
+    CHECK(d.owner == "B");         // retombe sur le plus fort
+}
+
+TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.forceSpeaker(1.0, "B");  // -> B_close (hold), lastSwitch = 1.0
+    CHECK(dir.currentScene() == "B_close");
+    // A parle juste apres : le verrou (minShot 3s) tient le plan force.
+    dir.update(1.5, {{"A", mulToDb(0.9)}});
+    dir.update(1.6, {{"A", mulToDb(0.9)}});  // A "parle" (attaque 2 frames)
+    CHECK(dir.currentScene() == "B_close");
+    // Une fois le verrou ecoule, A prend l'antenne.
+    Decision d = dir.update(4.5, {{"A", mulToDb(0.9)}});
+    CHECK(d.scene == "A_close");
+    CHECK(dir.currentScene() == "A_close");
 }
