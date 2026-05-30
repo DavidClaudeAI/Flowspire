@@ -1,0 +1,81 @@
+// StreamDirector — EXEMPLE de configuration (Run 3, pilotage réel des scènes).
+//
+// COMMENT S'EN SERVIR (procédure exacte, à finaliser au début du Run 3) :
+//   1. Copie ce fichier en "config.json" (sans les commentaires // — le vrai
+//      JSON n'autorise pas les commentaires) à l'emplacement que le plugin
+//      lira. Emplacement prévu : %ProgramData%\obs-studio\plugins\streamdirector\config.json
+//      (Max confirmera/affichera le chemin exact quand le chargement sera codé.)
+//   2. Remplace les noms par TES vrais noms OBS :
+//        - "audioSource" = le nom EXACT de la source dans le mixer audio d'OBS
+//          (ex: "Mic/Aux", "Invité 1", "Desktop Audio"...). Respecte la casse.
+//        - "scene"       = le nom EXACT d'une scène OBS existante.
+//   3. Le plugin bascule sur une scène du pool de la personne qui parle.
+//
+// LES POIDS (rappel) : ce sont des proportions relatives, PAS des pourcentages.
+// gros plan 90 / plan large 10 => ~90% du temps le gros plan. Le % est calculé
+// tout seul (tu n'as pas besoin que ça tombe sur 100).
+{
+  "version": 1,
+
+  // --- Les intervenants : 1 par source audio à suivre ---
+  "speakers": [
+    {
+      "id": "inv1",                       // identifiant interne (libre, unique)
+      "name": "Invité 1",                 // nom affiché dans le dock
+      "audioSource": "Invité 1",          // <-- TON nom de source audio OBS
+      "scenes": [                         // scènes possibles QUAND l'invité 1 parle
+        { "scene": "Invité 1 - gros plan", "weight": 90 },
+        { "scene": "Plan large",           "weight": 10 }
+      ]
+    },
+    {
+      "id": "inv2",
+      "name": "Invité 2",
+      "audioSource": "Invité 2",
+      "scenes": [
+        { "scene": "Invité 2 - gros plan", "weight": 90 },
+        { "scene": "Plan large",           "weight": 10 }
+      ]
+    },
+    {
+      "id": "moi",
+      "name": "Moi (micro)",
+      "audioSource": "Mic/Aux",           // <-- TON micro local
+      "scenes": [
+        { "scene": "Moi - gros plan",      "weight": 90 },
+        { "scene": "Plan large",           "weight": 10 }
+      ]
+    }
+  ],
+
+  // --- Scène de groupe (plan d'ensemble). "" si tu n'en as pas ---
+  "wideShotScene": "Plan large",
+
+  // --- Détection audio (défauts Gabin ; ne touche que si besoin) ---
+  "audio": {
+    "voiceThresholdDb": -35.0,  // seuil "parle" : plus haut = moins sensible
+    "vadThreshold": 0.75,       // réservé (voix vs bruit)
+    "attackFrames": 2,          // frames au-dessus du seuil avant "parle"
+    "releaseFrames": 8          // frames sous le seuil avant "ne parle plus"
+  },
+
+  // --- Rythme des plans (secondes) ---
+  "timing": {
+    "minShotSeconds": 3.0,           // temps mini sur un plan (anti-nervosité)
+    "maxShotSeconds": 12.0,          // au-delà : on rafraîchit le plan (variété)
+    "pingPongWindowSeconds": 12.0    // mémoire anti ping-pong
+  },
+
+  // --- Quand PLUSIEURS parlent en même temps (tirage pondéré) ---
+  "whenMultiple": {
+    "loudestSpeaker": 45,   // basculer sur le plus fort
+    "currentSpeaker": 30,   // rester sur le plan courant
+    "wideShot": 25          // passer au plan large
+  },
+
+  // --- Quand PERSONNE ne parle (tirage pondéré) ---
+  "whenSilence": {
+    "lastSpeaker": 80,      // rester sur le dernier qui a parlé
+    "wideShot": 20          // passer au plan large
+  }
+}
