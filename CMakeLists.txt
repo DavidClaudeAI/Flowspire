@@ -40,7 +40,10 @@ if(ENABLE_QT)
   )
 endif()
 
-# --- Coeur pur (reutilise tel quel ; aucune dependance OBS/Qt) ---
+# --- Sources du plugin ---
+#   core/ : cerveau pur (aucune dependance OBS/Qt), reutilise tel quel.
+#   obs/  : pont vers l'API OBS (lecture des niveaux audio).
+#   ui/   : dock Qt.
 target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
@@ -48,6 +51,8 @@ target_sources(
     src/core/speaker_detector.cpp
     src/core/config.cpp
     src/core/director.cpp
+    src/obs/audio_level_monitor.cpp
+    src/ui/sd_dock.cpp
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
 target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM PRIVATE vendor)
