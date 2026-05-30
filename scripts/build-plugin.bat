@@ -13,7 +13,7 @@ if not exist "%VSWHERE%" (
   exit /b 1
 )
 
-for /f "usebackq tokens=*" %%i in (`""%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath"`) do set "VSPATH=%%i"
+for /f "usebackq tokens=*" %%i in (`"%VSWHERE%" -latest -products * -requires Microsoft.VisualStudio.Workload.NativeDesktop -property installationPath`) do set "VSPATH=%%i"
 if "%VSPATH%"=="" (
   echo [erreur] workload C++ "Desktop development with C++" introuvable.
   exit /b 1

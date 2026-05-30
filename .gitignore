@@ -26,3 +26,6 @@ Thumbs.db
 # Secrets locaux (ne jamais committer un mot de passe websocket)
 *.secret
 .env
+
+# Compteur de build genere par le template (ne pas suivre)
+cmake/.CMakeBuildNumber
