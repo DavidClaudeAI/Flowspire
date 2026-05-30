@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Build (plugin natif a venir)
+build/
+*.obj
+*.o
+*.so
+*.dll
+*.dylib
+
+# OS / editeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Secrets locaux (ne jamais committer un mot de passe websocket)
+*.secret
+.env
+poc/.obs_password
