@@ -13,10 +13,13 @@ détecter qui parle via l'audio interne d'OBS, **sans driver / câble audio virt
 
 Acquis :
 - **Cœur** (`src/core`) — détection + décision pondérée à 3 contextes, **testé** (doctest/CTest, sans OBS).
-- **Plugin natif** — compile (`streamdirector.dll`) sur l'obs-plugintemplate (multi-OS), charge dans
-  OBS et enregistre un **dock Qt** (placeholder pour l'instant).
+- **Plugin natif** — compile (`streamdirector.dll`) sur l'obs-plugintemplate (multi-OS), charge dans OBS.
+- **Lecture audio native** (`src/obs`) — un `obs_volmeter` par source audio, niveaux internes d'OBS
+  (zéro driver/câble virtuel), avec retombée temporelle et accès thread-safe.
+- **Dock Qt** (`src/ui`) — vumètre + état parle/silence par source + « à l'antenne (calculé) ».
+  **Lecture seule** : ne pilote pas encore les scènes.
 
-Suite : brancher la lecture audio (`obs_volmeter`) et afficher les vumètres par intervenant.
+Suite : pilotage réel des scènes (bascule auto) + hotkeys Stream Deck.
 
 ## Build (Windows)
 

@@ -12,33 +12,15 @@ the Free Software Foundation; either version 2 of the License, or
 #include <obs-frontend-api.h>
 #include <plugin-support.h>
 
-#include <QLabel>
-#include <QVBoxLayout>
-#include <QWidget>
+#include <exception>
+
+#include "ui/sd_dock.hpp"
 
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
 // Identifiant unique du dock (utilise pour l'ajout ET le retrait).
 static constexpr const char *kDockId = "StreamDirectorDock";
-
-// Run 1 — dock minimal de validation : prouve que le plugin se charge dans OBS
-// et qu'il sait enregistrer un panneau Qt. Le vrai dock (vumetres + pilotage)
-// viendra ensuite, en reutilisant le coeur teste (src/core).
-static QWidget *sd_create_placeholder_dock()
-{
-	auto *widget = new QWidget();
-	widget->setObjectName(kDockId);
-	auto *layout = new QVBoxLayout(widget);
-	auto *title = new QLabel(QStringLiteral("StreamDirector"));
-	auto *subtitle =
-		new QLabel(QStringLiteral("Run 1 — le plugin est charge. Dock complet a venir."));
-	subtitle->setWordWrap(true);
-	layout->addWidget(title);
-	layout->addWidget(subtitle);
-	layout->addStretch();
-	return widget;
-}
 
 bool obs_module_load(void)
 {
@@ -48,20 +30,30 @@ bool obs_module_load(void)
 
 void obs_module_post_load(void)
 {
-	// A ce stade, l'interface Qt d'OBS est prete : on peut enregistrer le dock.
-	QWidget *dock = sd_create_placeholder_dock();
+	// obs_module_post_load a une ABI C : une exception C++ qui s'en echapperait
+	// traverserait du code C d'OBS -> std::terminate (crash d'OBS au demarrage).
+	// On isole donc toute la construction du dock derriere un try/catch.
+	try {
+		// A ce stade, l'interface Qt d'OBS est prete : on peut creer le dock
+		// (lecture seule des niveaux audio + detection "qui parle").
+		QWidget *dock = new sd::ui::SdDock();
 
-	// add_dock_by_id renvoie false si l'id est deja pris (ex: rechargement du
-	// plugin). Dans ce cas OBS ne prend PAS le widget en charge : on le libere
-	// nous-memes pour eviter une fuite. En cas de succes, OBS en devient
-	// proprietaire (widget reparente dans un QDockWidget).
-	if (!obs_frontend_add_dock_by_id(kDockId, "StreamDirector", dock)) {
-		obs_log(LOG_WARNING, "StreamDirector dock already registered, skipping");
-		delete dock;
-		return;
+		// add_dock_by_id renvoie false si l'id est deja pris (ex: rechargement
+		// du plugin). Dans ce cas OBS ne prend PAS le widget en charge : on le
+		// libere nous-memes. En cas de succes, OBS en devient proprietaire
+		// (widget reparente dans un QDockWidget).
+		if (!obs_frontend_add_dock_by_id(kDockId, "StreamDirector", dock)) {
+			obs_log(LOG_WARNING, "StreamDirector dock already registered, skipping");
+			delete dock;
+			return;
+		}
+
+		obs_log(LOG_INFO, "StreamDirector dock registered");
+	} catch (const std::exception &e) {
+		obs_log(LOG_ERROR, "StreamDirector dock creation failed: %s", e.what());
+	} catch (...) {
+		obs_log(LOG_ERROR, "StreamDirector dock creation failed (unknown error)");
 	}
-
-	obs_log(LOG_INFO, "StreamDirector dock registered");
 }
 
 void obs_module_unload(void)
