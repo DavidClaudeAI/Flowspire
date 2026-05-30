@@ -33,6 +33,10 @@ private:
         QProgressBar* bar = nullptr;
         QLabel* dbLabel = nullptr;
         QLabel* stateLabel = nullptr;
+        // Dernier etat AFFICHE : evite de reecrire texte/style a chaque tick
+        // (20 Hz) quand rien ne change -> pas de re-parse CSS / relayout inutile.
+        int shownDb = 1;             // hors plage [-60,0] -> force la 1ere maj
+        int shownSpeaking = -1;      // -1 = inconnu, 0 = silence, 1 = parle
     };
 
     void rebuildSources();  // (re)scanne les sources audio et reconstruit l'UI
@@ -47,6 +51,7 @@ private:
     QLabel* onAirLabel_ = nullptr;
     QLabel* emptyLabel_ = nullptr;
     QTimer* timer_ = nullptr;
+    std::string shownOnAir_ = "\x01";  // sentinelle != tout id -> 1ere maj forcee
 };
 
 }  // namespace sd::ui

@@ -11,21 +11,38 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <map>
+#include <unordered_set>
+
+#include "core/audio_util.hpp"  // source de verite du plancher (kDbFloor)
 
 namespace sd::ui {
 
 namespace {
-constexpr int kFloorDb = -60;          // bas du vumetre
+// Une seule source de verite pour le plancher : sd::core::kDbFloor.
+constexpr int kFloorDb = static_cast<int>(sd::core::kDbFloor);  // bas du vumetre
 constexpr int kTickMs = 50;            // ~20 rafraichissements / seconde
 constexpr const char* kSpeakColor = "#3FB950";
 constexpr const char* kIdleColor = "#6E6E76";
 
-QString dbText(double db) {
+// Niveau dB (double) -> valeur entiere [kFloorDb, 0] cohérente entre la barre et
+// le texte (meme arrondi des deux cotes : lround, pas troncature).
+int dbToInt(double db) {
+    int v = static_cast<int>(std::lround(db));
+    if (v < kFloorDb) {
+        v = kFloorDb;
+    } else if (v > 0) {
+        v = 0;
+    }
+    return v;
+}
+
+QString dbText(int db) {
     if (db <= kFloorDb) {
         return QStringLiteral("-inf");
     }
-    return QString::number(db, 'f', 0) + QStringLiteral(" dB");
+    return QString::number(db) + QStringLiteral(" dB");
 }
 }  // namespace
 
@@ -113,6 +130,7 @@ void SdDock::rebuildSources() {
         delete row.line;  // detruit la ligne et ses enfants (bar/labels)
     }
     rows_.clear();
+    shownOnAir_ = "\x01";  // force la maj du label "a l'antenne" au prochain tick
 
     emptyLabel_->setVisible(names.empty());
 
@@ -132,7 +150,7 @@ void SdDock::rebuildSources() {
         bar->setTextVisible(false);
         bar->setFixedHeight(10);
 
-        auto* dbLabel = new QLabel(dbText(kFloorDb));
+        auto* dbLabel = new QLabel(dbText(static_cast<int>(kFloorDb)));
         dbLabel->setMinimumWidth(52);
         dbLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
@@ -159,26 +177,43 @@ void SdDock::tick() {
     const std::map<std::string, double> levels = monitor_.snapshot(now);
     director_->update(now, levels);
 
+    // speakingIds() est trie ; on en fait un set pour un test d'appartenance O(1)
+    // (une seule construction par tick au lieu d'un std::find par ligne).
     const std::vector<std::string> speaking = director_->speakingIds();
+    const std::unordered_set<std::string> speakingSet(speaking.begin(), speaking.end());
 
     for (auto& row : rows_) {
         const auto it = levels.find(row.id);
-        const double db = (it != levels.end()) ? it->second : kFloorDb;
-        row.bar->setValue(static_cast<int>(db));
-        row.dbLabel->setText(dbText(db));
+        const double db = (it != levels.end()) ? it->second : static_cast<double>(kFloorDb);
 
-        const bool isSpeaking =
-            std::find(speaking.begin(), speaking.end(), row.id) != speaking.end();
-        row.stateLabel->setText(isSpeaking ? QStringLiteral("PARLE") : QStringLiteral("silence"));
-        row.stateLabel->setStyleSheet(
-            QString("color:%1;").arg(isSpeaking ? kSpeakColor : kIdleColor));
+        // On n'ecrit dans les widgets que si la valeur AFFICHEE change (le tick
+        // tourne a 20 Hz ; eviter un re-parse CSS / relayout inutile par frame).
+        const int dbInt = dbToInt(db);
+        if (dbInt != row.shownDb) {
+            row.shownDb = dbInt;
+            row.bar->setValue(dbInt);
+            row.dbLabel->setText(dbText(dbInt));
+        }
+
+        const int speakingNow = speakingSet.count(row.id) ? 1 : 0;
+        if (speakingNow != row.shownSpeaking) {
+            row.shownSpeaking = speakingNow;
+            row.stateLabel->setText(speakingNow ? QStringLiteral("PARLE")
+                                                : QStringLiteral("silence"));
+            row.stateLabel->setStyleSheet(
+                QString("color:%1;").arg(speakingNow ? kSpeakColor : kIdleColor));
+        }
     }
 
-    if (speaking.empty()) {
-        onAirLabel_->setText(QStringLiteral("A l'antenne (calcule) : (personne)"));
-    } else {
-        onAirLabel_->setText(QStringLiteral("A l'antenne (calcule) : ") +
-                             QString::fromStdString(speaking.front()));
+    const std::string onAir = speaking.empty() ? std::string{} : speaking.front();
+    if (onAir != shownOnAir_) {
+        shownOnAir_ = onAir;
+        if (onAir.empty()) {
+            onAirLabel_->setText(QStringLiteral("A l'antenne (calcule) : (personne)"));
+        } else {
+            onAirLabel_->setText(QStringLiteral("A l'antenne (calcule) : ") +
+                                 QString::fromStdString(onAir));
+        }
     }
 }
 
