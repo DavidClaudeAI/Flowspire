@@ -35,7 +35,7 @@ struct AudioSettings {
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
-    double minShotSeconds = 3.0;          // verrou anti-nervosite
+    double minShotSeconds = 5.0;          // verrou anti-nervosite
     double maxShotSeconds = 12.0;         // rafraichissement du plan
     double pingPongWindowSeconds = 12.0;  // memoire des derniers locuteurs
 };

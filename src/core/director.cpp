@@ -135,6 +135,19 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         return out;
     }
 
+    // 1bis) VARIETE AU TEMPS-MAX : si on tient le plan courant depuis plus de
+    //   maxShotSeconds, on invalide la situation memoisee pour FORCER un nouveau
+    //   tirage pondere ci-dessous. Sans cela, tant que le contexte ne change pas
+    //   (silence prolonge, ou meme locuteur le plus fort), la decision restait
+    //   figee et AUCUNE variete n'apparaissait : en silence on ne repassait jamais
+    //   au plan large, meme apres 30 s. Le re-tirage rejoue alors whenSilence /
+    //   whenMultiple selon leurs poids. (En contexte Single c'est sans effet : la
+    //   cible y est deterministe ; la variete du plan vient deja du re-tirage du
+    //   pool fait plus bas au temps-max.)
+    if (!currentScene_.empty() && (now - lastSwitch_) >= cfg_.timing.maxShotSeconds) {
+        decisionKey_.clear();
+    }
+
     // 2) Determiner la cible desiree (owner ou plan large), avec memoisation par
     //    "situation" pour ne pas re-tirer un plan a chaque tick (anti-scintillement).
     std::string desiredOwner;

@@ -278,6 +278,36 @@ TEST_CASE("director : rafraichissement au temps-max (variete des plans)") {
     CHECK(d.switched == true);
 }
 
+TEST_CASE("director : silence prolonge — variete au temps-max (re-tirage du choix)") {
+    // Regression (observe en reel par David) : en silence, le choix last/wide
+    // etait tire UNE fois puis fige -> on ne repassait jamais au plan large, meme
+    // apres 30 s. Au temps-max, le choix doit etre RE-TIRE.
+    Config c = twoSpeakerConfig();           // wideShotScene = "Plateau", maxShot 12s
+    auto rngState = std::make_shared<double>(0.0);  // 1er tirage silence -> 'last'
+    Director::Rng rng = [rngState]() { return *rngState; };
+    Director dir(c, rng);
+
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A parle -> A_close, lastSwitch=0.1
+    REQUIRE(dir.currentScene() == "A_close");
+
+    // Silence : relachement (8 frames) puis le choix 'last' garde A_close.
+    Decision d;
+    for (int i = 0; i < 10; ++i) {
+        d = dir.update(1.0 + i * 0.1, {{"A", kDbFloor}, {"B", kDbFloor}});
+    }
+    REQUIRE(d.context == Context::Silence);
+    CHECK(dir.currentScene() == "A_close");  // 'last' -> dernier locuteur, fige
+
+    // On bascule le RNG vers 'wide' et on depasse le temps-max : le choix doit
+    // etre re-tire -> passage au plan large (ce qui ne se produisait jamais avant).
+    *rngState = 0.99;
+    d = dir.update(20.0, {{"A", kDbFloor}, {"B", kDbFloor}});
+    CHECK(d.context == Context::Silence);
+    CHECK(d.scene == "Plateau");
+    CHECK(d.switched == true);
+}
+
 TEST_CASE("director : single ne re-tire pas a chaque tick (anti-scintillement)") {
     // A a 2 scenes ; le RNG renverrait des scenes differentes a chaque tick s'il
     // etait appele. On verifie que la scene NE change PAS tant qu'on reste sous

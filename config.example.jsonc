@@ -61,7 +61,7 @@
 
   // --- Rythme des plans (secondes) ---
   "timing": {
-    "minShotSeconds": 3.0,           // temps mini sur un plan (anti-nervosité)
+    "minShotSeconds": 5.0,           // temps mini sur un plan (anti-nervosité)
     "maxShotSeconds": 12.0,          // au-delà : on rafraîchit le plan (variété)
     "pingPongWindowSeconds": 12.0    // mémoire anti ping-pong
   },
