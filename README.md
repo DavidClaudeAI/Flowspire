@@ -8,18 +8,25 @@ multicam à plusieurs (invités VDO.Ninja, micros…) — **sans aucun driver / 
 
 ## Statut
 
-🚧 **Fondation (Run 1).** Specs et maquettes validées. **Risque technique n°1 levé** : on peut
-détecter qui parle via l'audio interne d'OBS, **sans driver / câble audio virtuel**.
+✅ **Pilotage automatique fonctionnel (Run 3).** Le plugin **bascule réellement la scène OBS**
+selon qui parle — validé en conditions réelles. **Risque technique n°1 levé** : détection de qui
+parle via l'audio interne d'OBS, **sans driver / câble audio virtuel**.
 
 Acquis :
 - **Cœur** (`src/core`) — détection + décision pondérée à 3 contextes, **testé** (doctest/CTest, sans OBS).
 - **Plugin natif** — compile (`streamdirector.dll`) sur l'obs-plugintemplate (multi-OS), charge dans OBS.
 - **Lecture audio native** (`src/obs`) — un `obs_volmeter` par source audio, niveaux internes d'OBS
   (zéro driver/câble virtuel), avec retombée temporelle et accès thread-safe.
-- **Dock Qt** (`src/ui`) — vumètre + état parle/silence par source + « à l'antenne (calculé) ».
-  **Lecture seule** : ne pilote pas encore les scènes.
+- **Pilotage réel des scènes** (`src/obs/scene_switcher`) — bascule la scène programme OBS selon le
+  locuteur ; reprend la main si la scène est changée manuellement.
+- **Configuration par fichier** (`src/obs/config_loader`) — `config.json` (intervenant → source audio
+  → scène(s) pondérées + plan large). Sans config : mode lecture seule.
+- **Raccourcis OBS** — activer/désactiver l'auto, forcer le plan large, forcer un intervenant
+  (mappables Stream Deck et clavier).
+- **Dock Qt** (`src/ui`) — vumètre + état parle/silence par intervenant, scène réellement à l'antenne,
+  case « pilotage automatique » (**OFF par défaut** : garde-fou) + boutons plan large / forcer.
 
-Suite : pilotage réel des scènes (bascule auto) + hotkeys Stream Deck.
+Suite : assistant de configuration visuel (éditer intervenants/scènes/poids sans toucher au JSON).
 
 ## Build (Windows)
 
@@ -34,6 +41,20 @@ scripts\install-local.bat  :: installe le plugin dans OBS (OBS fermé)
 À chaque décision de bascule, le plugin fait un **tirage au sort pondéré** (jamais une règle
 rigide) selon 3 contextes : *une personne parle* / *plusieurs parlent* / *personne ne parle*.
 L'utilisateur crée ses scènes dans OBS ; le plugin les **pilote** selon la source audio active.
+
+## Configuration
+
+Le plugin lit un `config.json` (intervenants → source audio → scène(s) pondérées + plan large) à :
+
+```
+Windows : %APPDATA%\obs-studio\plugin_config\streamdirector\config.json
+macOS   : ~/Library/Application Support/obs-studio/plugin_config/streamdirector/config.json
+Linux   : ~/.config/obs-studio/plugin_config/streamdirector/config.json
+```
+
+Voir [`config.example.jsonc`](config.example.jsonc) (modèle commenté). Le dock affiche le chemin
+exact et l'état (chargée / invalide / absente), avec un bouton **Rafraîchir** (rechargement à chaud).
+Sans config valide, le plugin reste en **lecture seule** et ne touche pas aux scènes.
 
 ## Architecture cible
 
