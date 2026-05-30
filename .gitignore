@@ -4,13 +4,18 @@ __pycache__/
 .venv/
 venv/
 
-# Build (plugin natif a venir)
+# Build (coeur + plugin)
 build/
-*.obj
-*.o
-*.so
-*.dll
-*.dylib
+build_tests/
+build_x64/
+build_macos/
+build_x86_64/
+release/
+.deps/
+build_log.txt
+*_log.txt
+**/testout.txt
+CMakeLists.template.txt
 
 # OS / editeurs
 .DS_Store
@@ -18,7 +23,14 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Fichiers generes par les IDE/CMake (chemins absolus machine-specifiques)
+CMakeUserPresets.json
+compile_commands.json
+*.user
+
 # Secrets locaux (ne jamais committer un mot de passe websocket)
 *.secret
 .env
-poc/.obs_password
+
+# Compteur de build genere par le template (ne pas suivre)
+cmake/.CMakeBuildNumber

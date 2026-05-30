@@ -1,0 +1,374 @@
+// StreamDirector — tests unitaires du coeur (sans OBS).
+// Lancer : ctest --output-on-failure  (ou directement l'executable sd_tests).
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest/doctest.h>
+
+#include <map>
+#include <string>
+#include <vector>
+
+#include "core/audio_util.hpp"
+#include "core/config.hpp"
+#include "core/director.hpp"
+#include "core/speaker_detector.hpp"
+#include "core/weighted_pick.hpp"
+
+using namespace sd::core;
+
+namespace {
+// RNG deterministe rejouant une sequence fixe (puis se repete).
+Director::Rng seq(std::vector<double> values) {
+    auto idx = std::make_shared<size_t>(0);
+    auto vals = std::make_shared<std::vector<double>>(std::move(values));
+    return [idx, vals]() -> double {
+        if (vals->empty()) {
+            return 0.0;
+        }
+        const double v = (*vals)[*idx % vals->size()];
+        ++(*idx);
+        return v;
+    };
+}
+
+Config twoSpeakerConfig() {
+    Config c;
+    c.wideShotScene = "Plateau";
+    c.timing.minShotSeconds = 3.0;
+    c.timing.maxShotSeconds = 12.0;
+    Speaker a;
+    a.id = "A";
+    a.name = "Alice";
+    a.audioSource = "srcA";
+    a.scenes = {{"A_close", 90}, {"A_wide", 10}};
+    Speaker b;
+    b.id = "B";
+    b.name = "Bob";
+    b.audioSource = "srcB";
+    b.scenes = {{"B_close", 100}};
+    c.speakers = {a, b};
+    return c;
+}
+}  // namespace
+
+TEST_CASE("conversion mul -> dB") {
+    CHECK(mulToDb(0.0) == doctest::Approx(kDbFloor));
+    CHECK(mulToDb(1.0) == doctest::Approx(0.0));
+    CHECK(mulToDb(0.5) == doctest::Approx(-6.0206).epsilon(0.001));
+    CHECK(mulToDb(0.00001) == doctest::Approx(kDbFloor));
+}
+
+TEST_CASE("levelsToDb prend le peak max des canaux") {
+    std::vector<std::vector<double>> frame = {{0.2, 0.25, 0.3}, {0.4, 0.5, 0.55}};
+    CHECK(levelsToDb(frame) == doctest::Approx(-6.0206).epsilon(0.001));
+    CHECK(levelsToDb({}) == doctest::Approx(kDbFloor));
+}
+
+TEST_CASE("detecteur : attaque sur 2 frames") {
+    SpeakerDetector d(-35.0, 2, 8);
+    const double loud = mulToDb(0.5);  // ~ -6 dB
+    CHECK(d.update(loud) == false);    // 1 frame : pas encore
+    CHECK(d.update(loud) == true);     // 2 frames : parle
+}
+
+TEST_CASE("detecteur : relachement sur 8 frames (anti-respiration)") {
+    SpeakerDetector d(-35.0, 2, 8);
+    const double loud = mulToDb(0.5);
+    d.update(loud);
+    d.update(loud);
+    REQUIRE(d.speaking());
+    for (int i = 0; i < 7; ++i) {
+        CHECK(d.update(kDbFloor) == true);  // tient encore
+    }
+    CHECK(d.update(kDbFloor) == false);  // 8e : ne parle plus
+}
+
+TEST_CASE("detecteur : un pic isole ne declenche pas") {
+    SpeakerDetector d(-35.0, 2, 8);
+    CHECK(d.update(mulToDb(0.9)) == false);
+    CHECK(d.update(kDbFloor) == false);
+    CHECK(d.speaking() == false);
+}
+
+TEST_CASE("weightedPick respecte les bornes et ignore les poids nuls") {
+    std::vector<std::pair<std::string, int>> opts = {{"x", 0}, {"y", 10}};
+    CHECK(*weightedPick(opts, 0.0) == "y");
+    CHECK(*weightedPick(opts, 0.99) == "y");
+    std::vector<std::pair<std::string, int>> empty;
+    CHECK(weightedPick(empty, 0.5) == nullptr);
+}
+
+TEST_CASE("weightedPick : distribution conforme aux poids") {
+    // 90 / 10 : r<0.9 -> a, r>=0.9 -> b
+    std::vector<std::pair<std::string, int>> opts = {{"a", 90}, {"b", 10}};
+    CHECK(*weightedPick(opts, 0.0) == "a");
+    CHECK(*weightedPick(opts, 0.89) == "a");
+    CHECK(*weightedPick(opts, 0.90) == "b");
+    CHECK(*weightedPick(opts, 0.95) == "b");
+}
+
+TEST_CASE("config : round-trip JSON complet (tous les champs)") {
+    Config in = twoSpeakerConfig();
+    // valeurs non-defaut sur TOUS les champs pour detecter une cle oubliee
+    in.version = 7;
+    in.audio = {-28.0, -55.0, 0.6, 3, 11};
+    in.timing = {2.5, 9.0, 7.0};
+    in.whenMultiple = {40, 35, 25};
+    in.whenSilence = {70, 30};
+    const Config out = fromJson(toJson(in));
+
+    CHECK(out.version == 7);
+    REQUIRE(out.speakers.size() == 2);
+    CHECK(out.speakers[1].id == "B");
+    CHECK(out.speakers[1].scenes[0].scene == "B_close");
+    CHECK(out.speakers[1].scenes[0].weight == 100);
+    CHECK(out.wideShotScene == "Plateau");
+
+    CHECK(out.audio.voiceThresholdDb == doctest::Approx(-28.0));
+    CHECK(out.audio.volumeFloorDb == doctest::Approx(-55.0));
+    CHECK(out.audio.vadThreshold == doctest::Approx(0.6));
+    CHECK(out.audio.attackFrames == 3);
+    CHECK(out.audio.releaseFrames == 11);
+
+    CHECK(out.timing.minShotSeconds == doctest::Approx(2.5));
+    CHECK(out.timing.maxShotSeconds == doctest::Approx(9.0));
+    CHECK(out.timing.pingPongWindowSeconds == doctest::Approx(7.0));
+
+    CHECK(out.whenMultiple.loudestSpeaker == 40);
+    CHECK(out.whenMultiple.currentSpeaker == 35);
+    CHECK(out.whenMultiple.wideShot == 25);
+    CHECK(out.whenSilence.lastSpeaker == 70);
+    CHECK(out.whenSilence.wideShot == 30);
+}
+
+TEST_CASE("config : JSON tolerant aux cles absentes") {
+    const Config c = fromJson(R"({"version":1,"speakers":[]})");
+    CHECK(c.speakers.empty());
+    CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0));  // defaut
+    CHECK(c.whenMultiple.wideShot == 25);                       // defaut
+}
+
+TEST_CASE("config : JSON invalide leve une exception") {
+    CHECK_THROWS(fromJson("{ ceci n'est pas du json"));
+}
+
+TEST_CASE("director : contexte A bascule sur la scene de celui qui parle") {
+    // rng=0.0 -> tire la 1ere scene du pool (A_close, poids 90)
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    // attaque = 2 frames pour passer "parle"
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});
+    CHECK(d.context == Context::Single);
+    CHECK(d.scene == "A_close");
+    CHECK(d.owner == "A");
+    CHECK(d.switched == true);
+}
+
+TEST_CASE("director : verrou temps-mini empeche un recoupe trop rapide") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // -> A_close a t=0.1
+    REQUIRE(dir.currentScene() == "A_close");
+    // B se met a parler tres vite : attaque 2 frames, mais on est dans le verrou (<3s)
+    dir.update(0.2, {{"B", mulToDb(0.9)}});
+    Decision d = dir.update(0.3, {{"B", mulToDb(0.9)}});
+    CHECK(d.scene == "A_close");      // verrou : pas de bascule
+    CHECK(d.switched == false);
+}
+
+TEST_CASE("director : apres le verrou, bascule sur le nouveau locuteur") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close a t=0.1
+    // A se tait (8 frames), B parle, le temps depasse minShot (3s)
+    for (int i = 0; i < 8; ++i) {
+        dir.update(0.2 + i * 0.05, {{"A", kDbFloor}, {"B", mulToDb(0.9)}});
+    }
+    Decision d = dir.update(4.0, {{"B", mulToDb(0.9)}});
+    CHECK(d.scene == "B_close");
+    CHECK(d.owner == "B");
+    CHECK(d.switched == true);
+}
+
+TEST_CASE("director : contexte B (plusieurs) — le plus fort gagne avec rng=0") {
+    // opts B = loudest(45)/current(30)/wide(25) ; rng=0 -> 'loudest'
+    // puis tirage scene du plus fort. On rend B plus fort que A.
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    // amorcage : faire parler les deux (attaque 2 frames)
+    dir.update(0.0, {{"A", mulToDb(0.4)}, {"B", mulToDb(0.8)}});
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.4)}, {"B", mulToDb(0.8)}});
+    CHECK(d.context == Context::Multiple);
+    CHECK(d.owner == "B");        // B plus fort
+    CHECK(d.scene == "B_close");
+}
+
+TEST_CASE("director : contexte B — choix 'plan large' quand plusieurs parlent") {
+    // B a une seule scene (B_close, 100). On installe d'abord un plan courant
+    // (A_close via A seul), puis on fait parler A+B : opts = loudest/current/wide.
+    // rng=0.999 -> derniere option = 'wide' (45+30+25 -> 0.999*100=99.9 dans [75,100[).
+    Director dir(twoSpeakerConfig(), seq({0.999}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche (hold)
+    // attendre la fin du verrou (minShot=3s) pour autoriser une bascule
+    for (int i = 0; i < 8; ++i) {
+        dir.update(0.2 + i * 0.05, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
+    }
+    Decision d = dir.update(4.0, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
+    CHECK(d.context == Context::Multiple);
+    CHECK(d.scene == "Plateau");   // bascule sur le plan large
+    CHECK(d.owner.empty());
+}
+
+TEST_CASE("director : contexte C (silence) — last 80 / wide 20, pondere") {
+    // Quelqu'un a deja parle (lastSpeaker=A), puis silence : opts = last(80)/wide(20).
+    // rng=0.0 -> 'last' (premiere option) -> scene du pool de A (A_close).
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A devient lastSpeaker
+    // silence prolonge (relachement 8 frames + depasser minShot)
+    Decision d;
+    for (int i = 0; i < 80; ++i) {
+        d = dir.update(0.2 + i * 0.1, {{"A", kDbFloor}, {"B", kDbFloor}});
+    }
+    CHECK(d.context == Context::Silence);
+    CHECK(d.owner == "A");          // 'last' tire -> on garde le dernier locuteur
+    CHECK(d.scene == "A_close");
+}
+
+TEST_CASE("director : contexte C (silence) — rng force le plan large") {
+    // lastSpeaker=A puis silence ; rng=0.99 -> part 'wide' (last80/wide20).
+    Director dir(twoSpeakerConfig(), seq({0.99}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    Decision d;
+    for (int i = 0; i < 80; ++i) {
+        d = dir.update(0.2 + i * 0.1, {{"A", kDbFloor}, {"B", kDbFloor}});
+    }
+    CHECK(d.context == Context::Silence);
+    CHECK(d.scene == "Plateau");
+    CHECK(d.owner.empty());
+}
+
+TEST_CASE("director : rafraichissement au temps-max (variete des plans)") {
+    // A a 2 scenes (A_close 90 / A_wide 10). RNG CONTROLABLE : on fixe la valeur
+    // retournee selon la phase, pour ne pas dependre du nombre exact de tirages
+    // consommes pendant la montee en parole (test robuste).
+    auto rngState = std::make_shared<double>(0.0);  // 0.0 -> A_close
+    Director::Rng rng = [rngState]() { return *rngState; };
+
+    Config c = twoSpeakerConfig();
+    c.wideShotScene = "";       // pas de plan large : isole le pool de A
+    c.timing.maxShotSeconds = 12.0;
+    Director dir(c, rng);
+
+    dir.update(0.0, {{"A", mulToDb(0.5)}});           // frame 1 : montee (pas encore "parle")
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});  // frame 2 : A parle -> tirage 0.0 -> A_close
+    REQUIRE(dir.currentScene() == "A_close");
+    CHECK(d.owner == "A");
+
+    // A continue de parler ; avant maxShot -> aucun changement (anti-nervosite)
+    d = dir.update(5.0, {{"A", mulToDb(0.5)}});
+    CHECK(d.scene == "A_close");
+    CHECK(d.switched == false);
+
+    // on bascule le RNG vers A_wide, puis on depasse maxShot -> rafraichissement
+    *rngState = 0.95;  // 0.95 -> A_wide (cumul 90/10)
+    d = dir.update(13.0, {{"A", mulToDb(0.5)}});
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_wide");
+    CHECK(d.switched == true);
+}
+
+TEST_CASE("director : single ne re-tire pas a chaque tick (anti-scintillement)") {
+    // A a 2 scenes ; le RNG renverrait des scenes differentes a chaque tick s'il
+    // etait appele. On verifie que la scene NE change PAS tant qu'on reste sous
+    // maxShot et que A parle en continu.
+    Config c = twoSpeakerConfig();
+    c.timing.maxShotSeconds = 100.0;
+    Director dir(c, seq({0.0, 0.95, 0.95, 0.95}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    const std::string first = dir.currentScene();
+    for (int i = 0; i < 20; ++i) {
+        Decision d = dir.update(1.0 + i * 0.5, {{"A", mulToDb(0.5)}});
+        CHECK(d.scene == first);       // pas de scintillement
+        CHECK(d.switched == false);
+    }
+}
+
+TEST_CASE("director : fallback plan large quand le locuteur n'a aucune scene") {
+    // Cause racine : un locuteur sans scene ne doit pas laisser l'ecran vide.
+    Config c;
+    c.wideShotScene = "Plateau";
+    Speaker a;
+    a.id = "A";
+    a.audioSource = "srcA";
+    // pool VIDE volontairement
+    c.speakers = {a};
+    Director dir(c, seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});
+    CHECK(d.context == Context::Single);
+    CHECK(d.scene == "Plateau");   // fallback : on montre le plan large
+    CHECK(d.owner.empty());
+}
+
+TEST_CASE("director : sans scene ni plan large, rien n'est affiche (pas de crash)") {
+    Config c;  // pas de wideShotScene, speaker sans scene
+    Speaker a;
+    a.id = "A";
+    a.audioSource = "srcA";
+    c.speakers = {a};
+    Director dir(c, seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});
+    CHECK(d.scene.empty());        // rien de jouable -> on ne force pas de scene
+    CHECK(d.switched == false);
+}
+
+TEST_CASE("director : forceScene puis reprise auto apres le verrou") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.forceScene(1.0, "Plateau");          // plan force (hold)
+    // pendant le verrou (minShot=3s), A parle mais on reste sur Plateau
+    dir.update(1.1, {{"A", mulToDb(0.5)}});
+    Decision d = dir.update(1.2, {{"A", mulToDb(0.5)}});
+    CHECK(d.scene == "Plateau");
+    // apres le verrou, A parle toujours -> l'auto reprend la main
+    d = dir.update(5.0, {{"A", mulToDb(0.5)}});
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_close");
+    CHECK(d.switched == true);
+}
+
+TEST_CASE("director : auto desactive ne bascule jamais") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.setAutoEnabled(false);
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});
+    CHECK(d.scene.empty());
+    CHECK(d.switched == false);
+}
+
+TEST_CASE("director : forceScene applique la scene et arme le verrou") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    Decision f = dir.forceScene(1.0, "Plateau");
+    CHECK(f.scene == "Plateau");
+    CHECK(dir.currentScene() == "Plateau");
+    // juste apres, A parle : verrou actif -> pas de bascule
+    dir.update(1.1, {{"A", mulToDb(0.5)}});
+    Decision d = dir.update(1.2, {{"A", mulToDb(0.5)}});
+    CHECK(d.scene == "Plateau");
+}
+
+TEST_CASE("director : memoire des derniers locuteurs (anti ping-pong)") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    dir.update(5.0, {{"B", mulToDb(0.9)}});
+    dir.update(5.1, {{"B", mulToDb(0.9)}});
+    const auto recent = dir.recentSpeakers(5.2);
+    REQUIRE(recent.size() == 2);
+    CHECK(recent[0] == "B");  // le plus recent d'abord
+    CHECK(recent[1] == "A");
+    // au-dela de la fenetre (12s), l'historique s'oublie
+    CHECK(dir.recentSpeakers(20.0).empty());
+}

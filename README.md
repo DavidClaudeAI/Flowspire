@@ -8,10 +8,23 @@ multicam à plusieurs (invités VDO.Ninja, micros…) — **sans aucun driver / 
 
 ## Statut
 
-🚧 **Phase de fondation.** Specs et maquettes validées. **Risque technique n°1 levé** :
-un prototype a confirmé qu'on peut détecter en temps réel quelle source audio parle à partir
-des niveaux audio internes d'OBS, **sans aucun driver / câble audio virtuel**. Le prototype
-(jetable) a rempli son rôle et a été retiré ; place à l'implémentation du **plugin natif**.
+🚧 **Fondation (Run 1).** Specs et maquettes validées. **Risque technique n°1 levé** : on peut
+détecter qui parle via l'audio interne d'OBS, **sans driver / câble audio virtuel**.
+
+Acquis :
+- **Cœur** (`src/core`) — détection + décision pondérée à 3 contextes, **testé** (doctest/CTest, sans OBS).
+- **Plugin natif** — compile (`streamdirector.dll`) sur l'obs-plugintemplate (multi-OS), charge dans
+  OBS et enregistre un **dock Qt** (placeholder pour l'instant).
+
+Suite : brancher la lecture audio (`obs_volmeter`) et afficher les vumètres par intervenant.
+
+## Build (Windows)
+
+```bat
+scripts\dev-build.bat      :: cœur + tests (rapide, sans OBS)
+scripts\build-plugin.bat   :: plugin complet (1er run : télécharge libobs + Qt6)
+scripts\install-local.bat  :: installe le plugin dans OBS (OBS fermé)
+```
 
 ## Principe
 
