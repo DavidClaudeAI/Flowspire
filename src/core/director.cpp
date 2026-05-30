@@ -205,32 +205,27 @@ Decision Director::update(double now, const std::map<std::string, double>& level
 
     // 3) Comparer la cible a l'etat courant et decider de basculer (ou non).
     const bool init = currentScene_.empty();
-    const bool noTarget = !desiredWide && desiredOwner.empty();
-    if (noTarget) {
-        return out;  // silence sans dernier locuteur ni plan large : on ne touche a rien.
-    }
 
     const bool sameTarget =
         desiredWide ? (currentOwner_.empty() && currentScene_ == cfg_.wideShotScene)
-                    : (!currentOwner_.empty() && currentOwner_ == desiredOwner);
+                    : (!desiredOwner.empty() && !currentOwner_.empty() &&
+                       currentOwner_ == desiredOwner);
 
-    if (sameTarget) {
-        // Rafraichissement (variete) une fois le temps-max ecoule.
-        if (!init && (now - lastSwitch_) >= cfg_.timing.maxShotSeconds) {
-            if (desiredWide) {
-                commit(now, cfg_.wideShotScene, std::string{}, hold_, out);
-            } else if (const Speaker* sp = findSpeaker(desiredOwner)) {
-                const std::string scene = drawSceneFromPool(sp->scenes);
-                if (!scene.empty()) {
-                    commit(now, scene, desiredOwner, true, out);
-                }
+    if (!init && sameTarget) {
+        // Rafraichissement (variete) une fois le temps-max ecoule : on re-tire
+        // une scene dans le meme pool (meme cible), sans casser le "hold".
+        if ((now - lastSwitch_) >= cfg_.timing.maxShotSeconds) {
+            std::string scene, owner;
+            if (resolvePlayable(desiredOwner, desiredWide, scene, owner)) {
+                commit(now, scene, owner, hold_, out);
             }
         }
         return out;
     }
 
-    // Cible differente : on veut basculer. Le verrou ne s'applique qu'a un plan
-    // "hold" (plan de locuteur ou plan force), pas a un plan large de silence.
+    // Cible differente (ou initialisation) : on veut basculer. Le verrou ne
+    // s'applique qu'a un plan "hold" (plan de locuteur ou plan force), pas a un
+    // plan large issu d'un simple silence.
     const bool locked = hold_ && !init && (now - lastSwitch_) < cfg_.timing.minShotSeconds;
     if (locked) {
         return out;  // re-evalue au prochain tick : la bascule partira des que le verrou tombe.
@@ -238,16 +233,62 @@ Decision Director::update(double now, const std::map<std::string, double>& level
 
     // Un plan issu d'un contexte avec locuteurs (Single/Multiple) est un "hold".
     // Un plan large de silence ne l'est pas (une prise de parole peut le remplacer).
-    const bool willHold = (ctx != Context::Silence);
-    if (desiredWide) {
-        commit(now, cfg_.wideShotScene, std::string{}, willHold, out);
-    } else if (const Speaker* sp = findSpeaker(desiredOwner)) {
-        const std::string scene = drawSceneFromPool(sp->scenes);
-        if (!scene.empty()) {
-            commit(now, scene, desiredOwner, willHold, out);
-        }
+    std::string scene, owner;
+    if (resolvePlayable(desiredOwner, desiredWide, scene, owner)) {
+        const bool willHold = (ctx != Context::Silence);
+        commit(now, scene, owner, willHold, out);
+    } else {
+        // Aucune scene jouable (pas de pool, pas de plan large) : ne pas figer la
+        // decision memoisee -> re-tenter au prochain tick (cause racine : on ne
+        // reste jamais bloque sur une cible morte).
+        decisionKey_.clear();
     }
     return out;
+}
+
+bool Director::resolvePlayable(const std::string& owner, bool wide, std::string& outScene,
+                              std::string& outOwner) {
+    // 1) Cible demandee.
+    if (wide) {
+        if (!cfg_.wideShotScene.empty()) {
+            outScene = cfg_.wideShotScene;
+            outOwner.clear();
+            return true;
+        }
+    } else if (!owner.empty()) {
+        if (const Speaker* sp = findSpeaker(owner)) {
+            const std::string scene = drawSceneFromPool(sp->scenes);
+            if (!scene.empty()) {
+                outScene = scene;
+                outOwner = owner;
+                return true;
+            }
+        }
+    }
+
+    // 2) Fallback : si quelqu'un parle, montrer le plus fort plutot que du vide.
+    if (!speakingSorted_.empty()) {
+        const std::string& loud = speakingSorted_.front();
+        if (loud != owner) {  // deja tente ci-dessus
+            if (const Speaker* sp = findSpeaker(loud)) {
+                const std::string scene = drawSceneFromPool(sp->scenes);
+                if (!scene.empty()) {
+                    outScene = scene;
+                    outOwner = loud;
+                    return true;
+                }
+            }
+        }
+    }
+
+    // 3) Dernier recours : le plan large s'il existe.
+    if (!cfg_.wideShotScene.empty()) {
+        outScene = cfg_.wideShotScene;
+        outOwner.clear();
+        return true;
+    }
+
+    return false;
 }
 
 void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold,

@@ -19,6 +19,14 @@ if not exist "%SRC%\streamdirector.dll" (
   exit /b 1
 )
 
+REM OBS doit etre ferme : sinon la DLL est verrouillee et l'install se corrompt
+REM (data effacee mais DLL non remplacee). On refuse plutot que de casser.
+tasklist /fi "imagename eq obs64.exe" 2>nul | find /i "obs64.exe" >nul
+if not errorlevel 1 (
+  echo [erreur] OBS est ouvert. Ferme OBS avant d'installer le plugin.
+  exit /b 1
+)
+
 echo Installation vers "%DEST%" ...
 if exist "%DEST%" rmdir /s /q "%DEST%"
 mkdir "%DEST%\bin\64bit" 2>nul

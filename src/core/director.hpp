@@ -76,6 +76,15 @@ private:
     const Speaker* findSpeaker(const std::string& id) const;
     double rngValue();  // borne le RNG injecte dans [0, 1)
     std::string drawSceneFromPool(const std::vector<SceneWeight>& pool);
+    // Resout une scene REELLEMENT jouable pour la cible demandee, avec fallback :
+    //   1) la cible (owner -> une de ses scenes ; wide -> plan large)
+    //   2) sinon, s'il y a des locuteurs : le plus fort -> une de ses scenes
+    //   3) sinon : le plan large s'il existe
+    // Garantit qu'on ne reste jamais sur du vide quand quelqu'un parle et qu'une
+    // scene est disponible. Renvoie false si rien n'est jouable (aucun pool,
+    // aucun plan large). Renseigne outScene/outOwner en cas de succes.
+    bool resolvePlayable(const std::string& owner, bool wide, std::string& outScene,
+                         std::string& outOwner);
     void commit(double now, const std::string& scene, const std::string& owner, bool hold,
                 Decision& out);
     void recordSpeakerChange(double now, const std::string& id);

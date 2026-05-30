@@ -12,7 +12,10 @@ namespace sd::core {
 // Les poids <= 0 sont ignores. Renvoie nullptr si aucune option eligible.
 template <typename T>
 const T* weightedPick(const std::vector<std::pair<T, int>>& options, double r) {
-    long total = 0;
+    // long long (et pas long) : long fait 32 bits sur Windows (LLP64) et 64 sur
+    // Linux/macOS (LP64) — on fixe 64 bits partout pour un comportement identique
+    // multi-OS et eviter tout depassement sur de gros cumuls de poids.
+    long long total = 0;
     for (const auto& opt : options) {
         if (opt.second > 0) {
             total += opt.second;
