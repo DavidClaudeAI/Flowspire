@@ -13,9 +13,11 @@
 #include <string>
 #include <vector>
 
-// Forward-declaration : on evite d'inclure <obs.h> dans ce header.
+// Forward-declarations : on evite d'inclure <obs.h> dans ce header.
 struct obs_volmeter;
 typedef struct obs_volmeter obs_volmeter_t;
+struct obs_weak_source;
+typedef struct obs_weak_source obs_weak_source_t;
 
 namespace sd::obsbridge {
 
@@ -50,6 +52,9 @@ private:
     struct SourceMeter {
         std::string name;
         obs_volmeter_t* volmeter = nullptr;
+        // Reference FAIBLE vers la source : permet de consulter son etat mute
+        // sans la maintenir en vie (si l'utilisateur la supprime, lock() echoue).
+        obs_weak_source_t* weakSource = nullptr;
         std::atomic<float> peakDb{-60.0f};
         std::atomic<double> lastUpdate{0.0};  // horodatage monotone du dernier callback
     };

@@ -91,6 +91,9 @@ void AudioLevelMonitor::start() {
         meter->name = name;
         meter->volmeter = volmeter;
         meter->lastUpdate.store(now, std::memory_order_relaxed);
+        // Ref faible pour consulter l'etat mute dans snapshot() (ne maintient pas
+        // la source en vie).
+        meter->weakSource = obs_source_get_weak_source(source);
 
         // attach garde un pointeur brut + se connecte au signal "destroy" de la
         // source (pas une ref forte) : on peut donc relacher notre ref ensuite ;
@@ -115,6 +118,10 @@ void AudioLevelMonitor::stop() {
             obs_volmeter_detach_source(meter->volmeter);
             obs_volmeter_destroy(meter->volmeter);
             meter->volmeter = nullptr;
+        }
+        if (meter->weakSource) {
+            obs_weak_source_release(meter->weakSource);
+            meter->weakSource = nullptr;
         }
     }
     meters_.clear();
@@ -142,6 +149,20 @@ std::map<std::string, double> AudioLevelMonitor::snapshot(double nowSeconds,
         const double last = meter->lastUpdate.load(std::memory_order_relaxed);
         if (nowSeconds - last > staleSeconds) {
             db = kFloorDb;
+        }
+
+        // Mute : obs_volmeter mesure AVANT le bouton mute, donc une source coupee
+        // continue d'emettre un niveau. Pour la regie, une source mutee = silence
+        // (on ne bascule jamais sur quelqu'un qu'on a coupe). On consulte l'etat
+        // via la ref faible (sans prolonger la vie de la source).
+        if (meter->weakSource) {
+            obs_source_t* src = obs_weak_source_get_source(meter->weakSource);
+            if (src) {
+                if (obs_source_muted(src)) {
+                    db = kFloorDb;
+                }
+                obs_source_release(src);
+            }
         }
 
         if (db < kFloorDb) {
