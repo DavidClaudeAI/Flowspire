@@ -6,6 +6,8 @@ venv/
 
 # Build (plugin natif a venir)
 build/
+build_log.txt
+**/testout.txt
 *.obj
 *.o
 *.so
