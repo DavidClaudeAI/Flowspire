@@ -8,8 +8,10 @@ multicam à plusieurs (invités VDO.Ninja, micros…) — **sans aucun driver / 
 
 ## Statut
 
-🚧 **Phase de fondation.** Les specs et les maquettes sont validées ; on lève actuellement le
-risque technique n°1 via un POC (voir [`poc/`](poc/)).
+🚧 **Phase de fondation.** Specs et maquettes validées. **Risque technique n°1 levé** :
+un prototype a confirmé qu'on peut détecter en temps réel quelle source audio parle à partir
+des niveaux audio internes d'OBS, **sans aucun driver / câble audio virtuel**. Le prototype
+(jetable) a rempli son rôle et a été retiré ; place à l'implémentation du **plugin natif**.
 
 ## Principe
 
@@ -22,12 +24,6 @@ L'utilisateur crée ses scènes dans OBS ; le plugin les **pilote** selon la sou
 - **Plugin natif OBS** (C++ / CMake via `obs-plugintemplate`), **multi-OS** (Windows, macOS, Linux).
 - **Licence : GPLv2+** (imposée par le lien à libobs). Gratuit + dons.
 - Pilotage via **hotkeys OBS** → compatibles Stream Deck et clavier nativement.
-
-## POC
-
-Le dossier [`poc/`](poc/) contient un prototype **Python jetable** qui prouve la détection
-« qui parle » à partir de l'audio interne d'OBS (obs-websocket), sans câble virtuel.
-Voir [`poc/README.md`](poc/README.md).
 
 ## Licence
 
