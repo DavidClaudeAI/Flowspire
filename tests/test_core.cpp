@@ -372,3 +372,53 @@ TEST_CASE("director : memoire des derniers locuteurs (anti ping-pong)") {
     // au-dela de la fenetre (12s), l'historique s'oublie
     CHECK(dir.recentSpeakers(20.0).empty());
 }
+
+TEST_CASE("director : forceSpeaker tire une scene du pool de l'intervenant") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));  // 0.0 -> 1er du pool de A = A_close
+    Decision d = dir.forceSpeaker(1.0, "A");
+    CHECK(d.switched == true);
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_close");
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : forceSpeaker respecte le pool pondere") {
+    // Pool A = A_close(90)/A_wide(10), total 100. rng=0.95 -> tranche [90,100) = A_wide.
+    Director dir(twoSpeakerConfig(), seq({0.95}));
+    Decision d = dir.forceSpeaker(1.0, "A");
+    CHECK(d.scene == "A_wide");
+}
+
+TEST_CASE("director : forceSpeaker sur intervenant inconnu ne change rien") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche
+    Decision d = dir.forceSpeaker(1.0, "ZZZ");
+    CHECK(d.switched == false);
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : forceSpeaker sans scene dans le pool ne change rien") {
+    Config c = twoSpeakerConfig();
+    c.speakers[1].scenes.clear();  // B n'a plus de scene
+    Director dir(c, seq({0.0}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche
+    Decision d = dir.forceSpeaker(1.0, "B");
+    CHECK(d.switched == false);
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
+    Director dir(twoSpeakerConfig(), seq({0.0}));
+    dir.forceSpeaker(1.0, "B");  // -> B_close (hold), lastSwitch = 1.0
+    CHECK(dir.currentScene() == "B_close");
+    // A parle juste apres : le verrou (minShot 3s) tient le plan force.
+    dir.update(1.5, {{"A", mulToDb(0.9)}});
+    dir.update(1.6, {{"A", mulToDb(0.9)}});  // A "parle" (attaque 2 frames)
+    CHECK(dir.currentScene() == "B_close");
+    // Une fois le verrou ecoule, A prend l'antenne.
+    Decision d = dir.update(4.5, {{"A", mulToDb(0.9)}});
+    CHECK(d.scene == "A_close");
+    CHECK(dir.currentScene() == "A_close");
+}

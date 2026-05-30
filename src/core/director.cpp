@@ -310,4 +310,23 @@ Decision Director::forceScene(double now, const std::string& scene, const std::s
     return out;
 }
 
+Decision Director::forceSpeaker(double now, const std::string& speakerId) {
+    Decision out;
+    out.context = lastContext_;
+    out.scene = currentScene_;
+    out.owner = currentOwner_;
+
+    const Speaker* sp = findSpeaker(speakerId);
+    if (!sp) {
+        return out;  // intervenant inconnu : on ne touche a rien.
+    }
+    const std::string scene = drawSceneFromPool(sp->scenes);
+    if (scene.empty()) {
+        return out;  // pas de scene jouable pour cet intervenant.
+    }
+    commit(now, scene, speakerId, /*hold=*/true, out);
+    decisionKey_.clear();  // un forçage reinitialise la situation memorisee
+    return out;
+}
+
 }  // namespace sd::core
