@@ -12,9 +12,13 @@
 //     peut le remplacer immediatement.
 //   - rafraichissement au temps-max (variete des plans).
 //   - memoisation du tirage aleatoire par "situation" -> pas de scintillement.
-//   - memoire des derniers locuteurs (anti ping-pong).
 //   - une bascule bloquee par le verrou est re-evaluee a chaque tick et
 //     s'execute des que le verrou tombe.
+//
+// Anti-nervosite : assuree aujourd'hui par le verrou temps-mini. La memoire des
+// derniers locuteurs (history_/recentSpeakers) est de la FONDATION exposee pour
+// un raffinement futur facon Gabin (biaiser le choix des plans selon qui vient
+// de parler) ; elle n'influence PAS encore la decision.
 #pragma once
 
 #include <deque>

@@ -24,10 +24,13 @@ struct Speaker {
 // Reglages de detection audio.
 struct AudioSettings {
     double voiceThresholdDb = -35.0;  // seuil de voix (sensibilite)
-    double volumeFloorDb = -60.0;     // plancher d'affichage
-    double vadThreshold = 0.75;       // voix vs bruit (reserve usage futur)
-    int attackFrames = 2;             // frames au-dessus du seuil -> "parle"
-    int releaseFrames = 8;            // frames sous le seuil -> "ne parle plus"
+    // Reserve : le plancher d'affichage actif est la constante kDbFloor
+    // (audio_util.hpp). Ce champ existe pour le rendre configurable plus tard ;
+    // il n'est pas encore lu par le coeur.
+    double volumeFloorDb = -60.0;
+    double vadThreshold = 0.75;  // voix vs bruit (reserve usage futur)
+    int attackFrames = 2;        // frames au-dessus du seuil -> "parle"
+    int releaseFrames = 8;       // frames sous le seuil -> "ne parle plus"
 };
 
 // Reglages de rythme (secondes).
