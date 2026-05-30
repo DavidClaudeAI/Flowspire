@@ -409,6 +409,23 @@ TEST_CASE("director : forceSpeaker sans scene dans le pool ne change rien") {
     CHECK(dir.currentScene() == "A_close");
 }
 
+TEST_CASE("director : contexte B 'current' apres plan force sans owner ne part pas en plan large") {
+    // Regression (revue Run 3) : apres forceScene(scene, owner=""), le plan courant
+    // n'a pas d'owner et n'est PAS le plan large. Si le tirage Multiple donne
+    // 'current' (rng dans [45,75[ -> 0.5), on ne doit PAS basculer sur le plan
+    // large ; on retombe sur le plus fort (choix sur), jamais sur "Plateau".
+    Director dir(twoSpeakerConfig(), seq({0.5}));
+    dir.forceScene(0.0, "A_close", "");  // plan courant sans owner, != wideShotScene
+    // Laisser tomber le verrou (minShot 3s) puis faire parler A+B.
+    for (int i = 0; i < 8; ++i) {
+        dir.update(0.2 + i * 0.05, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
+    }
+    Decision d = dir.update(4.0, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
+    CHECK(d.context == Context::Multiple);
+    CHECK(d.scene != "Plateau");   // surtout PAS le plan large par erreur
+    CHECK(d.owner == "B");         // retombe sur le plus fort
+}
+
 TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
     Director dir(twoSpeakerConfig(), seq({0.0}));
     dir.forceSpeaker(1.0, "B");  // -> B_close (hold), lastSwitch = 1.0

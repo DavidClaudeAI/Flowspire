@@ -83,7 +83,10 @@ private:
 
     void reload();   // recharge la config + re-scanne les sources + reconstruit l'UI
     void tick();     // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
-    void applyDecision(const sd::core::Decision& decision);  // bascule OBS si besoin
+    // Applique la decision a OBS si le pilotage auto est actif. `currentOnAir` =
+    // scene REELLEMENT a l'antenne (deja lue par le tick) : sert a detecter une
+    // derive (scene changee a la main dans OBS) et a reprendre la main.
+    void applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir);
     void updateModeLabel();
     static double nowSeconds();
 

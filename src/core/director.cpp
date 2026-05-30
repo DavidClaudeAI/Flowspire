@@ -165,8 +165,23 @@ Decision Director::update(double now, const std::map<std::string, double>& level
                 cachedOwner_.clear();
                 cachedWide_ = true;
             } else if (choice == "current") {
-                cachedOwner_ = currentOwner_;
-                cachedWide_ = currentOwner_.empty() && !currentScene_.empty();
+                // "Rester sur le plan courant". Le modele cible ne sait exprimer
+                // qu'un owner OU le plan large : on mappe selon ce qu'est vraiment
+                // le plan courant.
+                if (!currentOwner_.empty()) {
+                    cachedOwner_ = currentOwner_;  // plan d'un locuteur : on le garde
+                    cachedWide_ = false;
+                } else if (!currentScene_.empty() && currentScene_ == cfg_.wideShotScene) {
+                    cachedOwner_.clear();          // le plan courant EST le plan large
+                    cachedWide_ = true;
+                } else {
+                    // Plan courant non representable (scene forcee sans owner, non
+                    // wide) : on ne peut pas "rester" fidelement -> defaut sur le
+                    // plus fort, qui est un choix sur en contexte Multiple (evite de
+                    // partir par erreur sur le plan large).
+                    cachedOwner_ = loudest;
+                    cachedWide_ = false;
+                }
             } else {
                 cachedOwner_ = loudest;
                 cachedWide_ = false;

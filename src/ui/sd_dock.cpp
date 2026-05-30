@@ -299,6 +299,13 @@ void SdDock::updateModeLabel() {
 }
 
 void SdDock::setAuto(bool on) {
+    // GARDE-FOU : pas d'activation du pilotage auto sans config valide chargee.
+    // Sinon (mode lecture seule) l'etat afficherait "PILOTAGE AUTO actif" alors
+    // qu'aucune scene n'est pilotable -> etat trompeur. La desactivation (off)
+    // reste toujours possible. Couvre aussi la voie hotkey (toggleAuto).
+    if (on && !configMode_) {
+        return;
+    }
     autoEnabled_ = on;
     if (director_) {
         director_->setAutoEnabled(on);
@@ -328,8 +335,19 @@ void SdDock::customEvent(QEvent* event) {
     QWidget::customEvent(event);
 }
 
-void SdDock::applyDecision(const sd::core::Decision& decision) {
-    if (decision.switched && !decision.scene.empty()) {
+void SdDock::applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir) {
+    // On ne pilote OBS que si le pilotage auto est actif (garde-fou). Les forçages
+    // manuels (forceWide/forceSpeakerByIndex) appliquent leur scene eux-memes.
+    if (!autoEnabled_ || decision.scene.empty()) {
+        return;
+    }
+    // Le Director ne lit JAMAIS la scene reelle d'OBS : sa seule verite est sa
+    // cible interne (decision.scene). On compare donc ici a la scene REELLEMENT a
+    // l'antenne. Si elles different — soit le realisateur vient de changer d'avis
+    // (decision.switched), soit l'utilisateur a change de scene A LA MAIN dans OBS
+    // pendant l'auto — on (re)applique pour reprendre la main. switchTo est un
+    // no-op si la scene est deja active, donc aucun spam quand tout est synchrone.
+    if (decision.scene != currentOnAir) {
         sceneSwitcher_.switchTo(decision.scene);
     }
 }
@@ -376,7 +394,11 @@ void SdDock::tick() {
     }
 
     const sd::core::Decision decision = director_->update(now, levelsById);
-    applyDecision(decision);
+
+    // Scene REELLEMENT a l'antenne dans OBS, lue UNE seule fois par tick : sert a
+    // la fois au pilotage (detection de derive / reprise de main) et au libelle.
+    const std::string onAir = sceneSwitcher_.currentProgramScene();
+    applyDecision(decision, onAir);
 
     // speakingIds() est trie ; on en fait un set pour un test d'appartenance O(1).
     const std::vector<std::string> speaking = director_->speakingIds();
@@ -404,8 +426,9 @@ void SdDock::tick() {
         }
     }
 
-    // Scene REELLEMENT a l'antenne dans OBS (et pas seulement la decision calculee).
-    const std::string onAir = sceneSwitcher_.currentProgramScene();
+    // Libelle "scene a l'antenne" : reutilise `onAir` deja lu en debut de tick
+    // (apres un eventuel switchTo, le libelle se corrige au tick suivant ; a 20 Hz
+    // l'ecart est imperceptible et on evite un 2e appel a l'API OBS).
     if (onAir != shownOnAir_) {
         shownOnAir_ = onAir;
         if (onAir.empty()) {
