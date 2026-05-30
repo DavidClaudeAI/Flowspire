@@ -1,41 +1,56 @@
-cmake_minimum_required(VERSION 3.20)
+cmake_minimum_required(VERSION 3.28...3.30)
 
-# StreamDirector — build du COEUR (core) et de ses TESTS.
-# Le plugin OBS natif (couches obs/ + ui/) sera integre au scaffold
-# obs-plugintemplate dans une etape ulterieure ; le code de core/ y sera
-# reutilise tel quel (architecture en couches).
-project(StreamDirectorCore LANGUAGES CXX)
+# StreamDirector — plugin OBS natif.
+# Build base sur l'obs-plugintemplate officiel (telecharge libobs + Qt6 via
+# buildspec.json, multi-OS). Le COEUR pur (src/core) est teste a part, sans OBS,
+# via tests/CMakeLists.txt (boucle de test rapide). Voir specs/build-plan.
 
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+include("${CMAKE_CURRENT_SOURCE_DIR}/cmake/common/bootstrap.cmake" NO_POLICY_SCOPE)
 
-if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  set(CMAKE_BUILD_TYPE Debug CACHE STRING "" FORCE)
+project(${_name} VERSION ${_version})
+
+# Active des le depart : on veut le dock (Qt) et le controle des scenes (frontend-api).
+option(ENABLE_FRONTEND_API "Use obs-frontend-api for UI functionality" ON)
+option(ENABLE_QT "Use Qt functionality" ON)
+
+include(compilerconfig)
+include(defaults)
+include(helpers)
+
+add_library(${CMAKE_PROJECT_NAME} MODULE)
+
+find_package(libobs REQUIRED)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::libobs)
+
+if(ENABLE_FRONTEND_API)
+  find_package(obs-frontend-api REQUIRED)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE OBS::obs-frontend-api)
 endif()
 
-# REGLE DURE : warnings = erreurs. On ne laisse jamais un warning derriere.
-if(MSVC)
-  add_compile_options(/W4 /WX /permissive- /EHsc)
-  # Les en-tetes tiers (vendor) sont traites comme "externes" : pas de /WX dessus.
-  add_compile_options(/external:anglebrackets /external:W0)
-else()
-  add_compile_options(-Wall -Wextra -Wpedantic -Werror)
+if(ENABLE_QT)
+  find_package(Qt6 COMPONENTS Widgets Core)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets)
+  target_compile_options(
+    ${CMAKE_PROJECT_NAME}
+    PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
+  )
+  set_target_properties(
+    ${CMAKE_PROJECT_NAME}
+    PROPERTIES AUTOMOC ON AUTOUIC ON AUTORCC ON
+  )
 endif()
 
-# --- Coeur : bibliotheque pure, aucune dependance OBS/Qt ---
-add_library(sd_core STATIC
-  src/core/speaker_detector.cpp
-  src/core/config.cpp
-  src/core/director.cpp
+# --- Coeur pur (reutilise tel quel ; aucune dependance OBS/Qt) ---
+target_sources(
+  ${CMAKE_PROJECT_NAME}
+  PRIVATE
+    src/plugin-main.cpp
+    src/core/speaker_detector.cpp
+    src/core/config.cpp
+    src/core/director.cpp
 )
-target_include_directories(sd_core PUBLIC src)
-# vendor en include "systeme" -> les warnings des libs tierces sont ignores.
-target_include_directories(sd_core SYSTEM PUBLIC vendor)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
+target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM PRIVATE vendor)
+target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 
-# --- Tests ---
-enable_testing()
-add_executable(sd_tests tests/test_core.cpp)
-target_link_libraries(sd_tests PRIVATE sd_core)
-target_include_directories(sd_tests SYSTEM PRIVATE vendor)
-add_test(NAME sd_tests COMMAND sd_tests)
+set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})

@@ -4,15 +4,18 @@ __pycache__/
 .venv/
 venv/
 
-# Build (plugin natif a venir)
+# Build (coeur + plugin)
 build/
+build_tests/
+build_x64/
+build_macos/
+build_x86_64/
+release/
+.deps/
 build_log.txt
+*_log.txt
 **/testout.txt
-*.obj
-*.o
-*.so
-*.dll
-*.dylib
+CMakeLists.template.txt
 
 # OS / editeurs
 .DS_Store
@@ -23,4 +26,3 @@ Thumbs.db
 # Secrets locaux (ne jamais committer un mot de passe websocket)
 *.secret
 .env
-poc/.obs_password

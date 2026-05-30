@@ -1,7 +1,8 @@
 @echo off
-REM StreamDirector — build RAPIDE du coeur + tests (sans OBS).
-REM Initialise l'env C++ de VS (cl, cmake, ninja fournis avec VS) puis
-REM configure / compile / teste le dossier tests/ (boucle de test rapide).
+REM StreamDirector — build du PLUGIN OBS complet (lourd).
+REM 1ere execution : telecharge libobs + Qt6 (~1 Go) et compile libobs depuis
+REM les sources (long). Les fois suivantes sont rapides (deps en cache .deps/).
+REM Initialise l'env C++ de VS puis configure + build via les presets template.
 setlocal enabledelayedexpansion
 
 cd /d "%~dp0\.."
@@ -21,9 +22,8 @@ if "%VSPATH%"=="" (
 call "%VSPATH%\VC\Auxiliary\Build\vcvars64.bat" >nul
 if errorlevel 1 ( echo [erreur] vcvars64 a echoue & exit /b 1 )
 
-cmake -S tests -B build_tests -G Ninja || exit /b 1
-cmake --build build_tests || exit /b 1
-ctest --test-dir build_tests --output-on-failure || exit /b 1
+cmake --preset windows-x64 || exit /b 1
+cmake --build --preset windows-x64 --config RelWithDebInfo || exit /b 1
 
 echo.
-echo [OK] coeur + tests : build et tests termines.
+echo [OK] plugin build. Binaire dans build_x64\rundir\RelWithDebInfo\
