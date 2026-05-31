@@ -173,11 +173,14 @@ void SdSettings::Impl::showPanel(int p) {
 
 void SdSettings::Impl::resetToDefaults() {
     // Reinitialise les REGLAGES FINS de la PAGE COURANTE aux defauts (le bouton n'est
-    // visible que sur Plan large / Rythme). On limite au panneau affiche pour que le
-    // changement soit VISIBLE immediatement et previsible (retour David) :
+    // visible que sur Plan large / Rythme). Modele "tout-sur-Enregistrer" (choix David) :
+    //   - on remet les valeurs A L'ECRAN (visible immediatement)
+    //   - on N'ECRIT PAS sur disque ici : rien n'est persiste tant qu'on ne clique pas
+    //     "Enregistrer et fermer". La croix annule tout (y compris un reset).
+    // Couvre :
     //   - Rythme    : timing + sensibilite audio
-    //   - Plan large: poids des contextes (on NE touche PAS la scene plan large
-    //                 choisie, qui fait partie de la structure du plateau, pas des reglages).
+    //   - Plan large: poids des contextes (on NE touche PAS la scene plan large choisie,
+    //                 qui fait partie de la structure du plateau, pas des reglages).
     const sd::core::Config def;  // valeurs par defaut de la table de reglage
     if (selPanel == PanelRhythm) {
         working.timing = def.timing;
@@ -189,7 +192,6 @@ void SdSettings::Impl::resetToDefaults() {
         return;  // garde-fou : le bouton ne devrait pas etre clicable ailleurs
     }
     showPanel(selPanel);  // re-monte le panneau -> sliders/badges aux valeurs par defaut, tout de suite
-    persist();            // ... et enregistre immediatement (retour David : applique + enregistre)
 }
 
 bool SdSettings::Impl::persist() {
