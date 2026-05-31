@@ -170,8 +170,8 @@ QWidget* ConfigPanels::buildSpeakerCard(std::size_t idx) {
             s->audioSource = v.toStdString();
         }
     });
-    fl->addWidget(name);
-    fl->addWidget(src);
+    fl->addWidget(withInfo(name, i18n("Tip.Speakers.Name")));
+    fl->addWidget(withInfo(src, i18n("Tip.Speakers.Source")));
 
     auto* del = new QPushButton();
     del->setIcon(icon(Icon::Trash2, th::kTextTertiary, 15));
@@ -324,6 +324,7 @@ QWidget* ConfigPanels::buildSceneRow(int spk, std::size_t s) {
     lay->addWidget(slider, 1);
     lay->addWidget(val);
     lay->addWidget(badge);
+    lay->addWidget(makeInfoIcon(i18n("Tip.Cameras.Weight")));
     lay->addWidget(del);
     sceneWeightSliders_.push_back(slider);
     sceneWeightBadges_.push_back(badge);
@@ -344,7 +345,32 @@ void ConfigPanels::recomputeSceneWeights() {
 // === Panneau Plan large & priorites =========================================
 void ConfigPanels::mountWide(QVBoxLayout* host) {
     clearLayout(host);
-    host->addWidget(makeSectionLabel(i18n("Wide.SceneLabel")));
+
+    // Scene plan large MISE EN AVANT (retour David : on ne voyait pas qu'il fallait
+    // la choisir). Carte a lisere accent : icone + titre + champ + ligne d'aide.
+    auto* sceneCard = new QWidget();
+    sceneCard->setObjectName(QStringLiteral("wideSceneCard"));
+    sceneCard->setStyleSheet(QString("#wideSceneCard { background:%1; border:1px solid %2;"
+                                     " border-radius:%3px; }")
+                                 .arg(rgba(th::kAccent, 0.08))
+                                 .arg(rgba(th::kAccent, 0.5))
+                                 .arg(th::kRadiusCard));
+    auto* scLay = new QVBoxLayout(sceneCard);
+    scLay->setContentsMargins(14, 12, 14, 12);
+    scLay->setSpacing(8);
+    auto* scHead = new QWidget();
+    auto* scHeadLay = new QHBoxLayout(scHead);
+    scHeadLay->setContentsMargins(0, 0, 0, 0);
+    scHeadLay->setSpacing(8);
+    auto* scIcon = new QLabel();
+    scIcon->setPixmap(icon(Icon::LayoutGrid, th::kAccent, 16));
+    auto* scTitle = new QLabel(i18n("Wide.SceneLabel"));
+    scTitle->setStyleSheet(
+        QString("color:%1; font-size:11px; font-weight:700; letter-spacing:1px;").arg(th::kAccent));
+    scHeadLay->addWidget(scIcon);
+    scHeadLay->addWidget(scTitle);
+    scHeadLay->addStretch();
+    scLay->addWidget(scHead);
 
     auto* wide = new ComboField();
     wide->setAllowEmpty(true, i18n("Wide.ScenePlaceholder"));
@@ -352,7 +378,10 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     wide->setEmptyHint(i18n("Cameras.NoSceneAvail"));
     wide->setOptions(toOptions(scenes_), QString::fromStdString(cfg_.wideShotScene));
     wide->setOnChange([this](const QString& v) { cfg_.wideShotScene = v.toStdString(); });
-    host->addWidget(wide);
+    // Aide via le ⓘ du champ (homogene avec les autres reglages) ; pas de ligne
+    // d'aide visible separee, qui doublonnait le tooltip (retour David).
+    scLay->addWidget(withInfo(wide, i18n("Tip.Wide.Scene")));
+    host->addWidget(sceneCard);
 
     // Groupes de poids dans des vecteurs LOCAUX (recompute des % seulement, pas de
     // rebuild) -> pas besoin de membres. shared_ptr pour survivre a la portee.
@@ -390,6 +419,9 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
         cfg_.whenMultiple.wideShot = v;
         recompute(multRows);
     });
+    r1->setInfo(i18n("Tip.Wide.Loudest"));
+    r2->setInfo(i18n("Tip.Wide.Current"));
+    r3->setInfo(i18n("Tip.Wide.WideShot"));
     *multRows = {r1, r2, r3};
     g1l->addWidget(r1);
     g1l->addWidget(r2);
@@ -412,6 +444,8 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
         cfg_.whenSilence.wideShot = v;
         recompute(silRows);
     });
+    s1->setInfo(i18n("Tip.Wide.LastSpeaker"));
+    s2->setInfo(i18n("Tip.Wide.WideShot"));
     *silRows = {s1, s2};
     g2l->addWidget(s1);
     g2l->addWidget(s2);
@@ -454,6 +488,8 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
             (*minRowPtr)->setValue(v);  // redescend le min au niveau du max
         }
     });
+    minR->setInfo(i18n("Tip.Rhythm.MinShot"));
+    maxR->setInfo(i18n("Tip.Rhythm.MaxShot"));
     *minRowPtr = minR;
     *maxRowPtr = maxR;
 
@@ -461,6 +497,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
                               static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
                               fmtSeconds, false);
     ppR->setOnChange([this](int v) { cfg_.timing.pingPongWindowSeconds = v; });
+    ppR->setInfo(i18n("Tip.Rhythm.PingPong"));
     tlay->addWidget(minR);
     tlay->addWidget(maxR);
     tlay->addWidget(ppR);
@@ -475,16 +512,19 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     thr = std::max(-60, std::min(0, thr));
     auto* thrR = new SliderRow(i18n("Rhythm.Threshold"), -60, 0, thr, fmtDb, false);
     thrR->setOnChange([this](int v) { cfg_.audio.voiceThresholdDb = v; });
+    thrR->setInfo(i18n("Tip.Rhythm.Threshold"));
     int vad = static_cast<int>(std::lround(cfg_.audio.vadThreshold * 100.0));
     vad = std::max(0, std::min(100, vad));
     auto* vadR = new SliderRow(i18n("Rhythm.Vad"), 0, 100, vad, fmtVad, false);
     vadR->setOnChange([this](int v) { cfg_.audio.vadThreshold = v / 100.0; });
+    vadR->setInfo(i18n("Tip.Rhythm.Vad"));
     // Clamp d'AFFICHAGE seulement (comme seuil/VAD) : on ne mute pas cfg_ en
     // ouvrant le panneau. L'invariant releaseFrames>=1 est garanti au chargement
     // par sd::core::fromJson (normalisation), pas par un effet de bord d'affichage.
     int rel = std::max(1, std::min(40, cfg_.audio.releaseFrames));
     auto* silR = new SliderRow(i18n("Rhythm.SilenceDelay"), 1, 40, rel, fmtSilence, false);
     silR->setOnChange([this](int v) { cfg_.audio.releaseFrames = v; });
+    silR->setInfo(i18n("Tip.Rhythm.SilenceDelay"));
     alay->addWidget(thrR);
     alay->addWidget(vadR);
     alay->addWidget(silR);

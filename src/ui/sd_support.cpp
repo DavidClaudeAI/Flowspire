@@ -23,29 +23,10 @@ namespace th = sd::ui::theme;
 using namespace sd::ui::widgets;
 
 namespace {
-// URLs de soutien. ⚠️ A REMPLACER par les vrais liens de David quand ils existent.
-// Par defaut : la page du projet (lien reel, non trompeur). cf. todo (dette).
-constexpr const char* kUrlDonate = "https://github.com/DavidClaudeAI/StreamDirector";
-constexpr const char* kUrlSponsors = "https://github.com/sponsors/DavidClaudeAI";
-constexpr const char* kUrlKofi = "https://ko-fi.com/";
-constexpr const char* kUrlPaypal = "https://www.paypal.com/";
-
-// Petit lien : icone + libelle, fond surface2, bordure border (hover rouge).
-QPushButton* linkButton(Icon ic, const QString& label, const char* url) {
-    auto* b = new QPushButton(label);
-    b->setIcon(icon(ic, th::kTextSecondary, 13));
-    b->setCursor(Qt::PointingHandCursor);
-    b->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:6px;"
-                             " color:%3; font-size:12px; font-weight:600; padding:8px 12px; }"
-                             "QPushButton:hover { border-color:%4; }")
-                         .arg(th::kSurface2)
-                         .arg(th::kBorder)
-                         .arg(th::kTextSecondary)
-                         .arg(rgba(th::kDanger, 0.5)));
-    QObject::connect(b, &QPushButton::clicked, b,
-                     [url]() { QDesktopServices::openUrl(QUrl(QString::fromUtf8(url))); });
-    return b;
-}
+// Lien de don REEL de David (PayPal). Un seul canal (decision David, polish Run 7) :
+// le gros bouton rouge ci-dessous y mene. Les anciens liens Sponsors/Ko-fi ont ete
+// retires.
+constexpr const char* kUrlDonate = "https://paypal.me/DavidZouari";
 }  // namespace
 
 void mountSupport(QVBoxLayout* host) {
@@ -80,6 +61,7 @@ void mountSupport(QVBoxLayout* host) {
     bodyTxt->setStyleSheet(QString("color:%1; font-size:13px;").arg(th::kTextSecondary));
     host->addWidget(bodyTxt);
 
+    // Unique bouton : "Faire un don via PayPal" -> lien PayPal de David.
     auto* donateWrap = new QWidget();
     auto* dwl = new QHBoxLayout(donateWrap);
     dwl->setContentsMargins(0, 0, 0, 0);
@@ -97,17 +79,6 @@ void mountSupport(QVBoxLayout* host) {
     dwl->addWidget(donate);
     dwl->addStretch();
     host->addWidget(donateWrap);
-
-    auto* links = new QWidget();
-    auto* lkl = new QHBoxLayout(links);
-    lkl->setContentsMargins(0, 0, 0, 0);
-    lkl->setSpacing(8);
-    lkl->addStretch();
-    lkl->addWidget(linkButton(Icon::Github, i18n("Support.Sponsors"), kUrlSponsors));
-    lkl->addWidget(linkButton(Icon::Coffee, i18n("Support.Kofi"), kUrlKofi));
-    lkl->addWidget(linkButton(Icon::CreditCard, i18n("Support.Paypal"), kUrlPaypal));
-    lkl->addStretch();
-    host->addWidget(links);
 }
 
 }  // namespace sd::ui

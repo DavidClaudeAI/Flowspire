@@ -141,6 +141,42 @@ inline QString segQss(bool filled) {
 }
 
 // ===========================================================================
+// Aide contextuelle (tooltips) — petit ⓘ au survol.
+// ===========================================================================
+// Qt affiche un tooltip de texte BRUT sur une seule longue ligne ; un tooltip en
+// TEXTE ENRICHI (HTML) est auto-mis en forme et revient a la ligne (doc Qt 6).
+// On enveloppe donc le texte dans un tableau a largeur fixe -> petite "boite"
+// carree lisible (et largeur contrainte fiable sur toutes les versions de Qt,
+// contrairement a width: sur un <p>). Le texte est echappe (HTML-safe).
+inline QString richTip(const QString& text) {
+    return QStringLiteral("<table><tr><td width='250'>%1</td></tr></table>").arg(text.toHtmlEscaped());
+}
+
+// Petit icone ⓘ qui affiche `tip` (en boite) au survol. Cible de survol a part
+// entiere (pas transparent a la souris, sinon Qt n'affiche pas le tooltip).
+inline QLabel* makeInfoIcon(const QString& tip) {
+    auto* l = new QLabel();
+    l->setPixmap(icon(Icon::Info, theme::kTextTertiary, 14));
+    l->setToolTip(richTip(tip));
+    l->setCursor(Qt::WhatsThisCursor);
+    l->setFixedWidth(18);
+    l->setAlignment(Qt::AlignCenter);
+    return l;
+}
+
+// Enrobe un champ (combo, champ texte...) avec un ⓘ a sa DROITE -> "[champ] ⓘ".
+// Pour annoter les controles qui n'ont pas de libelle propre (listes deroulantes).
+inline QWidget* withInfo(QWidget* field, const QString& tip) {
+    auto* row = new QWidget();
+    auto* lay = new QHBoxLayout(row);
+    lay->setContentsMargins(0, 0, 0, 0);
+    lay->setSpacing(6);
+    lay->addWidget(field, 1);
+    lay->addWidget(makeInfoIcon(tip), 0, Qt::AlignVCenter);
+    return row;
+}
+
+// ===========================================================================
 // ClickButton — bouton cliquable custom : icone (optionnelle) + texte CENTRES via
 // un layout interne. On n'utilise PAS QPushButton::setIcon : sur un bouton LARGE,
 // Qt aligne l'icone a gauche et centre le texte separement -> gros trou (bug vu par
@@ -324,11 +360,12 @@ public:
               std::function<QString(int)> fmt, bool withBadge, QWidget* parent = nullptr)
         : QWidget(parent), fmt_(std::move(fmt)) {
         auto* lay = new QHBoxLayout(this);
+        rowLay_ = lay;  // memorise pour pouvoir appendre un ⓘ via setInfo()
         lay->setContentsMargins(0, 0, 0, 0);
         lay->setSpacing(12);
-        auto* lbl = new QLabel(label, this);
-        lbl->setStyleSheet(QString("color:%1; font-size:13px;").arg(theme::kTextSecondary));
-        lbl->setMinimumWidth(132);
+        label_ = new QLabel(label, this);
+        label_->setStyleSheet(QString("color:%1; font-size:13px;").arg(theme::kTextSecondary));
+        label_->setMinimumWidth(132);
         slider_ = new QSlider(Qt::Horizontal, this);
         slider_->setRange(min, max);
         slider_->setValue(value);
@@ -339,7 +376,7 @@ public:
         valueLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
         valueLabel_->setStyleSheet(
             QString("color:%1; font-size:13px; font-weight:600;").arg(theme::kTextPrimary));
-        lay->addWidget(lbl);
+        lay->addWidget(label_);
         lay->addWidget(slider_, 1);
         lay->addWidget(valueLabel_);
         if (withBadge) {
@@ -368,14 +405,25 @@ public:
         }
     }
     void setOnChange(std::function<void(int)> cb) { cb_ = std::move(cb); }
+    // Ajoute un petit ⓘ a la FIN de la ligne ; son survol affiche `tip` en boite.
+    void setInfo(const QString& tip) {
+        if (info_ || !rowLay_) {
+            return;
+        }
+        info_ = makeInfoIcon(tip);
+        rowLay_->addWidget(info_, 0, Qt::AlignVCenter);
+    }
 
 private:
     void updateValueText() {
         valueLabel_->setText(fmt_ ? fmt_(slider_->value()) : QString::number(slider_->value()));
     }
+    QHBoxLayout* rowLay_ = nullptr;  // layout de la ligne (pour appendre le ⓘ)
+    QLabel* label_ = nullptr;
     QSlider* slider_ = nullptr;
     QLabel* valueLabel_ = nullptr;
     QLabel* badge_ = nullptr;
+    QLabel* info_ = nullptr;  // ⓘ optionnel (setInfo), nullptr si absent
     std::function<QString(int)> fmt_;
     std::function<void(int)> cb_;
 };
