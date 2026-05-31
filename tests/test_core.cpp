@@ -151,6 +151,31 @@ TEST_CASE("config : JSON invalide leve une exception") {
     CHECK_THROWS(fromJson("{ ceci n'est pas du json"));
 }
 
+TEST_CASE("config : fromJson normalise les invariants (max>=min, frames>=1)") {
+    // Un config.json edite a la main / d'une version anterieure peut violer les
+    // invariants ; fromJson les retablit a la lecture (source unique de verite).
+    const Config c = fromJson(R"({
+        "version":1,
+        "timing":{"minShotSeconds":20.0,"maxShotSeconds":8.0,"pingPongWindowSeconds":10.0},
+        "audio":{"attackFrames":0,"releaseFrames":0}
+    })");
+    // max etait < min -> remonte au niveau du min (pas de re-cut court-circuitant le verrou).
+    CHECK(c.timing.maxShotSeconds == doctest::Approx(20.0));
+    CHECK(c.timing.minShotSeconds == doctest::Approx(20.0));
+    // frames a 0 -> au moins 1 (sinon l'hysteresis ne se declenche jamais).
+    CHECK(c.audio.attackFrames == 1);
+    CHECK(c.audio.releaseFrames == 1);
+}
+
+TEST_CASE("config : fromJson laisse intact un timing deja valide") {
+    const Config c = fromJson(R"({
+        "version":1,
+        "timing":{"minShotSeconds":3.0,"maxShotSeconds":12.0}
+    })");
+    CHECK(c.timing.minShotSeconds == doctest::Approx(3.0));
+    CHECK(c.timing.maxShotSeconds == doctest::Approx(12.0));
+}
+
 TEST_CASE("director : contexte A bascule sur la scene de celui qui parle") {
     // rng=0.0 -> tire la 1ere scene du pool (A_close, poids 90)
     Director dir(twoSpeakerConfig(), seq({0.0}));

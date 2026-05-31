@@ -17,6 +17,8 @@
 // par l'appelant : les modifications sont visibles immediatement cote appelant.
 #pragma once
 
+#include <QPointer>
+
 #include <string>
 #include <vector>
 
@@ -72,8 +74,12 @@ private:
     int idCounter_ = 0;
     int selSpeaker_ = 0;  // onglet actif du panneau Scenes
 
-    QVBoxLayout* speakersHost_ = nullptr;
-    QVBoxLayout* camerasHost_ = nullptr;
+    // QPointer (et non pointeur brut) : l'hote appartient a l'appelant (la fenetre)
+    // qui peut le detruire en changeant de panneau. QPointer se remet a null tout
+    // seul a la destruction -> le garde `if (!host) return;` dans rebuild* devient
+    // une vraie surete (un rebuild detache devient un no-op au lieu d'un UAF).
+    QPointer<QVBoxLayout> speakersHost_;
+    QPointer<QVBoxLayout> camerasHost_;
 
     // Recompute des % du panneau Scenes (alignes : meme index slider <-> badge).
     std::vector<QSlider*> sceneWeightSliders_;

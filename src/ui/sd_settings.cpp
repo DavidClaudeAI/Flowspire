@@ -10,6 +10,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
 #include <QScrollArea>
@@ -168,12 +169,28 @@ void SdSettings::Impl::resetToDefaults() {
 }
 
 void SdSettings::Impl::finish() {
+    // GARDE ANTI-PERTE : on n'enregistre JAMAIS une config sans intervenant valide.
+    // Couvre le cas critique ou le config.json existant etait illisible (working
+    // reste vide) : sans cette garde, "Termine" ecraserait le fichier (seul etat
+    // persistant) par une config vide. Couvre aussi "tout supprime a la main".
+    // Meme politique que l'assistant ; on reutilise ses libelles i18n.
+    int valid = 0;
+    for (const auto& s : working.speakers) {
+        if (!s.name.empty() && !s.audioSource.empty()) {
+            ++valid;
+        }
+    }
+    if (valid == 0) {
+        QMessageBox::warning(q, i18n("Settings.Title"), i18n("Summary.Error.NoSpeaker"));
+        return;
+    }
     const sd::obsbridge::ConfigSaveResult res = sd::obsbridge::saveConfig(sanitizedConfig(working));
     if (res.saved) {
         saved = true;
         q->accept();
     } else {
-        q->reject();  // echec d'ecriture : on n'affirme pas un enregistrement faux
+        QMessageBox::warning(q, i18n("Settings.Title"),
+                             i18n("Summary.Error.Save").arg(QString::fromStdString(res.error)));
     }
 }
 

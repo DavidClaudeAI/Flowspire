@@ -479,9 +479,10 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     vad = std::max(0, std::min(100, vad));
     auto* vadR = new SliderRow(i18n("Rhythm.Vad"), 0, 100, vad, fmtVad, false);
     vadR->setOnChange([this](int v) { cfg_.audio.vadThreshold = v / 100.0; });
-    int rel = cfg_.audio.releaseFrames;
-    rel = std::max(1, std::min(40, rel));
-    cfg_.audio.releaseFrames = rel;  // aligne la valeur stockee sur l'affichage (clamp)
+    // Clamp d'AFFICHAGE seulement (comme seuil/VAD) : on ne mute pas cfg_ en
+    // ouvrant le panneau. L'invariant releaseFrames>=1 est garanti au chargement
+    // par sd::core::fromJson (normalisation), pas par un effet de bord d'affichage.
+    int rel = std::max(1, std::min(40, cfg_.audio.releaseFrames));
     auto* silR = new SliderRow(i18n("Rhythm.SilenceDelay"), 1, 40, rel, fmtSilence, false);
     silR->setOnChange([this](int v) { cfg_.audio.releaseFrames = v; });
     alay->addWidget(thrR);
