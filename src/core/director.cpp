@@ -26,11 +26,24 @@ Director::Director(Config cfg, Rng rng)
 void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
+    thresholdOverride_.clear();  // la config/JSON redevient la source de verite du seuil
     for (const auto& sp : cfg_.speakers) {
         detectors_.emplace(
             sp.id, SpeakerDetector(cfg_.audio.voiceThresholdDb, cfg_.audio.attackFrames,
                                    cfg_.audio.releaseFrames));
     }
+}
+
+void Director::setSpeakerThreshold(const std::string& speakerId, double db) {
+    if (detectors_.find(speakerId) == detectors_.end()) {
+        return;  // intervenant inconnu : on n'enregistre pas d'override orphelin.
+    }
+    thresholdOverride_[speakerId] = db;
+}
+
+double Director::speakerThresholdDb(const std::string& speakerId) const {
+    const auto it = thresholdOverride_.find(speakerId);
+    return (it != thresholdOverride_.end()) ? it->second : cfg_.audio.voiceThresholdDb;
 }
 
 const Speaker* Director::findSpeaker(const std::string& id) const {
@@ -102,7 +115,10 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         SpeakerDetector& det = entry.second;
         const auto it = levelsDb.find(id);
         const double db = (it != levelsDb.end()) ? it->second : kDbFloor;
-        det.setThresholdDb(cfg_.audio.voiceThresholdDb);
+        // Seuil par intervenant : override en direct s'il existe, sinon global.
+        const auto ov = thresholdOverride_.find(id);
+        det.setThresholdDb(ov != thresholdOverride_.end() ? ov->second
+                                                          : cfg_.audio.voiceThresholdDb);
         if (det.update(db)) {
             speaking.emplace_back(id, det.lastDb());
         }

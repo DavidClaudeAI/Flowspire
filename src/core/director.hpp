@@ -55,6 +55,16 @@ public:
     void setAutoEnabled(bool enabled) { autoEnabled_ = enabled; }
     bool autoEnabled() const { return autoEnabled_; }
 
+    // Seuil de voix REGLE EN DIRECT pour un intervenant (slider du dock). Surpasse
+    // le seuil global (cfg.audio.voiceThresholdDb) pour ce seul intervenant, sans
+    // toucher la config. Reinitialise par setConfig (la config/JSON reste la
+    // source de verite au rechargement). No-op si l'intervenant est inconnu.
+    void setSpeakerThreshold(const std::string& speakerId, double db);
+
+    // Seuil effectif d'un intervenant : son override s'il existe, sinon le seuil
+    // global. Sert a positionner le slider a l'ouverture.
+    double speakerThresholdDb(const std::string& speakerId) const;
+
     // Avance d'un tick. `now` = secondes monotones. `levelsDb` = niveau courant
     // par id d'intervenant. Renvoie la decision (scene a afficher).
     Decision update(double now, const std::map<std::string, double>& levelsDb);
@@ -101,6 +111,7 @@ private:
     bool autoEnabled_ = true;
 
     std::map<std::string, SpeakerDetector> detectors_;
+    std::map<std::string, double> thresholdOverride_;  // seuil regle en direct par intervenant
     std::vector<std::string> speakingSorted_;  // ids parlants, plus fort -> plus faible
 
     std::string currentScene_;

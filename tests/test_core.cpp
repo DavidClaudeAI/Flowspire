@@ -403,6 +403,41 @@ TEST_CASE("director : memoire des derniers locuteurs (anti ping-pong)") {
     CHECK(dir.recentSpeakers(20.0).empty());
 }
 
+TEST_CASE("director : seuil par intervenant (slider) surpasse le seuil global") {
+    Config c = twoSpeakerConfig();
+    c.audio.voiceThresholdDb = -35.0;
+    c.audio.attackFrames = 1;  // declenchement immediat pour le test
+    Director dir(c, seq({0.0}));
+
+    // Par defaut : seuil global -35 dB. Un niveau de -20 dB > -35 -> A parle.
+    CHECK(dir.speakerThresholdDb("A") == doctest::Approx(-35.0));
+    CHECK(dir.update(0.0, {{"A", -20.0}}).context == Context::Single);
+
+    // On REMONTE le seuil de A a -10 dB (slider) : -20 dB < -10 -> A ne parle plus.
+    dir.setSpeakerThreshold("A", -10.0);
+    CHECK(dir.speakerThresholdDb("A") == doctest::Approx(-10.0));
+    // relachement (releaseFrames=8) puis verif silence
+    Decision d;
+    for (int i = 0; i < 10; ++i) {
+        d = dir.update(1.0 + i * 0.1, {{"A", -20.0}});
+    }
+    CHECK(d.context == Context::Silence);
+
+    // B n'est pas affecte par l'override de A (seuil global -35) -> B parle a -20.
+    CHECK(dir.speakerThresholdDb("B") == doctest::Approx(-35.0));
+}
+
+TEST_CASE("director : override de seuil inconnu ignore + reset par setConfig") {
+    Config c = twoSpeakerConfig();
+    Director dir(c, seq({0.0}));
+    dir.setSpeakerThreshold("ZZZ", -10.0);              // inconnu : ignore
+    CHECK(dir.speakerThresholdDb("ZZZ") == doctest::Approx(c.audio.voiceThresholdDb));
+    dir.setSpeakerThreshold("A", -12.0);
+    CHECK(dir.speakerThresholdDb("A") == doctest::Approx(-12.0));
+    dir.setConfig(c);                                    // recharge : la config reprend la main
+    CHECK(dir.speakerThresholdDb("A") == doctest::Approx(c.audio.voiceThresholdDb));
+}
+
 TEST_CASE("director : forceSpeaker tire une scene du pool de l'intervenant") {
     Director dir(twoSpeakerConfig(), seq({0.0}));  // 0.0 -> 1er du pool de A = A_close
     Decision d = dir.forceSpeaker(1.0, "A");
