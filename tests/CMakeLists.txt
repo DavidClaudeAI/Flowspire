@@ -27,6 +27,7 @@ add_library(sd_core STATIC
   ${SD_ROOT}/src/core/speaker_detector.cpp
   ${SD_ROOT}/src/core/config.cpp
   ${SD_ROOT}/src/core/director.cpp
+  ${SD_ROOT}/src/core/profiles.cpp
 )
 target_include_directories(sd_core PUBLIC ${SD_ROOT}/src)
 target_include_directories(sd_core SYSTEM PUBLIC ${SD_ROOT}/vendor)

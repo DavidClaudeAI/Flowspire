@@ -2,13 +2,18 @@
 
 #include <obs-frontend-api.h>
 
+#include <QAction>
 #include <QColor>
 #include <QCoreApplication>
 #include <QEvent>
 #include <QFrame>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
+#include <QMenu>
 #include <QMouseEvent>
+#include <QPoint>
 #include <QPushButton>
 #include <QScrollArea>
 #include <QSlider>
@@ -24,7 +29,9 @@
 #include <utility>
 
 #include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
+#include "core/profiles.hpp"       // catalogue de profils (modele pur)
 #include "obs/config_loader.hpp"   // chargement du config.json
+#include "obs/profiles_store.hpp"  // magasin de profils (bascule de profil actif)
 #include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
 #include "ui/sd_settings.hpp"      // parametres avances (modale)
 #include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
@@ -208,6 +215,60 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     statusBadge_->installEventFilter(this);
     header->addWidget(statusBadge_);
     root->addLayout(header);
+
+    // --- Selecteur de profil (Run 7) : "Profil : [ nom v ] [icone]" ---
+    // Bascule du profil actif en 1 clic (le select) + icone qui ouvre les
+    // parametres avances directement sur l'onglet Profils (demande David).
+    auto* profileBar = new QHBoxLayout();
+    profileBar->setSpacing(8);
+    auto* profileLabel = new QLabel(i18n("Dock.Profile"));
+    profileLabel->setStyleSheet(
+        QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontLabel));
+    // Bouton-select : nom a GAUCHE + chevron a DROITE (layout interne ; labels
+    // transparents a la souris -> le clic remonte au bouton). text-align ne suffit pas
+    // a coller le chevron a droite, d'ou ce layout (retour David : chevron a droite).
+    profileButton_ = new QPushButton();
+    profileButton_->setCursor(Qt::PointingHandCursor);
+    profileButton_->setStyleSheet(
+        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px; }"
+                "QPushButton:hover { border-color:%4; }")
+            .arg(th::kSurface3)
+            .arg(th::kBorder)
+            .arg(th::kRadiusButton)
+            .arg(rgba(th::kAccent, 0.6)));
+    auto* pbLay = new QHBoxLayout(profileButton_);
+    pbLay->setContentsMargins(10, 7, 8, 7);
+    pbLay->setSpacing(8);
+    profileNameLabel_ = new QLabel();
+    profileNameLabel_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    profileNameLabel_->setStyleSheet(
+        QString("color:%1; font-size:12px; font-weight:600; background:transparent;")
+            .arg(th::kTextPrimary));
+    auto* pbChevron = new QLabel();
+    pbChevron->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    pbChevron->setPixmap(icon(Icon::ChevronDown, th::kTextSecondary, 14));
+    pbLay->addWidget(profileNameLabel_);
+    pbLay->addStretch();
+    pbLay->addWidget(pbChevron);
+    connect(profileButton_, &QPushButton::clicked, this, [this]() { showProfileMenu(); });
+    auto* profileEdit = new QPushButton();
+    profileEdit->setIcon(icon(Icon::Settings, th::kAccent, 14));
+    profileEdit->setCursor(Qt::PointingHandCursor);
+    profileEdit->setToolTip(i18n("Settings.Nav.Profiles"));
+    profileEdit->setStyleSheet(
+        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                " padding:7px 9px; }"
+                "QPushButton:hover { border-color:%4; }")
+            .arg(th::kSurface3)
+            .arg(rgba(th::kAccent, 0.4))
+            .arg(th::kRadiusButton)
+            .arg(th::kAccent));
+    connect(profileEdit, &QPushButton::clicked, this,
+            [this]() { openSettings(SdSettings::TabProfiles); });
+    profileBar->addWidget(profileLabel);
+    profileBar->addWidget(profileButton_, 1);
+    profileBar->addWidget(profileEdit);
+    root->addLayout(profileBar);
 
     modeLabel_ = new QLabel();
     modeLabel_->setWordWrap(true);
@@ -624,6 +685,7 @@ void SdDock::reload() {
     updateModeLabel();
     shownStatus_ = -1;
     updateStatusBadge();
+    updateProfileBar();
 }
 
 void SdDock::updateStatusBadge() {
@@ -699,12 +761,27 @@ void SdDock::toggleAuto() {
 }
 
 void SdDock::openAssistant() {
-    // Parente la modale a la fenetre principale d'OBS (centrage + modalite propre).
+    // Bouton "Assistant" : l'assistant cree TOUJOURS un nouveau profil nomme (creation
+    // guidee). On demande donc le nom d'abord, comme "+ Nouveau > Avec l'assistant"
+    // (coherence demandee par David). Annuler le nom -> on n'ouvre pas l'assistant.
+    bool ok = false;
+    const QString name = QInputDialog::getText(this, i18n("Profiles.NamePrompt.Title"),
+                                               i18n("Profiles.NamePrompt.Body"), QLineEdit::Normal,
+                                               i18n("Profiles.NewBlankName"), &ok);
+    if (!ok || name.trimmed().isEmpty()) {
+        return;
+    }
+    openAssistantWith(name.trimmed());
+}
+
+void SdDock::openAssistantWith(const QString& newProfileName) {
+    // Mode CREATION : le profil n'est cree + active qu'A LA FIN de l'assistant. Si
+    // l'utilisateur annule, RIEN n'a ete cree (pas d'orphelin), rien a nettoyer.
     auto* mainWin = static_cast<QWidget*>(obs_frontend_get_main_window());
-    SdAssistant dlg(mainWin ? mainWin : this);
+    SdAssistant dlg(mainWin ? mainWin : this, newProfileName);
     if (dlg.exec() == QDialog::Accepted) {
-        // L'assistant a ecrit le config.json -> on recharge tout (intervenants,
-        // scenes, reglages). Puis, s'il a termine par "Activer", on lance le pilotage.
+        // L'assistant a cree + active le profil (config.json + fichier) -> on recharge.
+        // Puis, s'il a termine par "Activer", on lance le pilotage.
         reload();
         if (dlg.activateAutoRequested()) {
             setAuto(true);
@@ -712,17 +789,91 @@ void SdDock::openAssistant() {
     }
 }
 
-void SdDock::openSettings() {
-    // Parametres avances : edition directe de la config existante. A "Termine", la
-    // fenetre a ecrit le config.json -> on recharge le dock (sans toucher a l'etat
-    // auto : on ne lance pas le pilotage, contrairement a l'assistant).
+void SdDock::openSettings(int initialTab) {
+    // Parametres avances : edition directe + gestion des profils. Recharge si la
+    // config a change, que la fenetre soit fermee par "Enregistrer et fermer" OU par
+    // la croix (une action de profil — charger/nouveau — ecrit IMMEDIATEMENT). Si
+    // l'utilisateur a choisi "Nouveau > Avec l'assistant", on enchaine sur l'assistant
+    // (mode creation avec le nom choisi ; le profil sera cree + active a la fin).
     auto* mainWin = static_cast<QWidget*>(obs_frontend_get_main_window());
-    SdSettings dlg(mainWin ? mainWin : this);
-    // Modele "tout-sur-Enregistrer" : la fenetre n'ecrit QUE via "Enregistrer et fermer"
-    // (-> Accepted). La croix annule tout. On ne recharge donc que sur Accepted + ecriture.
-    if (dlg.exec() == QDialog::Accepted && dlg.savedConfig()) {
+    SdSettings dlg(mainWin ? mainWin : this, static_cast<SdSettings::Tab>(initialTab));
+    dlg.exec();
+    if (dlg.savedConfig()) {
         reload();
     }
+    const QString pending = dlg.pendingAssistantName();
+    if (!pending.isEmpty()) {
+        openAssistantWith(pending);
+    }
+}
+
+void SdDock::updateProfileBar() {
+    if (!profileNameLabel_) {
+        return;
+    }
+    const sd::profiles::ListResult list =
+        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    QString name;
+    if (list.ok) {
+        if (const sd::core::ProfileEntry* e =
+                sd::core::findProfile(list.index, list.index.activeId)) {
+            name = QString::fromStdString(e->name);
+        }
+    }
+    if (name.isEmpty()) {
+        name = i18n("Profiles.DefaultName");
+    }
+    profileNameLabel_->setText(name);  // le chevron est un label fixe a droite du bouton
+}
+
+void SdDock::showProfileMenu() {
+    const sd::profiles::ListResult list =
+        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    if (!list.ok) {
+        openSettings(SdSettings::TabProfiles);  // catalogue illisible : on ouvre la gestion
+        return;
+    }
+    QMenu menu;
+    menu.setStyleSheet(
+        QString("QMenu { background:%1; border:1px solid %2; border-radius:6px; padding:4px; }"
+                "QMenu::item { color:%3; padding:6px 22px 6px 12px; border-radius:4px; }"
+                "QMenu::item:selected { background:%4; }")
+            .arg(th::kSurface2)
+            .arg(th::kBorder)
+            .arg(th::kTextPrimary)
+            .arg(rgba(th::kAccent, 0.25)));
+    // Menu aussi large que le bouton (retour David : le sous-menu prend toute la largeur).
+    menu.setMinimumWidth(profileButton_->width());
+    for (const auto& e : list.index.profiles) {
+        QAction* a = menu.addAction(QString::fromStdString(e.name));
+        a->setCheckable(true);
+        a->setChecked(e.id == list.index.activeId);
+        a->setData(e.id);
+    }
+    menu.addSeparator();
+    QAction* manage = menu.addAction(i18n("Dock.Profile.Manage"));
+    manage->setData(-1);
+
+    QAction* chosen = menu.exec(profileButton_->mapToGlobal(QPoint(0, profileButton_->height() + 2)));
+    if (chosen == nullptr) {
+        return;
+    }
+    const int id = chosen->data().toInt();
+    if (id == -1) {
+        openSettings(SdSettings::TabProfiles);
+    } else if (id != list.index.activeId) {
+        switchProfile(id);
+    }
+}
+
+void SdDock::switchProfile(int id) {
+    // Bascule du profil actif : recopie son contenu dans config.json (copie vivante)
+    // puis on recharge tout le dock (intervenants, scenes, reglages, selecteur).
+    const sd::profiles::StoreResult res = sd::profiles::setActive(id);
+    if (!res.ok) {
+        return;  // best-effort : un echec laisse le profil courant inchange
+    }
+    reload();
 }
 
 void SdDock::runOnUiThread(std::function<void()> fn) {
