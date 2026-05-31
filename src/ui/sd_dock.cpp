@@ -584,9 +584,16 @@ void SdDock::reload() {
         threshLabel->setStyleSheet(
             QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
         auto* threshold = new QSlider(Qt::Horizontal);
-        threshold->setRange(kFloorDb, 0);  // dB : [-60, 0]
-        const int initThresh =
+        // Borne basse = kFloorDb + 1 (et non kFloorDb) : tout en bas, le seuil
+        // resterait AU plancher de silence -> avec le comparateur "niveau >= seuil"
+        // une source muette (niveau == plancher) passerait pour "parle" en
+        // permanence. On garde donc le minimum un cran au-dessus du silence absolu.
+        threshold->setRange(kFloorDb + 1, 0);  // dB : [-59, 0]
+        int initThresh =
             director_ ? static_cast<int>(std::lround(director_->speakerThresholdDb(ds.id))) : -35;
+        if (initThresh < kFloorDb + 1) {
+            initThresh = kFloorDb + 1;  // clamp si une config descend au plancher
+        }
         threshold->setValue(initThresh);
         threshold->setStyleSheet(sliderQss(false));
         meter->setThresholdDb(initThresh);  // marqueur initial sur le vumetre

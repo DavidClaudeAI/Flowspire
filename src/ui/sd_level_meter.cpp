@@ -82,11 +82,18 @@ void LevelMeter::paintEvent(QPaintEvent*) {
 
     // 3) Marqueur de seuil : trait vertical clair a la position du seuil. C'est
     //    le repere qui se deplace quand on bouge le slider -> on voit le point de
-    //    declenchement directement sur le vumetre.
-    const double tx = dbToFrac(thresholdDb_) * w;
+    //    declenchement directement sur le vumetre. On clampe a [1, w-1] pour que
+    //    le trait (epaisseur 2) reste visible et a l'interieur de la piste meme
+    //    aux extremites (sinon la moitie deborde hors du widget).
+    double tx = dbToFrac(thresholdDb_) * w;
+    if (tx < 1.0) {
+        tx = 1.0;
+    } else if (tx > w - 1.0) {
+        tx = w - 1.0;
+    }
     QColor marker(th::kTextPrimary);
     p.setPen(QPen(marker, 2.0));
-    p.drawLine(QPointF(tx, -1.0), QPointF(tx, h + 1.0));
+    p.drawLine(QPointF(tx, 0.0), QPointF(tx, h));
 }
 
 }  // namespace sd::ui
