@@ -718,7 +718,12 @@ void SdDock::openSettings() {
     // auto : on ne lance pas le pilotage, contrairement a l'assistant).
     auto* mainWin = static_cast<QWidget*>(obs_frontend_get_main_window());
     SdSettings dlg(mainWin ? mainWin : this);
-    if (dlg.exec() == QDialog::Accepted && dlg.savedConfig()) {
+    dlg.exec();
+    // On recharge des qu'une ecriture a eu lieu, quel que soit le mode de fermeture :
+    // "Reinitialiser" enregistre IMMEDIATEMENT (retour David), donc une fermeture par
+    // la croix apres un reset doit quand meme rafraichir le dock pour rester coherent
+    // avec le fichier.
+    if (dlg.savedConfig()) {
         reload();
     }
 }

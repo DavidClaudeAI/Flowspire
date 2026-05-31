@@ -58,11 +58,18 @@ struct SdSettings::Impl {
     QVBoxLayout* navLay = nullptr;
     QLabel* contentTitle = nullptr;
     QVBoxLayout* contentLay = nullptr;  // layout du widget scrollable de contenu
+    QPushButton* resetBtn = nullptr;    // "Reinitialiser" : visible seulement sur Plan large/Rythme
     int selPanel = PanelSpeakers;
 
     bool dragging = false;
     QPoint dragOffset;
     bool centered = false;
+
+    // Le bouton "Reinitialiser aux defauts" ne concerne que les REGLAGES FINS, qui
+    // vivent sur deux panneaux : Rythme (timing + audio) et Plan large (poids des
+    // contextes). On ne l'affiche donc QUE sur ces pages (sinon il semblait "ne rien
+    // faire" depuis Intervenants/Cameras — retour David).
+    static bool panelHasDefaults(int p) { return p == PanelWide || p == PanelRhythm; }
 
     QString panelTitle(int p) const;
     QWidget* makeNavItem(Icon ic, const QString& label, bool active, std::function<void()> onClick,
@@ -70,6 +77,7 @@ struct SdSettings::Impl {
     void rebuildNav();
     void showPanel(int p);
     void resetToDefaults();
+    bool persist();  // garde anti-perte + ecriture atomique ; true si ecrit. Partage finish()/reset.
     void finish();
 };
 
@@ -155,25 +163,42 @@ void SdSettings::Impl::showPanel(int p) {
     }
     contentLay->addWidget(hostW);
     contentLay->addStretch();
+
+    // Le bouton "Reinitialiser" n'est pertinent que sur les pages qui portent des
+    // reglages a defaut (Plan large / Rythme) -> visible la seulement (retour David).
+    if (resetBtn) {
+        resetBtn->setVisible(panelHasDefaults(p));
+    }
 }
 
 void SdSettings::Impl::resetToDefaults() {
-    // Reinitialise les REGLAGES FINS (rythme, sensibilite, poids) aux defauts, en
-    // conservant intervenants / scenes / plan large (la structure du plateau).
+    // Reinitialise les REGLAGES FINS de la PAGE COURANTE aux defauts (le bouton n'est
+    // visible que sur Plan large / Rythme). On limite au panneau affiche pour que le
+    // changement soit VISIBLE immediatement et previsible (retour David) :
+    //   - Rythme    : timing + sensibilite audio
+    //   - Plan large: poids des contextes (on NE touche PAS la scene plan large
+    //                 choisie, qui fait partie de la structure du plateau, pas des reglages).
     const sd::core::Config def;  // valeurs par defaut de la table de reglage
-    working.timing = def.timing;
-    working.audio = def.audio;
-    working.whenMultiple = def.whenMultiple;
-    working.whenSilence = def.whenSilence;
-    showPanel(selPanel);
+    if (selPanel == PanelRhythm) {
+        working.timing = def.timing;
+        working.audio = def.audio;
+    } else if (selPanel == PanelWide) {
+        working.whenMultiple = def.whenMultiple;
+        working.whenSilence = def.whenSilence;
+    } else {
+        return;  // garde-fou : le bouton ne devrait pas etre clicable ailleurs
+    }
+    showPanel(selPanel);  // re-monte le panneau -> sliders/badges aux valeurs par defaut, tout de suite
+    persist();            // ... et enregistre immediatement (retour David : applique + enregistre)
 }
 
-void SdSettings::Impl::finish() {
-    // GARDE ANTI-PERTE : on n'enregistre JAMAIS une config sans intervenant valide.
+bool SdSettings::Impl::persist() {
+    // GARDE ANTI-PERTE : on n'ecrit JAMAIS une config sans intervenant valide.
     // Couvre le cas critique ou le config.json existant etait illisible (working
-    // reste vide) : sans cette garde, "Termine" ecraserait le fichier (seul etat
+    // reste vide) : sans cette garde, l'ecriture ecraserait le fichier (seul etat
     // persistant) par une config vide. Couvre aussi "tout supprime a la main".
-    // Meme politique que l'assistant ; on reutilise ses libelles i18n.
+    // Partage par "Termine" ET "Reinitialiser" (ecriture immediate). Libelles i18n
+    // reutilises de l'assistant.
     int valid = 0;
     for (const auto& s : working.speakers) {
         if (!s.name.empty() && !s.audioSource.empty()) {
@@ -182,15 +207,21 @@ void SdSettings::Impl::finish() {
     }
     if (valid == 0) {
         QMessageBox::warning(q, i18n("Settings.Title"), i18n("Summary.Error.NoSpeaker"));
-        return;
+        return false;
     }
     const sd::obsbridge::ConfigSaveResult res = sd::obsbridge::saveConfig(sanitizedConfig(working));
-    if (res.saved) {
-        saved = true;
-        q->accept();
-    } else {
+    if (!res.saved) {
         QMessageBox::warning(q, i18n("Settings.Title"),
                              i18n("Summary.Error.Save").arg(QString::fromStdString(res.error)));
+        return false;
+    }
+    saved = true;  // une ecriture a eu lieu -> le dock devra recharger (meme si on ferme par la croix)
+    return true;
+}
+
+void SdSettings::Impl::finish() {
+    if (persist()) {
+        q->accept();
     }
 }
 
@@ -318,16 +349,16 @@ SdSettings::SdSettings(QWidget* parent) : QDialog(parent), d_(new Impl) {
     auto* fLay = new QHBoxLayout(foot);
     fLay->setContentsMargins(20, 14, 20, 14);
     fLay->setSpacing(12);
-    auto* reset = new QPushButton(i18n("Settings.Reset"));
-    reset->setIcon(icon(Icon::RotateCcw, th::kTextSecondary, 13));
-    reset->setCursor(Qt::PointingHandCursor);
-    reset->setStyleSheet(secondaryBtnQss());
-    connect(reset, &QPushButton::clicked, this, [this]() { d_->resetToDefaults(); });
+    d_->resetBtn = new QPushButton(i18n("Settings.Reset"));
+    d_->resetBtn->setIcon(icon(Icon::RotateCcw, th::kTextSecondary, 13));
+    d_->resetBtn->setCursor(Qt::PointingHandCursor);
+    d_->resetBtn->setStyleSheet(secondaryBtnQss());
+    connect(d_->resetBtn, &QPushButton::clicked, this, [this]() { d_->resetToDefaults(); });
     auto* done = new QPushButton(i18n("Settings.Done"));
     done->setCursor(Qt::PointingHandCursor);
     done->setStyleSheet(primaryBtnQss());
     connect(done, &QPushButton::clicked, this, [this]() { d_->finish(); });
-    fLay->addWidget(reset);
+    fLay->addWidget(d_->resetBtn);
     fLay->addStretch();
     fLay->addWidget(done);
     rootLay->addWidget(foot);
