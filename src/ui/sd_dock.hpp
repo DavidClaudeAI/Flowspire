@@ -124,7 +124,6 @@ private:
     QWidget* statusBadge_ = nullptr;
     QLabel* modeLabel_ = nullptr;
     QLabel* onAirLabel_ = nullptr;
-    QLabel* configLabel_ = nullptr;
     QLabel* emptyLabel_ = nullptr;
     QTimer* timer_ = nullptr;
     int shownStatus_ = -1;

@@ -82,11 +82,11 @@ private:
 // Callback d'evenements frontend OBS. `data` = le dock. On rafraichit
 // AUTOMATIQUEMENT aux moments ou la liste des scenes/sources devient valide :
 // - FINISHED_LOADING : OBS a fini de charger au demarrage (le dock, lui, est cree
-//   plus tot en post_load -> sans ca, il faut cliquer Rafraichir a la main).
+//   plus tot en post_load -> sans ca, la liste serait vide jusqu'a un rechargement).
 // - SCENE_COLLECTION_CHANGED : on bascule sur une autre collection (tout change).
 // On ne rafraichit PAS sur chaque ajout/suppression de source : un reload recree
-// le Director (reset des reglages live) -> on evite de perturber une regie en
-// cours ; le bouton Rafraichir reste pour ces cas ponctuels.
+// le Director (reset des reglages live) -> on evite de perturber une regie en cours.
+// (Le rechargement se fait aussi a la fermeture de l'assistant / des parametres.)
 void frontendEventCb(enum obs_frontend_event event, void* data) {
     if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING &&
         event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
@@ -341,18 +341,9 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     deckLay->addWidget(deckHint, 1);
     root->addWidget(deckCard);
 
-    // --- Etat de la config (chemin + statut), selectionnable ---
-    configLabel_ = new QLabel();
-    configLabel_->setWordWrap(true);
-    configLabel_->setStyleSheet(QString("color:%1; font-size:11px;").arg(th::kTextTertiary));
-    configLabel_->setTextInteractionFlags(Qt::TextSelectableByMouse);
-    root->addWidget(configLabel_);
-
-    auto* refresh = new QPushButton(i18n("Config.Refresh"));
-    refresh->setCursor(Qt::PointingHandCursor);
-    refresh->setStyleSheet(neutralBtnQss());
-    connect(refresh, &QPushButton::clicked, this, [this]() { reload(); });
-    root->addWidget(refresh);
+    // (Run 7 polish) Le libelle "config chargee + chemin" et le bouton "Rafraichir"
+    // ont ete retires : sans interet pour l'utilisateur final, et le rechargement
+    // se fait automatiquement (assistant/parametres + evenements frontend OBS).
 
     // --- Separateur + footer (acces futurs : grises "a venir") ---
     auto* sep = new QFrame();
@@ -574,19 +565,6 @@ void SdDock::reload() {
     // courante sont ignores par setSpeakerThreshold (no-op).
     for (const auto& kv : thresholdOverrides_) {
         director_->setSpeakerThreshold(kv.first, kv.second);
-    }
-
-    // Libelle de config (chemin exact + etat) — traduit + selectionnable.
-    const QString path = QString::fromStdString(loaded.path);
-    if (loaded.parsed) {
-        configLabel_->setText(
-            i18n("Config.Loaded").arg(static_cast<int>(loaded.config.speakers.size())) +
-            QStringLiteral("\n") + path);
-    } else if (loaded.fileFound) {
-        configLabel_->setText(i18n("Config.Invalid").arg(QString::fromStdString(loaded.error)) +
-                              QStringLiteral("\n") + path);
-    } else {
-        configLabel_->setText(i18n("Config.Missing") + QStringLiteral("\n") + path);
     }
 
     // Reconstruit les cartes intervenants (suppression SYNCHRONE).
