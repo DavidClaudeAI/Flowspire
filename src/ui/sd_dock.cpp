@@ -25,9 +25,12 @@
 
 #include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
 #include "obs/config_loader.hpp"   // chargement du config.json
+#include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
 #include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
 #include "ui/sd_icons.hpp"         // icones lucide teintees
 #include "ui/sd_level_meter.hpp"   // vumetre custom + marqueur de seuil
+#include "ui/sd_runtime.hpp"       // kTickMs (cadence partagee dock <-> assistant)
+#include "ui/sd_style.hpp"         // rgba() (helper QSS partage)
 #include "ui/sd_theme.hpp"         // jetons de design (couleurs/typo)
 
 namespace sd::ui {
@@ -36,7 +39,6 @@ namespace th = sd::ui::theme;
 
 namespace {
 constexpr int kFloorDb = static_cast<int>(sd::core::kDbFloor);
-constexpr int kTickMs = 50;  // ~20 rafraichissements / seconde
 
 int dbToInt(double db) {
     int v = static_cast<int>(std::lround(db));
@@ -50,15 +52,8 @@ int dbToInt(double db) {
 
 enum Status { StatusReadOnly = 0, StatusPaused = 1, StatusActive = 2 };
 
-// --- Couleurs QSS : rgba() au lieu des hex 8-digits ---
-// IMPORTANT : Qt QSS interprete un hex a 8 chiffres comme #AARRGGBB (alpha en
-// PREMIER), alors que nos jetons (issus de la maquette) sont en #RRGGBBAA -> une
-// couleur translucide y serait completement faussee (vert -> rouge, etc.). On
-// passe donc toujours par rgba(r,g,b,a), sans ambiguite.
-QString rgba(const char* hex6, double alpha) {
-    const QColor c(QString::fromUtf8(hex6));
-    return QString("rgba(%1,%2,%3,%4)").arg(c.red()).arg(c.green()).arg(c.blue()).arg(alpha, 0, 'f', 3);
-}
+// rgba() (conversion hex #RRGGBBAA -> rgba() pour QSS) est desormais partage avec
+// l'assistant -> voir ui/sd_style.hpp.
 
 const QEvent::Type kActionEventType = static_cast<QEvent::Type>(QEvent::registerEventType());
 
@@ -315,16 +310,30 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
             .arg(th::kTextSecondary);
     auto* footer = new QHBoxLayout();
     footer->setSpacing(8);
+
+    // Parametres avances : encore a venir (Run 6) -> grise + tooltip.
     auto* settingsBtn = new QPushButton(i18n("Footer.AdvancedSettings"));
     settingsBtn->setIcon(icon(Icon::Settings, th::kTextSecondary, 14));
+    settingsBtn->setStyleSheet(footerQss);
+    settingsBtn->setEnabled(false);
+    settingsBtn->setToolTip(i18n("Footer.ComingSoon"));
+    footer->addWidget(settingsBtn, 1);
+
+    // Assistant de configuration (Run 5) : ACTIF. Accent pour inviter au clic.
     auto* assistantBtn = new QPushButton(i18n("Footer.Assistant"));
-    assistantBtn->setIcon(icon(Icon::Sparkles, th::kTextSecondary, 14));
-    for (auto* b : {settingsBtn, assistantBtn}) {
-        b->setStyleSheet(footerQss);
-        b->setEnabled(false);  // surfaces a venir (Run 5 / Run 6)
-        b->setToolTip(i18n("Footer.ComingSoon"));
-        footer->addWidget(b, 1);
-    }
+    assistantBtn->setIcon(icon(Icon::Sparkles, th::kAccent, 14));
+    assistantBtn->setCursor(Qt::PointingHandCursor);
+    assistantBtn->setStyleSheet(
+        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                " color:%4; font-size:12px; font-weight:600; padding:8px 10px; }"
+                "QPushButton:hover { border-color:%4; }")
+            .arg(th::kSurface3)
+            .arg(rgba(th::kAccent, 0.4))
+            .arg(th::kRadiusButton)
+            .arg(th::kAccent));
+    connect(assistantBtn, &QPushButton::clicked, this, [this]() { openAssistant(); });
+    footer->addWidget(assistantBtn, 1);
+
     root->addLayout(footer);
 
     root->addStretch();
@@ -694,6 +703,20 @@ void SdDock::setAuto(bool on) {
 
 void SdDock::toggleAuto() {
     setAuto(!autoEnabled_);
+}
+
+void SdDock::openAssistant() {
+    // Parente la modale a la fenetre principale d'OBS (centrage + modalite propre).
+    auto* mainWin = static_cast<QWidget*>(obs_frontend_get_main_window());
+    SdAssistant dlg(mainWin ? mainWin : this);
+    if (dlg.exec() == QDialog::Accepted) {
+        // L'assistant a ecrit le config.json -> on recharge tout (intervenants,
+        // scenes, reglages). Puis, s'il a termine par "Activer", on lance le pilotage.
+        reload();
+        if (dlg.activateAutoRequested()) {
+            setAuto(true);
+        }
+    }
 }
 
 void SdDock::runOnUiThread(std::function<void()> fn) {

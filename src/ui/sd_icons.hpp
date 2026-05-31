@@ -14,7 +14,20 @@ enum class Icon {
     User,          // avatar intervenant
     Settings,      // footer : parametres avances
     Sparkles,      // footer : assistant
-    LayoutGrid,    // bandeau Stream Deck
+    LayoutGrid,    // bandeau Stream Deck + recap "plan large"
+    // --- Assistant de configuration (Run 5) ---
+    X,           // fermer la fenetre
+    Trash2,      // supprimer (intervenant / scene)
+    Plus,        // ajouter (intervenant / scene)
+    ArrowRight,  // bouton Suivant
+    ChevronDown, // liste deroulante (source / scene)
+    Play,        // bouton "Activer la realisation auto"
+    Pencil,      // editer un bloc depuis le recap
+    Users,       // recap intervenants
+    Video,       // recap cameras
+    Clock,       // recap / etape rythme
+    Mic,         // sources audio (etape prerequis)
+    Info,        // bandeau d'info (etape rythme)
 };
 
 // Pixmap de l'icone `which`, trait de couleur `colorHex` (ex "#3FB950"), carre de

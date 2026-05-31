@@ -42,6 +42,40 @@ const char* iconBody(Icon which) {
                "<rect width='7' height='7' x='14' y='3' rx='1'/>"
                "<rect width='7' height='7' x='14' y='14' rx='1'/>"
                "<rect width='7' height='7' x='3' y='14' rx='1'/>";
+    case Icon::X:
+        return "<path d='M18 6 6 18'/><path d='m6 6 12 12'/>";
+    case Icon::Trash2:
+        return "<path d='M3 6h18'/>"
+               "<path d='M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2'/>"
+               "<path d='M10 11v6'/><path d='M14 11v6'/>";
+    case Icon::Plus:
+        return "<path d='M5 12h14'/><path d='M12 5v14'/>";
+    case Icon::ArrowRight:
+        return "<path d='M5 12h14'/><path d='m12 5 7 7-7 7'/>";
+    case Icon::ChevronDown:
+        return "<path d='m6 9 6 6 6-6'/>";
+    case Icon::Play:
+        return "<polygon points='6 3 20 12 6 21 6 3'/>";
+    case Icon::Pencil:
+        return "<path d='M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352"
+               "a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z'/>"
+               "<path d='m15 5 4 4'/>";
+    case Icon::Users:
+        return "<path d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/>"
+               "<circle cx='9' cy='7' r='4'/>"
+               "<path d='M22 21v-2a4 4 0 0 0-3-3.87'/>"
+               "<path d='M16 3.13a4 4 0 0 1 0 7.75'/>";
+    case Icon::Video:
+        return "<path d='m22 8-6 4 6 4V8Z'/>"
+               "<rect width='14' height='12' x='2' y='6' rx='2' ry='2'/>";
+    case Icon::Clock:
+        return "<circle cx='12' cy='12' r='10'/><polyline points='12 6 12 12 16 14'/>";
+    case Icon::Mic:
+        return "<path d='M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z'/>"
+               "<path d='M19 10v2a7 7 0 0 1-14 0v-2'/>"
+               "<line x1='12' x2='12' y1='19' y2='22'/>";
+    case Icon::Info:
+        return "<circle cx='12' cy='12' r='10'/><path d='M12 16v-4'/><path d='M12 8h.01'/>";
     }
     return "";
 }

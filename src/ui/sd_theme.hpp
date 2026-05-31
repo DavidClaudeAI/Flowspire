@@ -9,10 +9,13 @@
 namespace sd::ui::theme {
 
 // --- Couleurs (hex string, pretes pour QSS) ---
-inline constexpr const char* kSurface1 = "#1B1B1F";   // fond du dock
+inline constexpr const char* kBg = "#141417";         // fond app (sous le dock) / onglet inactif
+inline constexpr const char* kSurface1 = "#1B1B1F";   // fond du dock / de l'assistant
 inline constexpr const char* kSurface2 = "#26262B";   // cartes
 inline constexpr const char* kSurface3 = "#2F2F37";   // boutons, pistes
+inline constexpr const char* kSurfaceBar = "#1F1F24"; // barres en-tete / pied (assistant)
 inline constexpr const char* kBorder = "#3A3A42";     // bordures, separateurs
+inline constexpr const char* kOnAccent = "#0B1220";   // texte sur fond accent/success (boutons pleins)
 inline constexpr const char* kAccent = "#4A9EFF";     // bleu : plan large, marque
 inline constexpr const char* kSuccess = "#3FB950";    // vert : parle / Auto ON
 inline constexpr const char* kDanger = "#E85550";     // rouge : Auto OFF

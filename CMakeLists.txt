@@ -55,7 +55,9 @@ target_sources(
     src/core/director.cpp
     src/obs/audio_level_monitor.cpp
     src/obs/config_loader.cpp
+    src/obs/obs_inventory.cpp
     src/obs/scene_switcher.cpp
+    src/ui/sd_assistant.cpp
     src/ui/sd_dock.cpp
     src/ui/sd_icons.cpp
     src/ui/sd_level_meter.cpp

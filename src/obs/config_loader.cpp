@@ -53,4 +53,41 @@ ConfigLoadResult loadConfig() {
     return result;
 }
 
+ConfigSaveResult saveConfig(const sd::core::Config& cfg) {
+    ConfigSaveResult result;
+
+    // 1) Meme emplacement que loadConfig (symetrie lecture/ecriture).
+    char* path = obs_module_config_path("config.json");
+    if (path) {
+        result.path = path;
+        bfree(path);
+    }
+    if (result.path.empty()) {
+        result.error = "chemin de configuration introuvable";
+        return result;
+    }
+
+    // 2) S'assurer que le dossier parent existe (au tout premier enregistrement,
+    //    %config-plugin%/<plugin>/ peut ne pas encore exister). os_mkdirs cree
+    //    toute l'arborescence et renvoie MKDIR_EXISTS si elle est deja la.
+    const size_t sep = result.path.find_last_of("/\\");
+    if (sep != std::string::npos) {
+        const std::string dir = result.path.substr(0, sep);
+        if (os_mkdirs(dir.c_str()) == MKDIR_ERROR) {
+            result.error = "creation du dossier de configuration impossible";
+            return result;
+        }
+    }
+
+    // 3) Serialisation (coeur pur) puis ecriture via l'API OBS (chemins UTF-8 sous
+    //    Windows). marker=false : pas de BOM (le parser/les .ini d'OBS n'en veulent pas).
+    const std::string text = sd::core::toJson(cfg);
+    if (!os_quick_write_utf8_file(result.path.c_str(), text.c_str(), text.size(), false)) {
+        result.error = "ecriture du fichier impossible";
+        return result;
+    }
+    result.saved = true;
+    return result;
+}
+
 }  // namespace sd::obsbridge
