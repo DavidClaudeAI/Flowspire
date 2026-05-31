@@ -1,15 +1,22 @@
-// StreamDirector — fenetre Parametres avances (implementation, Run 6).
+// StreamDirector — fenetre Parametres avances (implementation, Run 6 + Run 7).
 // Voir sd_settings.hpp. Fenetre modale frameless a sidebar gauche (maquette `QbX5t`).
-// Edite une config existante via les panneaux PARTAGES (sd_config_panels) -> meme
-// rendu que l'assistant. "Termine" ecrit le config.json (atomique) ; l'appelant
-// (le dock) recharge.
+//
+// Run 7 : "plus de pop-up sauf l'assistant" (decision David). Profils et Soutenir
+// sont desormais de vrais PANNEAUX (sd_profiles_panel / sd_support). L'edition
+// (Intervenants/Cameras/Plan large/Rythme) ecrit dans le PROFIL ACTIF via
+// sd::profiles::saveActive (config.json = copie vivante + fichier du profil, en
+// phase). Modele "tout-sur-Enregistrer" pour l'edition ; les actions de profils
+// (charger/nouveau/...) sont, elles, IMMEDIATES, avec garde anti-perte si des
+// reglages d'edition n'ont pas ete enregistres.
 #include "ui/sd_settings.hpp"
 
 #include <QColor>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
@@ -18,6 +25,7 @@
 #include <QString>
 #include <QVBoxLayout>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -25,9 +33,11 @@
 #include "core/config.hpp"
 #include "obs/config_loader.hpp"
 #include "obs/obs_inventory.hpp"
+#include "obs/profiles_store.hpp"
 #include "ui/sd_config_panels.hpp"
 #include "ui/sd_i18n.hpp"
 #include "ui/sd_icons.hpp"
+#include "ui/sd_profiles_panel.hpp"
 #include "ui/sd_style.hpp"
 #include "ui/sd_support.hpp"
 #include "ui/sd_theme.hpp"
@@ -38,38 +48,38 @@ namespace sd::ui {
 namespace th = sd::ui::theme;
 using namespace sd::ui::widgets;
 
-namespace {
-// Entrees de la sidebar (ordre maquette). Profils = livre au Run 7 (entree visible,
-// panneau "a venir" pour l'instant). Soutenir = action (ouvre la pop-up de don).
-enum Panel { PanelSpeakers, PanelCameras, PanelWide, PanelRhythm, PanelProfiles };
-}  // namespace
-
 struct SdSettings::Impl {
     SdSettings* q = nullptr;
 
-    sd::core::Config working;
+    // `working`/`savedBaseline` AVANT `panels` : panels detient une reference sur
+    // working et doit etre detruit en premier (ordre de destruction inverse).
+    sd::core::Config working;        // config en cours d'edition (profil actif)
+    sd::core::Config savedBaseline;  // dernier etat enregistre -> detection "modifie"
     std::vector<std::string> audioSources;
     std::vector<std::string> scenes;
     std::unique_ptr<ConfigPanels> panels;
-    bool saved = false;
+    std::unique_ptr<ProfilesPanel> profilesPanel;
+
+    bool saved = false;          // config.json a change -> le dock recharge
+    QString pendingAssistantName;  // "Nouveau > Avec l'assistant" -> nom a creer via l'assistant
 
     QWidget* root = nullptr;
     QWidget* header = nullptr;
     QVBoxLayout* navLay = nullptr;
     QLabel* contentTitle = nullptr;
-    QVBoxLayout* contentLay = nullptr;  // layout du widget scrollable de contenu
-    QPushButton* resetBtn = nullptr;    // "Reinitialiser" : visible seulement sur Plan large/Rythme
-    int selPanel = PanelSpeakers;
+    QVBoxLayout* contentLay = nullptr;
+    QPushButton* resetBtn = nullptr;
+    int selPanel = SdSettings::TabSpeakers;
 
     bool dragging = false;
     QPoint dragOffset;
     bool centered = false;
 
-    // Le bouton "Reinitialiser aux defauts" ne concerne que les REGLAGES FINS, qui
-    // vivent sur deux panneaux : Rythme (timing + audio) et Plan large (poids des
-    // contextes). On ne l'affiche donc QUE sur ces pages (sinon il semblait "ne rien
-    // faire" depuis Intervenants/Cameras — retour David).
-    static bool panelHasDefaults(int p) { return p == PanelWide || p == PanelRhythm; }
+    // Le bouton "Reinitialiser aux defauts" ne concerne que les REGLAGES FINS
+    // (Rythme + Plan large) -> visible uniquement la (retour David Run 6).
+    static bool panelHasDefaults(int p) {
+        return p == SdSettings::TabWide || p == SdSettings::TabRhythm;
+    }
 
     QString panelTitle(int p) const;
     QWidget* makeNavItem(Icon ic, const QString& label, bool active, std::function<void()> onClick,
@@ -77,29 +87,36 @@ struct SdSettings::Impl {
     void rebuildNav();
     void showPanel(int p);
     void resetToDefaults();
-    bool persist();  // garde anti-perte + ecriture atomique ; true si ecrit. Partage finish()/reset.
+
+    // --- profils ---
+    bool dirty() const;
+    bool maybeSaveBeforeSwitch();   // garde anti-perte ; false => annuler le changement
+    void reloadWorkingFromDisk();   // recharge working depuis config.json + recree panels
+    void switchActive(int id, bool goToEdit);
+    void newProfile(bool withAssistant);
+    QString promptName(const QString& initial);
+
+    bool persist();  // garde anti-perte + ecriture (profil actif) ; true si ecrit
     void finish();
 };
 
 QString SdSettings::Impl::panelTitle(int p) const {
     switch (p) {
-    case PanelSpeakers: return i18n("Settings.Nav.Speakers");
-    case PanelCameras: return i18n("Settings.Nav.Cameras");
-    case PanelWide: return i18n("Settings.Nav.Wide");
-    case PanelRhythm: return i18n("Settings.Nav.Rhythm");
-    case PanelProfiles: return i18n("Settings.Nav.Profiles");
+    case SdSettings::TabSpeakers: return i18n("Settings.Nav.Speakers");
+    case SdSettings::TabCameras: return i18n("Settings.Nav.Cameras");
+    case SdSettings::TabWide: return i18n("Settings.Nav.Wide");
+    case SdSettings::TabRhythm: return i18n("Settings.Nav.Rhythm");
+    case SdSettings::TabProfiles: return i18n("Settings.Nav.Profiles");
+    case SdSettings::TabSupport: return i18n("Settings.Nav.Support");
     default: return QString();
     }
 }
 
-// Ligne de sidebar : icone + label cales a GAUCHE, fond accent translucide si
-// active. `tint` force une couleur (ex. rouge pour "Soutenir") sinon accent (actif)
-// ou secondaire (inactif).
 QWidget* SdSettings::Impl::makeNavItem(Icon ic, const QString& label, bool active,
                                        std::function<void()> onClick, const char* tint) {
     auto* item = new ClickButton();
     item->setMargins(10, 9);
-    item->setFillLeft();  // pleine largeur, contenu a gauche
+    item->setFillLeft();
     const char* fg = tint ? tint : (active ? th::kAccent : th::kTextSecondary);
     item->setIconPix(icon(ic, fg, 15));
     item->setLabel(label, fg, 12, active ? 700 : 600);
@@ -116,11 +133,11 @@ void SdSettings::Impl::rebuildNav() {
         Icon ic;
         int panel;
     } items[] = {
-        {Icon::Users, PanelSpeakers},
-        {Icon::Video, PanelCameras},
-        {Icon::LayoutGrid, PanelWide},
-        {Icon::Clock, PanelRhythm},
-        {Icon::Bookmark, PanelProfiles},
+        {Icon::Users, SdSettings::TabSpeakers},
+        {Icon::Video, SdSettings::TabCameras},
+        {Icon::LayoutGrid, SdSettings::TabWide},
+        {Icon::Clock, SdSettings::TabRhythm},
+        {Icon::Bookmark, SdSettings::TabProfiles},
     };
     for (const auto& it : items) {
         const int p = it.panel;
@@ -130,13 +147,19 @@ void SdSettings::Impl::rebuildNav() {
             showPanel(p);
         }));
     }
-    // Separateur + "Soutenir le projet" (action : ouvre la pop-up de don).
+    // Separateur + "Soutenir le projet" : desormais un PANNEAU (plus de pop-up).
     auto* sep = new QFrame();
     sep->setFixedHeight(1);
     sep->setStyleSheet(QString("background:%1;").arg(th::kBorder));
     navLay->addWidget(sep);
-    navLay->addWidget(makeNavItem(Icon::Heart, i18n("Settings.Nav.Support"), false,
-                                  [this]() { showSupportDialog(q); }, th::kDanger));
+    navLay->addWidget(makeNavItem(Icon::Heart, i18n("Settings.Nav.Support"),
+                                  selPanel == SdSettings::TabSupport,
+                                  [this]() {
+                                      selPanel = SdSettings::TabSupport;
+                                      rebuildNav();
+                                      showPanel(SdSettings::TabSupport);
+                                  },
+                                  th::kDanger));
     navLay->addStretch();
 }
 
@@ -144,63 +167,53 @@ void SdSettings::Impl::showPanel(int p) {
     clearLayout(contentLay);
     contentTitle->setText(panelTitle(p));
 
-    // Hote du panneau (sans marges) ; les panneaux partages s'y montent.
     auto* hostW = new QWidget();
     auto* host = new QVBoxLayout(hostW);
     host->setContentsMargins(0, 0, 0, 0);
-    host->setSpacing(p == PanelSpeakers ? 10 : 14);
+    host->setSpacing(p == SdSettings::TabSpeakers ? 10 : (p == SdSettings::TabProfiles ? 12 : 14));
 
     switch (p) {
-    case PanelSpeakers: panels->mountSpeakers(host); break;
-    case PanelCameras: panels->mountCameras(host); break;
-    case PanelWide: panels->mountWide(host); break;
-    case PanelRhythm: panels->mountRhythm(host); break;
-    case PanelProfiles:
-        // Profils : fenetre dediee livree au Run 7. Panneau d'attente clair.
-        host->addWidget(makeHint(i18n("Settings.Profiles.ComingSoon")));
-        break;
+    case SdSettings::TabSpeakers: panels->mountSpeakers(host); break;
+    case SdSettings::TabCameras: panels->mountCameras(host); break;
+    case SdSettings::TabWide: panels->mountWide(host); break;
+    case SdSettings::TabRhythm: panels->mountRhythm(host); break;
+    case SdSettings::TabProfiles: profilesPanel->mount(host); break;
+    case SdSettings::TabSupport: mountSupport(host); break;
     default: break;
     }
     contentLay->addWidget(hostW);
     contentLay->addStretch();
 
-    // Le bouton "Reinitialiser" n'est pertinent que sur les pages qui portent des
-    // reglages a defaut (Plan large / Rythme) -> visible la seulement (retour David).
     if (resetBtn) {
         resetBtn->setVisible(panelHasDefaults(p));
     }
 }
 
 void SdSettings::Impl::resetToDefaults() {
-    // Reinitialise les REGLAGES FINS de la PAGE COURANTE aux defauts (le bouton n'est
-    // visible que sur Plan large / Rythme). Modele "tout-sur-Enregistrer" (choix David) :
-    //   - on remet les valeurs A L'ECRAN (visible immediatement)
-    //   - on N'ECRIT PAS sur disque ici : rien n'est persiste tant qu'on ne clique pas
-    //     "Enregistrer et fermer". La croix annule tout (y compris un reset).
-    // Couvre :
-    //   - Rythme    : timing + sensibilite audio
-    //   - Plan large: poids des contextes (on NE touche PAS la scene plan large choisie,
-    //                 qui fait partie de la structure du plateau, pas des reglages).
-    const sd::core::Config def;  // valeurs par defaut de la table de reglage
-    if (selPanel == PanelRhythm) {
+    // Reinitialise les REGLAGES FINS de la page courante (Plan large / Rythme) aux
+    // defauts. Modele "tout-sur-Enregistrer" : on remet a l'ecran, on n'ecrit pas ici.
+    const sd::core::Config def;
+    if (selPanel == SdSettings::TabRhythm) {
         working.timing = def.timing;
         working.audio = def.audio;
-    } else if (selPanel == PanelWide) {
+    } else if (selPanel == SdSettings::TabWide) {
         working.whenMultiple = def.whenMultiple;
         working.whenSilence = def.whenSilence;
     } else {
-        return;  // garde-fou : le bouton ne devrait pas etre clicable ailleurs
+        return;
     }
-    showPanel(selPanel);  // re-monte le panneau -> sliders/badges aux valeurs par defaut, tout de suite
+    showPanel(selPanel);
+}
+
+bool SdSettings::Impl::dirty() const {
+    // Comparaison robuste : serialisation des configs nettoyees. Egales => aucun
+    // changement non enregistre (pas de faux positif a l'ouverture).
+    return sd::core::toJson(sanitizedConfig(working)) !=
+           sd::core::toJson(sanitizedConfig(savedBaseline));
 }
 
 bool SdSettings::Impl::persist() {
-    // GARDE ANTI-PERTE : on n'ecrit JAMAIS une config sans intervenant valide.
-    // Couvre le cas critique ou le config.json existant etait illisible (working
-    // reste vide) : sans cette garde, l'ecriture ecraserait le fichier (seul etat
-    // persistant) par une config vide. Couvre aussi "tout supprime a la main".
-    // Partage par "Termine" ET "Reinitialiser" (ecriture immediate). Libelles i18n
-    // reutilises de l'assistant.
+    // GARDE ANTI-PERTE : jamais d'ecriture sans intervenant valide (cf. Run 6).
     int valid = 0;
     for (const auto& s : working.speakers) {
         if (!s.name.empty() && !s.audioSource.empty()) {
@@ -211,14 +224,104 @@ bool SdSettings::Impl::persist() {
         QMessageBox::warning(q, i18n("Settings.Title"), i18n("Summary.Error.NoSpeaker"));
         return false;
     }
-    const sd::obsbridge::ConfigSaveResult res = sd::obsbridge::saveConfig(sanitizedConfig(working));
-    if (!res.saved) {
+    // Ecrit dans le PROFIL ACTIF : config.json (copie vivante) ET le fichier du
+    // profil, en phase. saveActive cree le catalogue au premier usage si besoin.
+    const sd::profiles::StoreResult res = sd::profiles::saveActive(sanitizedConfig(working));
+    if (!res.ok) {
         QMessageBox::warning(q, i18n("Settings.Title"),
                              i18n("Summary.Error.Save").arg(QString::fromStdString(res.error)));
         return false;
     }
-    saved = true;  // une ecriture a eu lieu -> le dock devra recharger (meme si on ferme par la croix)
+    savedBaseline = working;  // l'etat enregistre devient la nouvelle reference
+    saved = true;
     return true;
+}
+
+bool SdSettings::Impl::maybeSaveBeforeSwitch() {
+    if (!dirty()) {
+        return true;
+    }
+    const QMessageBox::StandardButton btn = QMessageBox::question(
+        q, i18n("Profiles.Unsaved.Title"), i18n("Profiles.Unsaved.Body"),
+        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+    if (btn == QMessageBox::Cancel) {
+        return false;
+    }
+    if (btn == QMessageBox::Save) {
+        return persist();  // si l'enregistrement echoue (0 intervenant) -> on annule
+    }
+    return true;  // Discard : on bascule sans enregistrer
+}
+
+void SdSettings::Impl::reloadWorkingFromDisk() {
+    // On vide d'abord le panneau monte (ses widgets referencent l'ancien `panels`
+    // via leurs lambdas de rebuild) AVANT de recreer panels -> pas de pointeur
+    // pendant. clearLayout differe la destruction (hide + deleteLater).
+    clearLayout(contentLay);
+    const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
+    working = loaded.parsed ? loaded.config : sd::core::Config{};
+    savedBaseline = working;
+    panels = std::make_unique<ConfigPanels>(working, audioSources, scenes);
+}
+
+void SdSettings::Impl::switchActive(int id, bool goToEdit) {
+    if (!maybeSaveBeforeSwitch()) {
+        return;
+    }
+    const sd::profiles::StoreResult res = sd::profiles::setActive(id);
+    if (!res.ok) {
+        QMessageBox::warning(q, i18n("Settings.Title"),
+                             i18n("Profiles.Error.Generic").arg(QString::fromStdString(res.error)));
+        return;
+    }
+    saved = true;  // config.json a change -> le dock rechargera
+    reloadWorkingFromDisk();
+    if (goToEdit) {
+        selPanel = SdSettings::TabSpeakers;
+    }
+    rebuildNav();
+    showPanel(selPanel);
+}
+
+void SdSettings::Impl::newProfile(bool withAssistant) {
+    if (!maybeSaveBeforeSwitch()) {
+        return;
+    }
+    const QString name = promptName(i18n("Profiles.NewBlankName"));
+    if (name.isEmpty()) {
+        return;
+    }
+    if (withAssistant) {
+        // On NE cree PAS le profil ici : on memorise juste le nom et on ferme. Le dock
+        // ouvre alors l'assistant en mode creation, qui creera + activera le profil A
+        // LA FIN seulement. -> rien ne touche config.json avant validation (le dock
+        // n'affiche pas un profil vide "actif" pendant le remplissage). Retour David.
+        pendingAssistantName = name;
+        q->accept();
+        return;
+    }
+    // Sans assistant : profil VIERGE cree + actif tout de suite, edite dans les onglets
+    // de CETTE fenetre (l'edition vise le profil actif). Decision David : "nouveau" = vide.
+    const sd::profiles::StoreResult res =
+        sd::profiles::createProfile(name.toStdString(), sd::core::Config{}, /*makeActive=*/true);
+    if (!res.ok) {
+        QMessageBox::warning(q, i18n("Settings.Title"),
+                             i18n("Profiles.Error.Generic").arg(QString::fromStdString(res.error)));
+        return;
+    }
+    saved = true;
+    reloadWorkingFromDisk();
+    selPanel = SdSettings::TabSpeakers;
+    rebuildNav();
+    showPanel(selPanel);
+}
+
+QString SdSettings::Impl::promptName(const QString& initial) {
+    bool ok = false;
+    const QString name = QInputDialog::getText(q, i18n("Profiles.NamePrompt.Title"),
+                                               i18n("Profiles.NamePrompt.Body"), QLineEdit::Normal,
+                                               initial, &ok);
+    return ok ? name.trimmed() : QString();
 }
 
 void SdSettings::Impl::finish() {
@@ -228,8 +331,9 @@ void SdSettings::Impl::finish() {
 }
 
 // ===========================================================================
-SdSettings::SdSettings(QWidget* parent) : QDialog(parent), d_(new Impl) {
+SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(new Impl) {
     d_->q = this;
+    d_->selPanel = initialTab;
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setModal(true);
@@ -237,11 +341,24 @@ SdSettings::SdSettings(QWidget* parent) : QDialog(parent), d_(new Impl) {
 
     d_->audioSources = sd::obsbridge::audioSourceNames();
     d_->scenes = sd::obsbridge::sceneNames();
+    // Garantit qu'un catalogue de profils existe (migre l'existant en profil n.1 au
+    // premier usage) puis charge la config du profil ACTIF (= config.json copie vivante).
+    sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
     if (loaded.parsed) {
         d_->working = loaded.config;
     }
+    d_->savedBaseline = d_->working;
     d_->panels = std::make_unique<ConfigPanels>(d_->working, d_->audioSources, d_->scenes);
+
+    // Panneau Profils : actions de structure internes, actions d'edition/fenetre
+    // deleguees (garde anti-perte + rechargement + changement d'onglet vivent ici).
+    ProfilesPanel::Callbacks cbs;
+    cbs.onLoad = [this](int id) { d_->switchActive(id, /*goToEdit=*/false); };
+    cbs.onEdit = [this](int id) { d_->switchActive(id, /*goToEdit=*/true); };
+    cbs.onNewWithAssistant = [this]() { d_->newProfile(/*withAssistant=*/true); };
+    cbs.onNewBlank = [this]() { d_->newProfile(/*withAssistant=*/false); };
+    d_->profilesPanel = std::make_unique<ProfilesPanel>(this, std::move(cbs));
 
     auto* outer = new QVBoxLayout(this);
     outer->setContentsMargins(24, 18, 24, 30);
@@ -260,7 +377,7 @@ SdSettings::SdSettings(QWidget* parent) : QDialog(parent), d_(new Impl) {
     d_->root->setGraphicsEffect(shadow);
     outer->addWidget(d_->root);
 
-    d_->root->setMinimumHeight(520);  // place pour la sidebar + un panneau confortable
+    d_->root->setMinimumHeight(520);
 
     auto* rootLay = new QVBoxLayout(d_->root);
     rootLay->setContentsMargins(0, 0, 0, 0);
@@ -312,7 +429,6 @@ SdSettings::SdSettings(QWidget* parent) : QDialog(parent), d_(new Impl) {
     d_->navLay->setSpacing(4);
     bodyLay->addWidget(nav);
 
-    // Zone de contenu : titre + zone scrollable.
     auto* contentOuter = new QWidget();
     auto* contentOuterLay = new QVBoxLayout(contentOuter);
     contentOuterLay->setContentsMargins(20, 18, 20, 18);
@@ -338,7 +454,7 @@ SdSettings::SdSettings(QWidget* parent) : QDialog(parent), d_(new Impl) {
 
     rootLay->addWidget(body, 1);
 
-    // --- Pied : Reinitialiser (gauche) + Termine (droite) ---
+    // --- Pied : Reinitialiser (gauche) + Enregistrer et fermer (droite) ---
     auto* sepBot = new QFrame();
     sepBot->setFixedHeight(1);
     sepBot->setStyleSheet(QString("background:%1;").arg(th::kBorder));
@@ -373,6 +489,10 @@ SdSettings::~SdSettings() = default;
 
 bool SdSettings::savedConfig() const {
     return d_->saved;
+}
+
+QString SdSettings::pendingAssistantName() const {
+    return d_->pendingAssistantName;
 }
 
 void SdSettings::mousePressEvent(QMouseEvent* event) {

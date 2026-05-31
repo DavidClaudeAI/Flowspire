@@ -1,19 +1,21 @@
-// StreamDirector — pop-up "Soutenir le projet" (couche UI, Run 6).
+// StreamDirector — panneau "Soutenir le projet" (couche UI).
 //
-// Petite fenetre modale frameless (maquette Pencil `jJIQ7`) : rappel que le plugin
-// est gratuit & open source + bouton "Faire un don" + liens Sponsors / Ko-fi /
-// PayPal. Jamais ouverte automatiquement (regle OBS : les dons ne doivent pas etre
-// "en focus") -> declenchee uniquement par l'utilisateur (entree des parametres
-// avances ; au Run 7, aussi un petit coeur dans le dock).
+// Run 6 : c'etait une pop-up modale autonome. Run 7 : David a tranche "plus de
+// pop-up sauf l'assistant" -> Soutenir devient un PANNEAU de la sidebar des
+// parametres avances (comme Intervenants/Profils...). On expose donc juste le
+// CORPS (gros coeur + texte + bouton don + liens), monte dans un layout hote
+// fourni par la fenetre. Le titre "Soutenir le projet" est rendu par la fenetre
+// (contentTitle), pas ici.
 //
 // Les URLs reelles sont des constantes dans le .cpp (a renseigner par David).
 #pragma once
 
-class QWidget;
+class QVBoxLayout;
 
 namespace sd::ui {
 
-// Ouvre la pop-up de soutien en modale, parentee a `parent`. Bloquante.
-void showSupportDialog(QWidget* parent);
+// Monte le contenu "Soutenir le projet" dans `host` (le vide d'abord). Les liens
+// ouvrent le navigateur via QDesktopServices.
+void mountSupport(QVBoxLayout* host);
 
 }  // namespace sd::ui

@@ -10,6 +10,7 @@
 #include "core/audio_util.hpp"
 #include "core/config.hpp"
 #include "core/director.hpp"
+#include "core/profiles.hpp"
 #include "core/speaker_detector.hpp"
 #include "core/weighted_pick.hpp"
 
@@ -528,4 +529,83 @@ TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
     Decision d = dir.update(4.5, {{"A", mulToDb(0.9)}});
     CHECK(d.scene == "A_close");
     CHECK(dir.currentScene() == "A_close");
+}
+
+// ===========================================================================
+// Catalogue de profils (modele pur)
+
+TEST_CASE("profiles : round-trip JSON du catalogue") {
+    ProfileIndex idx;
+    idx.activeId = 2;
+    idx.nextId = 4;
+    idx.profiles = {{2, "4 invites + moi"}, {1, "3 invites"}, {3, "Duo"}};
+    const ProfileIndex back = profileIndexFromJson(profileIndexToJson(idx));
+    CHECK(back.activeId == 2);
+    CHECK(back.nextId == 4);
+    REQUIRE(back.profiles.size() == 3);
+    CHECK(back.profiles[0].id == 2);
+    CHECK(back.profiles[0].name == "4 invites + moi");
+    CHECK(back.profiles[2].name == "Duo");  // l'ordre d'affichage est preserve
+}
+
+TEST_CASE("profiles : fromJson normalise nextId et activeId") {
+    // nextId trop bas + activeId pointant un profil absent -> corriges.
+    const std::string js = R"({
+        "activeId": 99, "nextId": 1,
+        "profiles": [ {"id": 5, "name": "A"}, {"id": 8, "name": "B"} ]
+    })";
+    const ProfileIndex idx = profileIndexFromJson(js);
+    CHECK(idx.nextId == 9);    // au-dessus du plus grand id (8)
+    CHECK(idx.activeId == 5);  // 99 invalide -> premier profil
+}
+
+TEST_CASE("profiles : addProfile attribue des ids croissants sans reutilisation") {
+    ProfileIndex idx;
+    const int a = addProfile(idx, "A");
+    const int b = addProfile(idx, "B");
+    CHECK(a == 1);
+    CHECK(b == 2);
+    CHECK(idx.nextId == 3);
+    // suppression de B puis ajout : l'id de B n'est PAS recycle.
+    idx.activeId = a;  // a est actif, b est supprimable
+    CHECK(removeProfile(idx, b) == true);
+    const int c = addProfile(idx, "C");
+    CHECK(c == 3);  // pas 2
+}
+
+TEST_CASE("profiles : noms rendus uniques") {
+    ProfileIndex idx;
+    addProfile(idx, "Plateau");
+    const int dup = addProfile(idx, "Plateau");
+    CHECK(idx.profiles[1].name == "Plateau (2)");
+    CHECK(nameExists(idx, "Plateau"));
+    // renommer une entree avec son propre nom reste autorise (exceptId).
+    CHECK(renameProfile(idx, dup, "Plateau (2)") == true);
+    CHECK(idx.profiles[1].name == "Plateau (2)");
+    // renommer vers un nom pris -> suffixe.
+    CHECK(renameProfile(idx, dup, "Plateau") == true);
+    CHECK(idx.profiles[1].name == "Plateau (2)");
+}
+
+TEST_CASE("profiles : removeProfile protege l'actif et le dernier") {
+    ProfileIndex idx;
+    const int a = addProfile(idx, "A");
+    const int b = addProfile(idx, "B");
+    idx.activeId = a;
+    CHECK(removeProfile(idx, a) == false);    // a est actif
+    CHECK(removeProfile(idx, 999) == false);  // id absent
+    CHECK(removeProfile(idx, b) == true);
+    CHECK(removeProfile(idx, a) == false);  // a est le dernier restant
+    REQUIRE(idx.profiles.size() == 1);
+}
+
+TEST_CASE("profiles : setActiveProfile valide l'id") {
+    ProfileIndex idx;
+    const int a = addProfile(idx, "A");
+    const int b = addProfile(idx, "B");
+    CHECK(setActiveProfile(idx, b) == true);
+    CHECK(idx.activeId == b);
+    CHECK(setActiveProfile(idx, 999) == false);
+    CHECK(idx.activeId == b);  // inchange
+    CHECK(setActiveProfile(idx, a) == true);
 }

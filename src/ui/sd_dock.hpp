@@ -82,8 +82,15 @@ private:
     };
 
     void tick();     // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
-    void openAssistant();  // ouvre l'assistant de config (modale), recharge a la fermeture
-    void openSettings();   // ouvre les parametres avances (modale), recharge a la fermeture
+    void openAssistant();  // bouton Assistant : demande un nom puis cree un profil guide
+    // Ouvre l'assistant en mode CREATION d'un profil nomme (cree + active a la fin).
+    void openAssistantWith(const QString& newProfileName);
+    // Ouvre les parametres avances (modale) sur l'onglet `initialTab` (cf. SdSettings::Tab,
+    // passe en int pour eviter d'inclure sd_settings.hpp ici). Recharge a la fermeture.
+    void openSettings(int initialTab = 0);
+    void updateProfileBar();  // rafraichit le nom du profil actif (selecteur du dock)
+    void showProfileMenu();   // menu du selecteur : liste des profils + "Gerer..."
+    void switchProfile(int id);  // bascule le profil actif (1 clic) puis recharge
     void applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir);
     void rebuildDirectingGrid();
     void updateStatusBadge();
@@ -107,6 +114,8 @@ private:
     QVBoxLayout* rowsLayout_ = nullptr;
     QVBoxLayout* directingLayout_ = nullptr;
     std::vector<Row> rows_;
+    QPushButton* profileButton_ = nullptr;     // selecteur de profil (en-tete du dock)
+    QLabel* profileNameLabel_ = nullptr;       // nom du profil actif (dans le selecteur)
     QPushButton* wideButton_ = nullptr;
     QPushButton* autoOnButton_ = nullptr;
     QPushButton* autoOffButton_ = nullptr;

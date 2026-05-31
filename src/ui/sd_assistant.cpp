@@ -32,6 +32,7 @@
 #include "core/config.hpp"
 #include "obs/config_loader.hpp"
 #include "obs/obs_inventory.hpp"
+#include "obs/profiles_store.hpp"
 #include "ui/sd_config_panels.hpp"
 #include "ui/sd_i18n.hpp"
 #include "ui/sd_icons.hpp"
@@ -71,6 +72,8 @@ struct SdAssistant::Impl {
     std::vector<std::string> audioSources;
     std::vector<std::string> scenes;
     bool activateAuto = false;
+    // Nom du nouveau profil a creer A LA FIN (vide -> edition du profil actif).
+    QString newProfileName;
 
     // Panneaux d'edition PARTAGES avec les parametres avances : editent `working`
     // par reference -> source unique du rendu, zero duplication.
@@ -450,9 +453,21 @@ void SdAssistant::Impl::finish() {
         showError(i18n("Summary.Error.NoSpeaker"));
         return;
     }
-    // Nettoyage + ecriture partages (sd_config_panels / config_loader atomique).
-    const sd::obsbridge::ConfigSaveResult res = sd::obsbridge::saveConfig(sanitizedConfig(working));
-    if (!res.saved) {
+    // Ecriture via le magasin de profils. Deux cas :
+    //  - CREATION (newProfileName non vide) : on cree le profil + on l'active ICI, A
+    //    LA FIN seulement. Avant ça, rien n'a touche config.json -> le dock n'affiche
+    //    pas un profil vide "actif" pendant le remplissage (retour David).
+    //  - EDITION (nom vide, compat) : on enregistre le profil ACTIF.
+    // saveConfig/createProfile ecrivent config.json (copie vivante) ET le fichier du
+    // profil, en phase. Le catalogue est garanti par le constructeur (loadList).
+    sd::profiles::StoreResult res;
+    if (!newProfileName.isEmpty()) {
+        res = sd::profiles::createProfile(newProfileName.toStdString(), sanitizedConfig(working),
+                                          /*makeActive=*/true);
+    } else {
+        res = sd::profiles::saveActive(sanitizedConfig(working));
+    }
+    if (!res.ok) {
         showError(i18n("Summary.Error.Save").arg(QString::fromStdString(res.error)));
         return;
     }
@@ -463,8 +478,10 @@ void SdAssistant::Impl::finish() {
 // ===========================================================================
 // SdAssistant — coquille (fenetre, drag, cycle de vie).
 // ===========================================================================
-SdAssistant::SdAssistant(QWidget* parent) : QDialog(parent), d_(new Impl) {
+SdAssistant::SdAssistant(QWidget* parent, const QString& newProfileName)
+    : QDialog(parent), d_(new Impl) {
     d_->q = this;
+    d_->newProfileName = newProfileName;
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setModal(true);
@@ -473,9 +490,16 @@ SdAssistant::SdAssistant(QWidget* parent) : QDialog(parent), d_(new Impl) {
     // Inventaire OBS (modale -> listes stables pendant toute la session).
     d_->audioSources = sd::obsbridge::audioSourceNames();
     d_->scenes = sd::obsbridge::sceneNames();
-    const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
-    if (loaded.parsed) {
-        d_->working = loaded.config;  // on repart de la config existante
+    // Garantit qu'un catalogue de profils existe (migre l'existant en profil n.1 au
+    // premier usage) -> createProfile/saveActive (a la fin) ont un catalogue valide.
+    sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    // CREATION (nom fourni) -> on part d'une config VIERGE. EDITION (nom vide) -> on
+    // repart de la config existante (profil actif).
+    if (newProfileName.isEmpty()) {
+        const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
+        if (loaded.parsed) {
+            d_->working = loaded.config;
+        }
     }
 
     // Panneaux d'edition partages : editent d_->working par reference.

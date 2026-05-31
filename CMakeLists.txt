@@ -53,15 +53,19 @@ target_sources(
     src/core/speaker_detector.cpp
     src/core/config.cpp
     src/core/director.cpp
+    src/core/profiles.cpp
     src/obs/audio_level_monitor.cpp
     src/obs/config_loader.cpp
+    src/obs/fs_atomic.cpp
     src/obs/obs_inventory.cpp
+    src/obs/profiles_store.cpp
     src/obs/scene_switcher.cpp
     src/ui/sd_assistant.cpp
     src/ui/sd_config_panels.cpp
     src/ui/sd_dock.cpp
     src/ui/sd_icons.cpp
     src/ui/sd_level_meter.cpp
+    src/ui/sd_profiles_panel.cpp
     src/ui/sd_settings.cpp
     src/ui/sd_support.cpp
 )
