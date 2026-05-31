@@ -44,8 +44,8 @@ endif()
 
 # --- Sources du plugin ---
 #   core/ : cerveau pur (aucune dependance OBS/Qt), reutilise tel quel.
-#   obs/  : pont vers l'API OBS (lecture des niveaux audio).
-#   ui/   : dock Qt.
+#   obs/  : pont vers l'API OBS (lecture des niveaux audio, inventaire, config).
+#   ui/   : dock + fenetres Qt (assistant, parametres avances, panneaux partages).
 target_sources(
   ${CMAKE_PROJECT_NAME}
   PRIVATE
@@ -58,13 +58,16 @@ target_sources(
     src/obs/obs_inventory.cpp
     src/obs/scene_switcher.cpp
     src/ui/sd_assistant.cpp
+    src/ui/sd_config_panels.cpp
     src/ui/sd_dock.cpp
     src/ui/sd_icons.cpp
     src/ui/sd_level_meter.cpp
+    src/ui/sd_settings.cpp
+    src/ui/sd_support.cpp
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
-# Fichiers d'en-tete seuls (pas de .cpp) — listes pour qu'ils apparaissent dans
-# l'IDE et soient traces ; sd_i18n.hpp et sd_theme.hpp sont inclus par sd_dock.cpp.
+# Fichiers d'en-tete seuls (pas de .cpp) — inclus par les .cpp ci-dessus :
+# sd_i18n.hpp, sd_theme.hpp, sd_style.hpp, sd_runtime.hpp, sd_widgets.hpp.
 target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM PRIVATE vendor)
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 

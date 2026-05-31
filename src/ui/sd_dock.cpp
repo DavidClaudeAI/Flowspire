@@ -26,6 +26,7 @@
 #include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
 #include "obs/config_loader.hpp"   // chargement du config.json
 #include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
+#include "ui/sd_settings.hpp"      // parametres avances (modale)
 #include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
 #include "ui/sd_icons.hpp"         // icones lucide teintees
 #include "ui/sd_level_meter.hpp"   // vumetre custom + marqueur de seuil
@@ -298,39 +299,31 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     sep->setStyleSheet(QString("color:%1;").arg(th::kBorder));
     root->addWidget(sep);
 
-    // Footer : surfaces a venir (Run 5/6), desactivees mais lisibles (texte
-    // secondaire comme la maquette, pas le gris-eteint par defaut de Qt).
-    const QString footerQss =
-        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                " color:%4; font-size:12px; font-weight:600; padding:8px 10px; }"
-                "QPushButton:disabled { color:%4; }")
-            .arg(th::kSurface3)
-            .arg(th::kBorder)
-            .arg(th::kRadiusButton)
-            .arg(th::kTextSecondary);
+    // Footer : deux acces ACTIFS (Run 5/6), accent pour inviter au clic. Meme style.
     auto* footer = new QHBoxLayout();
     footer->setSpacing(8);
-
-    // Parametres avances : encore a venir (Run 6) -> grise + tooltip.
-    auto* settingsBtn = new QPushButton(i18n("Footer.AdvancedSettings"));
-    settingsBtn->setIcon(icon(Icon::Settings, th::kTextSecondary, 14));
-    settingsBtn->setStyleSheet(footerQss);
-    settingsBtn->setEnabled(false);
-    settingsBtn->setToolTip(i18n("Footer.ComingSoon"));
-    footer->addWidget(settingsBtn, 1);
-
-    // Assistant de configuration (Run 5) : ACTIF. Accent pour inviter au clic.
-    auto* assistantBtn = new QPushButton(i18n("Footer.Assistant"));
-    assistantBtn->setIcon(icon(Icon::Sparkles, th::kAccent, 14));
-    assistantBtn->setCursor(Qt::PointingHandCursor);
-    assistantBtn->setStyleSheet(
+    const QString footerBtnQss =
         QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
                 " color:%4; font-size:12px; font-weight:600; padding:8px 10px; }"
                 "QPushButton:hover { border-color:%4; }")
             .arg(th::kSurface3)
             .arg(rgba(th::kAccent, 0.4))
             .arg(th::kRadiusButton)
-            .arg(th::kAccent));
+            .arg(th::kAccent);
+
+    // Parametres avances (Run 6) : ouvre la fenetre de reglages fins.
+    auto* settingsBtn = new QPushButton(i18n("Footer.AdvancedSettings"));
+    settingsBtn->setIcon(icon(Icon::Settings, th::kAccent, 14));
+    settingsBtn->setCursor(Qt::PointingHandCursor);
+    settingsBtn->setStyleSheet(footerBtnQss);
+    connect(settingsBtn, &QPushButton::clicked, this, [this]() { openSettings(); });
+    footer->addWidget(settingsBtn, 1);
+
+    // Assistant de configuration (Run 5) : ouvre le parcours guide.
+    auto* assistantBtn = new QPushButton(i18n("Footer.Assistant"));
+    assistantBtn->setIcon(icon(Icon::Sparkles, th::kAccent, 14));
+    assistantBtn->setCursor(Qt::PointingHandCursor);
+    assistantBtn->setStyleSheet(footerBtnQss);
     connect(assistantBtn, &QPushButton::clicked, this, [this]() { openAssistant(); });
     footer->addWidget(assistantBtn, 1);
 
@@ -716,6 +709,17 @@ void SdDock::openAssistant() {
         if (dlg.activateAutoRequested()) {
             setAuto(true);
         }
+    }
+}
+
+void SdDock::openSettings() {
+    // Parametres avances : edition directe de la config existante. A "Termine", la
+    // fenetre a ecrit le config.json -> on recharge le dock (sans toucher a l'etat
+    // auto : on ne lance pas le pilotage, contrairement a l'assistant).
+    auto* mainWin = static_cast<QWidget*>(obs_frontend_get_main_window());
+    SdSettings dlg(mainWin ? mainWin : this);
+    if (dlg.exec() == QDialog::Accepted && dlg.savedConfig()) {
+        reload();
     }
 }
 

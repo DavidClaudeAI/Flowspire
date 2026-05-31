@@ -83,6 +83,7 @@ private:
 
     void tick();     // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
     void openAssistant();  // ouvre l'assistant de config (modale), recharge a la fermeture
+    void openSettings();   // ouvre les parametres avances (modale), recharge a la fermeture
     void applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir);
     void rebuildDirectingGrid();
     void updateStatusBadge();
