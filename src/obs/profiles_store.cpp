@@ -193,9 +193,13 @@ StoreResult setActive(int id) {
         res.error = pc.error;
         return res;
     }
-    // config.json (copie vivante) D'ABORD, index ensuite : si une coupure survient
-    // entre les deux, le moteur tourne deja sur le bon contenu ; seule l'etiquette
-    // "actif" serait en retard d'un cran (corrigee au prochain enregistrement).
+    // config.json (copie vivante lue par le moteur) puis index (etiquette du profil
+    // actif). NOTE robustesse : ces deux fichiers ne sont PAS ecrits atomiquement
+    // ensemble. Une coupure (panne/kill) dans la micro-fenetre entre les deux laisse
+    // config.json et index.activeId desynchronises (le moteur tourne sur le bon
+    // contenu, mais l'etiquette "actif" peut differer). Correctif racine prevu :
+    // reconciliation au chargement (config.json republie depuis le profil actif) ->
+    // suivi dans la dette technique. Declencheur = power-loss en pleine bascule (rare).
     const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(pc.config);
     if (!sc.saved) {
         res.error = sc.error;
@@ -219,15 +223,19 @@ StoreResult saveActive(const sd::core::Config& cfg) {
         res.error = raw.error.empty() ? "catalogue de profils introuvable" : raw.error;
         return res;
     }
-    // config.json (copie vivante) d'abord, fichier du profil actif ensuite.
-    const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(cfg);
-    if (!sc.saved) {
-        res.error = sc.error;
-        return res;
-    }
+    // Fichier du profil actif (snapshot CANONIQUE) D'ABORD, puis config.json (copie
+    // vivante derivee, lue par le moteur). Si une coupure survient entre les deux, le
+    // snapshot du profil porte deja les dernieres modifications : elles sont donc
+    // RECUPERABLES (au prochain rechargement/bascule, le profil les rejoue) plutot que
+    // perdues. L'ordre inverse perdrait l'edition la plus recente.
     const sd::obsbridge::FsResult wp = writeProfileFile(raw.index.activeId, cfg);
     if (!wp.ok) {
         res.error = wp.error;
+        return res;
+    }
+    const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(cfg);
+    if (!sc.saved) {
+        res.error = sc.error;
         return res;
     }
     res.ok = true;
