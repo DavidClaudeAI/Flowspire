@@ -23,8 +23,12 @@ Acquis :
   → scène(s) pondérées + plan large). Sans config : mode lecture seule.
 - **Raccourcis OBS** — activer/désactiver l'auto, forcer le plan large, forcer un intervenant
   (mappables Stream Deck et clavier).
-- **Dock Qt** (`src/ui`) — vumètre + état parle/silence par intervenant, scène réellement à l'antenne,
-  case « pilotage automatique » (**OFF par défaut** : garde-fou) + boutons plan large / forcer.
+- **Dock Qt** (`src/ui`) — interface alignée sur la maquette (thème sombre, icônes), un vumètre par
+  intervenant **avec marqueur de seuil** (slider de sensibilité réglable en direct), scène réellement
+  à l'antenne, badge d'état cliquable + boutons plan large / forcer / auto. Garde-fou : auto **OFF**
+  par défaut. Auto-rafraîchi au lancement, défile si réduit en hauteur.
+- **Multilingue** — i18n native OBS (`obs_module_text` + `data/locale/*.ini`) : le dock suit la
+  langue d'OBS. Langues fournies : anglais (source) + français. Ajouter une langue = un fichier `.ini`.
 
 Suite : assistant de configuration visuel (éditer intervenants/scènes/poids sans toucher au JSON).
 

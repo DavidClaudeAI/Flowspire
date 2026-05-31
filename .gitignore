@@ -34,3 +34,7 @@ compile_commands.json
 
 # Compteur de build genere par le template (ne pas suivre)
 cmake/.CMakeBuildNumber
+
+# Fichiers temporaires de diagnostic (build/dumpbin) — jamais committer
+_*.txt
+_*.bat
