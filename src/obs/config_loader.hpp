@@ -33,8 +33,10 @@ struct ConfigSaveResult {
 };
 
 // Serialise `cfg` (via sd::core::toJson) et l'ecrit dans %config-plugin%/config.json,
-// en creant le dossier parent au besoin. Ecriture atomique deleguee a l'API OBS
-// (os_quick_write_utf8_file). Ne leve pas : toute erreur est portee par le resultat.
+// en creant le dossier parent au besoin. Ecriture ATOMIQUE : ecrit un fichier .tmp
+// puis le bascule via os_safe_replace (rename atomique) -> jamais de config.json
+// tronque si une coupure survient en cours d'ecriture. Ne leve pas : toute erreur
+// est portee par le resultat.
 ConfigSaveResult saveConfig(const sd::core::Config& cfg);
 
 }  // namespace sd::obsbridge

@@ -294,7 +294,16 @@ void clearLayout(QLayout* lay) {
     }
     while (QLayoutItem* item = lay->takeAt(0)) {
         if (QWidget* w = item->widget()) {
-            delete w;
+            // Suppression DIFFEREE (et non `delete` immediat). Un widget peut
+            // declencher sa PROPRE destruction depuis son gestionnaire d'evenement :
+            // un onglet (ClickButton) ou un bouton corbeille dont le clic appelle
+            // populate*(), qui vide ce layout et detruirait donc le widget alors que
+            // Qt deroule encore son event dispatch sur lui -> use-after-free. On le
+            // cache (il ne peint plus, pas de doublon a l'ecran avec le nouveau
+            // contenu) puis on confie sa destruction a la boucle d'evenements une fois
+            // l'evenement courant entierement termine.
+            w->hide();
+            w->deleteLater();
         } else if (QLayout* child = item->layout()) {
             clearLayout(child);
         }
