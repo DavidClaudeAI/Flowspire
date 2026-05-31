@@ -28,6 +28,14 @@ enum class Icon {
     Clock,       // recap / etape rythme
     Mic,         // sources audio (etape prerequis)
     Info,        // bandeau d'info (etape rythme)
+    // --- Parametres avances + Soutenir (Run 6) ---
+    Bookmark,    // sidebar : profils
+    Heart,       // soutenir le projet
+    EllipsisV,   // menu "..." (profils, Run 7)
+    Github,      // lien Sponsors
+    Coffee,      // lien Ko-fi
+    CreditCard,  // lien PayPal
+    RotateCcw,   // reinitialiser aux defauts
 };
 
 // Pixmap de l'icone `which`, trait de couleur `colorHex` (ex "#3FB950"), carre de

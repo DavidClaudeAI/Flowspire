@@ -101,6 +101,22 @@ Config fromJson(const std::string& text) {
         cfg.whenSilence.wideShot = s.value("wideShot", cfg.whenSilence.wideShot);
     }
 
+    // Normalisation des invariants AU CHARGEMENT (source unique de verite), quelle
+    // que soit l'origine du JSON (UI, edition manuelle, version anterieure) :
+    //   - attack/release : au moins 1 frame (sinon l'hysteresis ne se declenche jamais)
+    //   - temps maxi d'un plan >= temps mini (sinon le rafraichissement au temps-max
+    //     court-circuiterait en permanence le verrou anti-nervosite -> re-cuts en boucle)
+    // L'UI s'appuie sur cet invariant ; on ne le reduplique donc pas dans chaque ecran.
+    if (cfg.audio.attackFrames < 1) {
+        cfg.audio.attackFrames = 1;
+    }
+    if (cfg.audio.releaseFrames < 1) {
+        cfg.audio.releaseFrames = 1;
+    }
+    if (cfg.timing.maxShotSeconds < cfg.timing.minShotSeconds) {
+        cfg.timing.maxShotSeconds = cfg.timing.minShotSeconds;
+    }
+
     return cfg;
 }
 

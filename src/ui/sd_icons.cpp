@@ -76,6 +76,27 @@ const char* iconBody(Icon which) {
                "<line x1='12' x2='12' y1='19' y2='22'/>";
     case Icon::Info:
         return "<circle cx='12' cy='12' r='10'/><path d='M12 16v-4'/><path d='M12 8h.01'/>";
+    case Icon::Bookmark:
+        return "<path d='m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z'/>";
+    case Icon::Heart:
+        return "<path d='M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2"
+               "-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z'/>";
+    case Icon::EllipsisV:
+        return "<circle cx='12' cy='12' r='1'/><circle cx='12' cy='5' r='1'/>"
+               "<circle cx='12' cy='19' r='1'/>";
+    case Icon::Github:
+        return "<path d='M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5"
+               ".28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5"
+               "A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4'/>"
+               "<path d='M9 18c-4.51 2-5-2-7-2'/>";
+    case Icon::Coffee:
+        return "<path d='M10 2v2'/><path d='M14 2v2'/>"
+               "<path d='M16 8a1 1 0 0 1 1 1v8a4 4 0 0 1-4 4H7a4 4 0 0 1-4-4V9a1 1 0 0 1 1-1h14a4 4 0 1 1 0 8h-1'/>"
+               "<path d='M6 2v2'/>";
+    case Icon::CreditCard:
+        return "<rect width='20' height='14' x='2' y='5' rx='2'/><line x1='2' x2='22' y1='10' y2='10'/>";
+    case Icon::RotateCcw:
+        return "<path d='M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8'/><path d='M3 3v5h5'/>";
     }
     return "";
 }

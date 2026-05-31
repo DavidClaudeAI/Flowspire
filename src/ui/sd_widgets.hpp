@@ -1,0 +1,485 @@
+// StreamDirector — briques d'UI partagees (couche UI).
+//
+// Source UNIQUE des petits widgets et helpers de style reutilises par l'assistant
+// (sd_assistant) ET les parametres avances (sd_settings) -> pas de copier-coller
+// entre les deux fenetres (lecon de la review Run 5 : eviter la duplication).
+//
+// Header-only : tout est `inline`. Les classes (ClickButton/ComboField/SliderRow)
+// n'utilisent PAS Q_OBJECT (callbacks std::function, pas de signal Qt custom) ->
+// aucun moc requis, definissables en en-tete sans souci d'ODR.
+//
+// Espace de noms `sd::ui::widgets` (imbrique dans sd::ui) : `icon`/`Icon`/`rgba`/
+// `kFrameSeconds`/`theme::` y sont visibles par recherche dans l'espace englobant.
+#pragma once
+
+#include <QAction>
+#include <QEnterEvent>
+#include <QFrame>
+#include <QHBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMenu>
+#include <QMouseEvent>
+#include <QPixmap>
+#include <QPushButton>
+#include <QSizePolicy>
+#include <QSlider>
+#include <QString>
+#include <QStringList>
+#include <QVBoxLayout>
+#include <QWidget>
+
+#include <cmath>
+#include <functional>
+#include <utility>
+
+#include "ui/sd_icons.hpp"    // icon(), Icon
+#include "ui/sd_runtime.hpp"  // kFrameSeconds
+#include "ui/sd_style.hpp"    // rgba()
+#include "ui/sd_theme.hpp"    // theme::k*
+
+namespace sd::ui::widgets {
+
+// ===========================================================================
+// Feuilles de style (QSS) — traduisent les jetons de la maquette.
+// ===========================================================================
+inline QString menuQss() {
+    return QString("QMenu { background:%1; border:1px solid %2; border-radius:6px; padding:4px; }"
+                   "QMenu::item { color:%3; padding:6px 22px 6px 12px; border-radius:4px; }"
+                   "QMenu::item:selected { background:%4; }"
+                   "QMenu::item:disabled { color:%5; }")
+        .arg(theme::kSurface2)
+        .arg(theme::kBorder)
+        .arg(theme::kTextPrimary)
+        .arg(rgba(theme::kAccent, 0.25))
+        .arg(theme::kTextTertiary);
+}
+
+inline QString accentSliderQss() {
+    return QString(
+               "QSlider::groove:horizontal { height:6px; background:%1; border-radius:3px; }"
+               "QSlider::sub-page:horizontal { height:6px; background:%2; border-radius:3px; }"
+               "QSlider::add-page:horizontal { height:6px; background:%1; border-radius:3px; }"
+               "QSlider::handle:horizontal { width:14px; height:14px; margin:-4px 0;"
+               " border-radius:7px; background:%3; border:2px solid %2; }")
+        .arg(theme::kSurface3)
+        .arg(theme::kAccent)
+        .arg(theme::kTextPrimary);
+}
+
+inline QString badgeQss() {
+    return QString("color:%1; background:%2; border-radius:5px; font-size:11px;"
+                   " font-weight:600; padding:2px 0;")
+        .arg(theme::kAccent)
+        .arg(rgba(theme::kAccent, 0.15));
+}
+
+inline QString lineEditQss() {
+    return QString("QLineEdit { background:%1; border:1px solid %2; border-radius:%3px;"
+                   " color:%4; font-size:13px; padding:6px 10px; }"
+                   "QLineEdit:focus { border-color:%5; }")
+        .arg(theme::kSurface3)
+        .arg(theme::kBorder)
+        .arg(theme::kRadiusButton)
+        .arg(theme::kTextPrimary)
+        .arg(rgba(theme::kAccent, 0.7));
+}
+
+inline QString iconBtnQss() {
+    return QStringLiteral("QPushButton { background:transparent; border:none; padding:3px; }"
+                          "QPushButton:hover { background:rgba(255,255,255,0.06);"
+                          " border-radius:4px; }");
+}
+
+inline QString primaryBtnQss() {
+    return QString("QPushButton { background:%1; border:none; border-radius:6px; color:%2;"
+                   " font-size:13px; font-weight:700; padding:10px 16px; }"
+                   "QPushButton:hover { background:%3; }")
+        .arg(theme::kAccent)
+        .arg(theme::kOnAccent)
+        .arg(rgba(theme::kAccent, 0.85));
+}
+
+inline QString greenBtnQss() {
+    return QString("QPushButton { background:%1; border:none; border-radius:6px; color:%2;"
+                   " font-size:13px; font-weight:700; padding:10px 16px; }"
+                   "QPushButton:hover { background:%3; }")
+        .arg(theme::kSuccess)
+        .arg(theme::kOnAccent)
+        .arg(rgba(theme::kSuccess, 0.85));
+}
+
+inline QString secondaryBtnQss() {
+    return QString("QPushButton { background:%1; border:none; border-radius:6px; color:%2;"
+                   " font-size:13px; font-weight:600; padding:10px 14px; }"
+                   "QPushButton:hover { color:%3; }")
+        .arg(theme::kSurface3)
+        .arg(theme::kTextSecondary)
+        .arg(theme::kTextPrimary);
+}
+
+// Onglet "dossier" (assistant etape Scenes + parametres avances) : coins arrondis
+// EN HAUT seulement, actif = couleur de la carte (effet rattache), inactif plus
+// sombre. Contour present (demande David). Selecteur #clickbtn (ClickButton).
+inline QString tabBoxQss(bool active) {
+    if (active) {
+        return QString("#clickbtn { background:%1; border:1px solid %2; border-bottom:none;"
+                       " border-top-left-radius:8px; border-top-right-radius:8px; }")
+            .arg(theme::kSurface2)
+            .arg(rgba(theme::kAccent, 0.55));
+    }
+    return QString("#clickbtn { background:%1; border:1px solid %2; border-bottom:none;"
+                   " border-top-left-radius:8px; border-top-right-radius:8px; }")
+        .arg(theme::kBg)
+        .arg(rgba(theme::kBorder, 1.0));
+}
+
+// Segment de barre de progression (assistant).
+inline QString segQss(bool filled) {
+    return QString("QFrame { background:%1; border-radius:2px; }")
+        .arg(filled ? QString::fromUtf8(theme::kAccent) : QString::fromUtf8(theme::kSurface3));
+}
+
+// ===========================================================================
+// ClickButton — bouton cliquable custom : icone (optionnelle) + texte CENTRES via
+// un layout interne. On n'utilise PAS QPushButton::setIcon : sur un bouton LARGE,
+// Qt aligne l'icone a gauche et centre le texte separement -> gros trou (bug vu par
+// David). Pas de signal Qt custom (pas de moc), callback std::function ; les labels
+// enfants sont transparents a la souris -> le clic remonte toujours au ClickButton.
+// ===========================================================================
+class ClickButton : public QFrame {
+public:
+    explicit ClickButton(QWidget* parent = nullptr) : QFrame(parent) {
+        setObjectName(QStringLiteral("clickbtn"));
+        setAttribute(Qt::WA_StyledBackground, true);  // fond/bordure QSS reellement peints
+        setCursor(Qt::PointingHandCursor);
+        lay_ = new QHBoxLayout(this);
+        lay_->setContentsMargins(12, 9, 12, 9);
+        lay_->setSpacing(6);
+        iconLabel_ = new QLabel(this);
+        iconLabel_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        iconLabel_->setVisible(false);
+        textLabel_ = new QLabel(this);
+        textLabel_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        lay_->addWidget(iconLabel_);
+        lay_->addWidget(textLabel_);
+        setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+    }
+    void setMargins(int h, int v) { lay_->setContentsMargins(h, v, h, v); }
+    void setExpanding() {  // contenu centre sur toute la largeur (boutons "Ajouter")
+        lay_->insertStretch(0);
+        lay_->addStretch();
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    void setFillLeft() {  // pleine largeur, contenu calé a GAUCHE (lignes de sidebar)
+        lay_->addStretch();
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+    void setIconPix(const QPixmap& p) {
+        iconLabel_->setPixmap(p);
+        iconLabel_->setVisible(!p.isNull());
+    }
+    void setLabel(const QString& t, const char* color, int size, int weight) {
+        textLabel_->setText(t);
+        textLabel_->setStyleSheet(
+            QString("color:%1; font-size:%2px; font-weight:%3; background:transparent;")
+                .arg(QString::fromUtf8(color))
+                .arg(size)
+                .arg(weight));
+    }
+    void setBox(const QString& normal, const QString& hover = QString()) {
+        normalQss_ = normal;
+        hoverQss_ = hover;
+        setStyleSheet(normalQss_);
+    }
+    void setOnClick(std::function<void()> cb) { cb_ = std::move(cb); }
+
+protected:
+    void mouseReleaseEvent(QMouseEvent* e) override {
+        if (e->button() == Qt::LeftButton && rect().contains(e->position().toPoint()) && cb_) {
+            cb_();
+        }
+    }
+    void enterEvent(QEnterEvent*) override {
+        if (!hoverQss_.isEmpty()) {
+            setStyleSheet(hoverQss_);
+        }
+    }
+    void leaveEvent(QEvent*) override {
+        if (!hoverQss_.isEmpty()) {
+            setStyleSheet(normalQss_);
+        }
+    }
+
+private:
+    QHBoxLayout* lay_ = nullptr;
+    QLabel* iconLabel_ = nullptr;
+    QLabel* textLabel_ = nullptr;
+    std::function<void()> cb_;
+    QString normalQss_;
+    QString hoverQss_;
+};
+
+// ===========================================================================
+// ComboField — liste deroulante stylee (texte + chevron + QMenu). On n'utilise PAS
+// QComboBox (sa fleche se style via une image QSS fragile) : on reutilise nos
+// icones lucide. Pas de signal Qt custom (pas de moc) -> callback std::function.
+// ===========================================================================
+class ComboField : public QWidget {
+public:
+    explicit ComboField(QWidget* parent = nullptr) : QWidget(parent) {
+        setObjectName(QStringLiteral("combo"));
+        setCursor(Qt::PointingHandCursor);
+        auto* lay = new QHBoxLayout(this);
+        lay->setContentsMargins(10, 7, 10, 7);
+        lay->setSpacing(8);
+        text_ = new QLabel(this);
+        chevron_ = new QLabel(this);
+        chevron_->setPixmap(icon(Icon::ChevronDown, theme::kTextSecondary, 14));
+        lay->addWidget(text_, 1);
+        lay->addWidget(chevron_);
+        setStyleSheet(QString("#combo { background:%1; border:1px solid %2; border-radius:%3px; }"
+                              "#combo:hover { border:1px solid %4; }")
+                          .arg(theme::kSurface3)
+                          .arg(theme::kBorder)
+                          .arg(theme::kRadiusButton)
+                          .arg(rgba(theme::kAccent, 0.6)));
+        updateText();
+    }
+
+    void setOptions(QStringList opts, const QString& current) {
+        opts_ = std::move(opts);
+        value_ = current;
+        // Valeur stockee absente de la liste (ex : source supprimee) -> on la garde
+        // visible ET re-selectionnable, pour ne pas effacer silencieusement un reglage.
+        if (!value_.isEmpty() && !opts_.contains(value_)) {
+            opts_.prepend(value_);
+        }
+        updateText();
+    }
+    void setPlaceholder(const QString& ph) {
+        placeholder_ = ph;
+        updateText();
+    }
+    void setAllowEmpty(bool allow, const QString& emptyLabel) {
+        allowEmpty_ = allow;
+        emptyLabel_ = emptyLabel;
+    }
+    void setEmptyHint(const QString& hint) { emptyHint_ = hint; }
+    QString value() const { return value_; }
+    void setOnChange(std::function<void(const QString&)> cb) { cb_ = std::move(cb); }
+
+protected:
+    void mouseReleaseEvent(QMouseEvent*) override { openMenu(); }
+
+private:
+    void updateText() {
+        const bool empty = value_.isEmpty();
+        text_->setText(empty ? placeholder_ : value_);
+        text_->setStyleSheet(QString("color:%1; font-size:13px;")
+                                 .arg(empty ? theme::kTextTertiary : theme::kTextPrimary));
+    }
+    void openMenu() {
+        QMenu menu;
+        menu.setStyleSheet(menuQss());
+        if (allowEmpty_) {
+            QAction* a = menu.addAction(emptyLabel_);
+            a->setData(QString());
+        }
+        for (const QString& o : opts_) {
+            QAction* a = menu.addAction(o);
+            a->setData(o);
+        }
+        if (menu.actions().isEmpty()) {
+            QAction* a = menu.addAction(emptyHint_.isEmpty() ? QStringLiteral("—") : emptyHint_);
+            a->setEnabled(false);
+        }
+        QAction* chosen = menu.exec(mapToGlobal(rect().bottomLeft()));
+        if (chosen && chosen->isEnabled()) {
+            value_ = chosen->data().toString();
+            updateText();
+            if (cb_) {
+                cb_(value_);
+            }
+        }
+    }
+
+    QStringList opts_;
+    QString value_;
+    QString placeholder_;
+    QString emptyLabel_;
+    QString emptyHint_;
+    bool allowEmpty_ = false;
+    QLabel* text_ = nullptr;
+    QLabel* chevron_ = nullptr;
+    std::function<void(const QString&)> cb_;
+};
+
+// ===========================================================================
+// SliderRow — libelle + slider + valeur formatee (+ badge % optionnel).
+// ===========================================================================
+class SliderRow : public QWidget {
+public:
+    SliderRow(const QString& label, int min, int max, int value,
+              std::function<QString(int)> fmt, bool withBadge, QWidget* parent = nullptr)
+        : QWidget(parent), fmt_(std::move(fmt)) {
+        auto* lay = new QHBoxLayout(this);
+        lay->setContentsMargins(0, 0, 0, 0);
+        lay->setSpacing(12);
+        auto* lbl = new QLabel(label, this);
+        lbl->setStyleSheet(QString("color:%1; font-size:13px;").arg(theme::kTextSecondary));
+        lbl->setMinimumWidth(132);
+        slider_ = new QSlider(Qt::Horizontal, this);
+        slider_->setRange(min, max);
+        slider_->setValue(value);
+        slider_->setStyleSheet(accentSliderQss());
+        slider_->setCursor(Qt::PointingHandCursor);
+        valueLabel_ = new QLabel(this);
+        valueLabel_->setMinimumWidth(42);
+        valueLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        valueLabel_->setStyleSheet(
+            QString("color:%1; font-size:13px; font-weight:600;").arg(theme::kTextPrimary));
+        lay->addWidget(lbl);
+        lay->addWidget(slider_, 1);
+        lay->addWidget(valueLabel_);
+        if (withBadge) {
+            badge_ = new QLabel(this);
+            badge_->setAlignment(Qt::AlignCenter);
+            badge_->setFixedWidth(44);
+            badge_->setStyleSheet(badgeQss());
+            lay->addWidget(badge_);
+        }
+        updateValueText();
+        connect(slider_, &QSlider::valueChanged, this, [this](int v) {
+            updateValueText();
+            if (cb_) {
+                cb_(v);
+            }
+        });
+    }
+
+    int value() const { return slider_->value(); }
+    // Repositionne le slider par programme (declenche valueChanged -> label + cb).
+    // Sert au couplage min<=max (etape Rythme) sans contourner la logique de la ligne.
+    void setValue(int v) { slider_->setValue(v); }
+    void setBadge(int pct) {
+        if (badge_) {
+            badge_->setText(QString::number(pct) + QStringLiteral("%"));
+        }
+    }
+    void setOnChange(std::function<void(int)> cb) { cb_ = std::move(cb); }
+
+private:
+    void updateValueText() {
+        valueLabel_->setText(fmt_ ? fmt_(slider_->value()) : QString::number(slider_->value()));
+    }
+    QSlider* slider_ = nullptr;
+    QLabel* valueLabel_ = nullptr;
+    QLabel* badge_ = nullptr;
+    std::function<QString(int)> fmt_;
+    std::function<void(int)> cb_;
+};
+
+// ===========================================================================
+// Fabriques de petits widgets + helpers.
+// ===========================================================================
+inline QLabel* makeTitle(const QString& t) {
+    auto* l = new QLabel(t);
+    l->setWordWrap(true);
+    l->setStyleSheet(QString("color:%1; font-size:20px; font-weight:700;").arg(theme::kTextPrimary));
+    return l;
+}
+
+inline QLabel* makeSub(const QString& t) {
+    auto* l = new QLabel(t);
+    l->setWordWrap(true);
+    l->setStyleSheet(QString("color:%1; font-size:13px;").arg(theme::kTextSecondary));
+    return l;
+}
+
+inline QLabel* makeSectionLabel(const QString& t) {
+    auto* l = new QLabel(t);
+    l->setStyleSheet(QString("color:%1; font-size:10px; font-weight:700; letter-spacing:1px;")
+                         .arg(theme::kTextTertiary));
+    return l;
+}
+
+inline QLabel* makeHint(const QString& t) {
+    auto* l = new QLabel(t);
+    l->setWordWrap(true);
+    l->setStyleSheet(QString("color:%1; font-size:13px;").arg(theme::kTextTertiary));
+    return l;
+}
+
+inline QLabel* makeGroupHeader(const QString& t) {
+    auto* l = new QLabel(t);
+    l->setStyleSheet(QString("color:%1; font-size:13px; font-weight:600;").arg(theme::kTextSecondary));
+    return l;
+}
+
+// Bouton "Ajouter ..." pleine largeur : icone + texte CENTRES (ClickButton), fond
+// surface2 + bordure border, liseré accent au survol. Callback std::function.
+inline ClickButton* makeAddButton(const QString& text, std::function<void()> onClick) {
+    auto* b = new ClickButton();
+    b->setExpanding();
+    b->setMargins(12, 11);
+    b->setIconPix(icon(Icon::Plus, theme::kAccent, 15));
+    b->setLabel(text, theme::kAccent, 13, 600);
+    const QString base =
+        QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
+    b->setBox(base.arg(theme::kSurface2).arg(theme::kBorder),
+              base.arg(theme::kSurface2).arg(rgba(theme::kAccent, 0.6)));
+    b->setOnClick(std::move(onClick));
+    return b;
+}
+
+// Carte (fond surface2 + bordure arrondie). `obj` = objectName UNIQUE par type de
+// carte -> le selecteur #obj ne cascade pas vers les enfants (lecon Run 4).
+inline QWidget* makeCard(const QString& obj) {
+    auto* w = new QWidget();
+    w->setObjectName(obj);
+    w->setStyleSheet(QString("#%1 { background:%2; border:1px solid %3; border-radius:%4px; }")
+                         .arg(obj)
+                         .arg(theme::kSurface2)
+                         .arg(theme::kBorder)
+                         .arg(theme::kRadiusCard));
+    return w;
+}
+
+// Vide un layout en differant la destruction des widgets (hide + deleteLater).
+// IMPORTANT (cause racine d'un crash corrige en Run 5) : un widget peut declencher
+// sa propre destruction depuis son gestionnaire d'evenement (un onglet/bouton dont
+// le clic reconstruit la page) ; un `delete` immediat = use-after-free pendant que
+// Qt deroule encore l'event. deleteLater() repousse la destruction a la fin de
+// l'evenement courant ; hide() evite tout doublon a l'ecran entre-temps.
+inline void clearLayout(QLayout* lay) {
+    if (!lay) {
+        return;
+    }
+    while (QLayoutItem* item = lay->takeAt(0)) {
+        if (QWidget* w = item->widget()) {
+            w->hide();
+            w->deleteLater();
+        } else if (QLayout* child = item->layout()) {
+            clearLayout(child);
+        }
+        delete item;
+    }
+}
+
+// Pourcentage entier d'une valeur dans une somme (0 si somme nulle).
+inline int pctOf(int v, int sum) {
+    return sum > 0 ? static_cast<int>(std::lround(100.0 * v / sum)) : 0;
+}
+
+// ===========================================================================
+// Formats de valeur (unites universelles, non traduites).
+// ===========================================================================
+inline QString fmtSeconds(int v) { return QString::number(v) + QStringLiteral(" s"); }
+inline QString fmtDb(int v) { return QString::number(v) + QStringLiteral(" dB"); }
+inline QString fmtVad(int v) { return QString::number(v / 100.0, 'f', 2); }
+inline QString fmtSilence(int frames) {
+    return QString::number(frames * sd::ui::kFrameSeconds, 'f', 1) + QStringLiteral(" s");
+}
+
+}  // namespace sd::ui::widgets
