@@ -15,6 +15,7 @@
 #include <QWidget>
 
 #include <functional>
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
@@ -94,6 +95,10 @@ private:
     std::unique_ptr<sd::core::Director> director_;
 
     std::vector<DisplaySpeaker> displaySpeakers_;
+    // Seuils regles AU SLIDER, par id d'intervenant. Persistes ICI (pas dans le
+    // Director, qui est recree a chaque reload) -> survivent aux rafraichissements
+    // (manuel ET auto-refresh OBS). Reappliques au Director apres chaque reload.
+    std::map<std::string, double> thresholdOverrides_;
     bool configMode_ = false;
     bool autoEnabled_ = false;    // GARDE-FOU : pilotage auto OFF par defaut.
 

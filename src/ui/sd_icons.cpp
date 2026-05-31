@@ -63,8 +63,10 @@ QPixmap icon(Icon which, const QString& colorHex, int sizePx) {
         dpr = 1.0;
     }
 
+    // lround (pas troncature) pour un pixel-size net sur scale fractionnaire (150%).
+    const int px = static_cast<int>(std::lround(sizePx * dpr));
     QSvgRenderer renderer(QByteArray(svg.toUtf8()));
-    QPixmap pm(static_cast<int>(sizePx * dpr), static_cast<int>(sizePx * dpr));
+    QPixmap pm(px, px);
     pm.fill(Qt::transparent);
     QPainter painter(&pm);
     renderer.render(&painter);

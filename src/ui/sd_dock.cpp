@@ -504,6 +504,15 @@ void SdDock::reload() {
     }
     director_->setAutoEnabled(autoEnabled_);
 
+    // Reapplique les seuils regles au slider : le Director vient d'etre recree
+    // (donc remis aux defauts), mais les reglages live de l'utilisateur sont
+    // memorises dans thresholdOverrides_ -> on les restaure pour qu'un reload
+    // (manuel ou auto-refresh OBS) ne les perde pas. Les ids absents de la config
+    // courante sont ignores par setSpeakerThreshold (no-op).
+    for (const auto& kv : thresholdOverrides_) {
+        director_->setSpeakerThreshold(kv.first, kv.second);
+    }
+
     // Libelle de config (chemin exact + etat) — traduit + selectionnable.
     const QString path = QString::fromStdString(loaded.path);
     if (loaded.parsed) {
@@ -583,6 +592,7 @@ void SdDock::reload() {
         meter->setThresholdDb(initThresh);  // marqueur initial sur le vumetre
         const std::string sid = ds.id;
         connect(threshold, &QSlider::valueChanged, this, [this, sid, meter](int v) {
+            thresholdOverrides_[sid] = static_cast<double>(v);  // memorise (survit aux reloads)
             if (director_) {
                 director_->setSpeakerThreshold(sid, static_cast<double>(v));
             }
