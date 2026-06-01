@@ -513,20 +513,14 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     auto* thrR = new SliderRow(i18n("Rhythm.Threshold"), -60, 0, thr, fmtDb, false);
     thrR->setOnChange([this](int v) { cfg_.audio.voiceThresholdDb = v; });
     thrR->setInfo(i18n("Tip.Rhythm.Threshold"));
-    int vad = static_cast<int>(std::lround(cfg_.audio.vadThreshold * 100.0));
-    vad = std::max(0, std::min(100, vad));
-    auto* vadR = new SliderRow(i18n("Rhythm.Vad"), 0, 100, vad, fmtVad, false);
-    vadR->setOnChange([this](int v) { cfg_.audio.vadThreshold = v / 100.0; });
-    vadR->setInfo(i18n("Tip.Rhythm.Vad"));
-    // Clamp d'AFFICHAGE seulement (comme seuil/VAD) : on ne mute pas cfg_ en
-    // ouvrant le panneau. L'invariant releaseFrames>=1 est garanti au chargement
-    // par sd::core::fromJson (normalisation), pas par un effet de bord d'affichage.
+    // Clamp d'AFFICHAGE seulement (comme le seuil) : on ne mute pas cfg_ en ouvrant le
+    // panneau. L'invariant releaseFrames>=1 est garanti au chargement par
+    // sd::core::fromJson (normalisation), pas par un effet de bord d'affichage.
     int rel = std::max(1, std::min(40, cfg_.audio.releaseFrames));
     auto* silR = new SliderRow(i18n("Rhythm.SilenceDelay"), 1, 40, rel, fmtSilence, false);
     silR->setOnChange([this](int v) { cfg_.audio.releaseFrames = v; });
     silR->setInfo(i18n("Tip.Rhythm.SilenceDelay"));
     alay->addWidget(thrR);
-    alay->addWidget(vadR);
     alay->addWidget(silR);
     host->addWidget(audio);
 }

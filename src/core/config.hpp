@@ -34,7 +34,6 @@ struct AudioSettings {
     // (audio_util.hpp). Ce champ existe pour le rendre configurable plus tard ;
     // il n'est pas encore lu par le coeur.
     double volumeFloorDb = -60.0;
-    double vadThreshold = 0.75;  // voix vs bruit (reserve usage futur)
     int attackFrames = 2;        // frames au-dessus du seuil -> "parle"
     int releaseFrames = 8;       // frames sous le seuil -> "ne parle plus"
 };

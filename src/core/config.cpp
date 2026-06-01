@@ -37,7 +37,6 @@ std::string toJson(const Config& cfg) {
         {"audio",
          {{"voiceThresholdDb", cfg.audio.voiceThresholdDb},
           {"volumeFloorDb", cfg.audio.volumeFloorDb},
-          {"vadThreshold", cfg.audio.vadThreshold},
           {"attackFrames", cfg.audio.attackFrames},
           {"releaseFrames", cfg.audio.releaseFrames}}},
         {"timing",
@@ -93,7 +92,6 @@ Config fromJson(const std::string& text) {
         const auto& a = j.at("audio");
         cfg.audio.voiceThresholdDb = a.value("voiceThresholdDb", cfg.audio.voiceThresholdDb);
         cfg.audio.volumeFloorDb = a.value("volumeFloorDb", cfg.audio.volumeFloorDb);
-        cfg.audio.vadThreshold = a.value("vadThreshold", cfg.audio.vadThreshold);
         cfg.audio.attackFrames = a.value("attackFrames", cfg.audio.attackFrames);
         cfg.audio.releaseFrames = a.value("releaseFrames", cfg.audio.releaseFrames);
     }
