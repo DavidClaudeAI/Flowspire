@@ -493,9 +493,12 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     *minRowPtr = minR;
     *maxRowPtr = maxR;
 
-    auto* ppR = new SliderRow(i18n("Rhythm.PingPong"), 0, 30,
-                              static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
-                              fmtSeconds, false);
+    // Formateur special : a 0 (curseur tout a gauche), l'anti ping-pong est coupe
+    // -> on affiche "Desactive" au lieu de "0 s" pour que ce soit explicite.
+    auto* ppR = new SliderRow(
+        i18n("Rhythm.PingPong"), 0, 30,
+        static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
+        [](int v) { return v == 0 ? i18n("Rhythm.PingPongOff") : fmtSeconds(v); }, false);
     ppR->setOnChange([this](int v) { cfg_.timing.pingPongWindowSeconds = v; });
     ppR->setInfo(i18n("Tip.Rhythm.PingPong"));
     tlay->addWidget(minR);

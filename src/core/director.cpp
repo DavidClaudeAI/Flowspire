@@ -26,6 +26,7 @@ Director::Director(Config cfg, Rng rng)
 void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
+    ownerLeftAt_.clear();  // memoire anti ping-pong : repart de zero a chaque (re)config
     // On repart de zero puis on SEME les overrides depuis la config : le seuil
     // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
     // donc la config/JSON reste la source de verite au chargement. Un intervenant
@@ -83,35 +84,15 @@ std::string Director::drawSceneFromPool(const std::vector<SceneWeight>& pool) {
     return picked ? *picked : std::string{};
 }
 
-void Director::recordSpeakerChange(double now, const std::string& id) {
-    if (id.empty()) {
-        return;
+bool Director::isPingPongBounce(double now, const std::string& owner) const {
+    if (owner.empty() || cfg_.timing.pingPongWindowSeconds <= 0.0) {
+        return false;  // fenetre a 0 (ou pas de cible) -> anti ping-pong desactive
     }
-    if (history_.empty() || history_.back().second != id) {
-        history_.emplace_back(now, id);
+    const auto it = ownerLeftAt_.find(owner);
+    if (it == ownerLeftAt_.end()) {
+        return false;  // on n'a jamais quitte ce plan -> pas une navette
     }
-    pruneHistory(now);
-}
-
-void Director::pruneHistory(double now) {
-    const double limit = now - cfg_.timing.pingPongWindowSeconds;
-    while (!history_.empty() && history_.front().first < limit) {
-        history_.pop_front();
-    }
-}
-
-std::vector<std::string> Director::recentSpeakers(double now) const {
-    const double limit = now - cfg_.timing.pingPongWindowSeconds;
-    std::vector<std::string> result;
-    for (auto it = history_.rbegin(); it != history_.rend(); ++it) {
-        if (it->first < limit) {
-            break;
-        }
-        if (std::find(result.begin(), result.end(), it->second) == result.end()) {
-            result.push_back(it->second);
-        }
-    }
-    return result;
+    return (now - it->second) < cfg_.timing.pingPongWindowSeconds;
 }
 
 Decision Director::update(double now, const std::map<std::string, double>& levelsDb) {
@@ -141,7 +122,6 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     const std::string activeId = speaking.empty() ? std::string{} : speaking.front().first;
     if (!activeId.empty()) {
         lastSpeaker_ = activeId;
-        recordSpeakerChange(now, activeId);
     }
 
     const Context ctx = speaking.empty()
@@ -196,7 +176,15 @@ Decision Director::update(double now, const std::map<std::string, double>& level
                 opts.emplace_back("wide", cfg_.whenMultiple.wideShot);
             }
             const std::string* tag = weightedPick(opts, rngValue());
-            const std::string choice = tag ? *tag : std::string("loudest");
+            std::string choice = tag ? *tag : std::string("loudest");
+            // ANTI PING-PONG : si le tirage veut basculer vers le plus fort mais qu'on
+            // vient juste de le quitter (navette < pingPongWindowSeconds) et qu'on a un
+            // plan a tenir, on RESTE plutot que de le suivre. C'est ce qui empeche
+            // l'aller-retour frenetique entre deux personnes qui se chevauchent.
+            if (choice == "loudest" && loudest != currentOwner_ && !currentScene_.empty() &&
+                isPingPongBounce(now, loudest)) {
+                choice = "current";
+            }
             if (choice == "wide") {
                 cachedOwner_.clear();
                 cachedWide_ = true;
@@ -344,6 +332,11 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
 
 void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold,
                       Decision& out) {
+    // Anti ping-pong : on note l'instant ou l'on QUITTE le proprietaire courant (pour
+    // detecter ensuite un retour trop rapide vers lui = navette).
+    if (!currentOwner_.empty() && currentOwner_ != owner) {
+        ownerLeftAt_[currentOwner_] = now;
+    }
     out.switched = (scene != currentScene_);
     currentScene_ = scene;
     currentOwner_ = owner;

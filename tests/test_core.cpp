@@ -414,20 +414,6 @@ TEST_CASE("director : forceScene applique la scene et arme le verrou") {
     CHECK(d.scene == "Plateau");
 }
 
-TEST_CASE("director : memoire des derniers locuteurs (anti ping-pong)") {
-    Director dir(twoSpeakerConfig(), seq({0.0}));
-    dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});
-    dir.update(5.0, {{"B", mulToDb(0.9)}});
-    dir.update(5.1, {{"B", mulToDb(0.9)}});
-    const auto recent = dir.recentSpeakers(5.2);
-    REQUIRE(recent.size() == 2);
-    CHECK(recent[0] == "B");  // le plus recent d'abord
-    CHECK(recent[1] == "A");
-    // au-dela de la fenetre (12s), l'historique s'oublie
-    CHECK(dir.recentSpeakers(20.0).empty());
-}
-
 TEST_CASE("director : seuil par intervenant (slider) surpasse le seuil global") {
     Config c = twoSpeakerConfig();
     c.audio.voiceThresholdDb = -35.0;
@@ -652,4 +638,32 @@ TEST_CASE("director : setConfig seme l'override de seuil depuis le profil") {
     CHECK(dir.speakerThresholdDb("B") == doctest::Approx(-35.0));
     // Un intervenant inconnu retombe aussi sur le global (pas d'override orphelin).
     CHECK(dir.speakerThresholdDb("inconnu") == doctest::Approx(-35.0));
+}
+
+// --- Anti ping-pong (Run 12) : amortir la navette en contexte multiple ---
+
+TEST_CASE("director : l'anti ping-pong amortit la navette (contexte multiple)") {
+    // Deux personnes se chevauchent (toujours au-dessus du seuil) ; le plus fort
+    // alterne. rng=0 => le tirage choisit toujours "le plus fort". On verifie que,
+    // fenetre active, le retour vers une personne qu'on vient de quitter est amorti.
+    auto run = [](double window) -> std::string {
+        Config c = twoSpeakerConfig();
+        c.timing.minShotSeconds = 3.0;
+        c.timing.pingPongWindowSeconds = window;
+        Director dir(c, seq({0.0}));
+        const double hi = mulToDb(0.9);  // ~ -0.9 dB (le plus fort)
+        const double lo = mulToDb(0.5);  // ~ -6 dB
+        // Phase 1 : A le plus fort -> on finit par montrer A.
+        dir.update(0.0, {{"A", hi}, {"B", lo}});
+        dir.update(0.1, {{"A", hi}, {"B", lo}});
+        // Phase 2 : verrou ecoule, B devient le plus fort -> bascule A -> B.
+        dir.update(3.2, {{"A", lo}, {"B", hi}});
+        dir.update(3.3, {{"A", lo}, {"B", hi}});
+        // Phase 3 : verrou ecoule, A redevient le plus fort -> tentative de RETOUR.
+        dir.update(6.4, {{"A", hi}, {"B", lo}});
+        const Decision d = dir.update(6.5, {{"A", hi}, {"B", lo}});
+        return d.owner;
+    };
+    CHECK(run(12.0) == "B");  // fenetre active : on RESTE sur B (navette amortie)
+    CHECK(run(0.0) == "A");   // anti ping-pong off : on suit le plus fort -> retour A
 }
