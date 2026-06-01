@@ -26,6 +26,7 @@ Director::Director(Config cfg, Rng rng)
 void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
+    ownerLeftAt_.clear();  // memoire anti ping-pong : repart de zero a chaque (re)config
     // On repart de zero puis on SEME les overrides depuis la config : le seuil
     // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
     // donc la config/JSON reste la source de verite au chargement. Un intervenant
@@ -83,35 +84,15 @@ std::string Director::drawSceneFromPool(const std::vector<SceneWeight>& pool) {
     return picked ? *picked : std::string{};
 }
 
-void Director::recordSpeakerChange(double now, const std::string& id) {
-    if (id.empty()) {
-        return;
+bool Director::isPingPongBounce(double now, const std::string& owner) const {
+    if (owner.empty() || cfg_.timing.pingPongWindowSeconds <= 0.0) {
+        return false;  // fenetre a 0 (ou pas de cible) -> anti ping-pong desactive
     }
-    if (history_.empty() || history_.back().second != id) {
-        history_.emplace_back(now, id);
+    const auto it = ownerLeftAt_.find(owner);
+    if (it == ownerLeftAt_.end()) {
+        return false;  // on n'a jamais quitte ce plan -> pas une navette
     }
-    pruneHistory(now);
-}
-
-void Director::pruneHistory(double now) {
-    const double limit = now - cfg_.timing.pingPongWindowSeconds;
-    while (!history_.empty() && history_.front().first < limit) {
-        history_.pop_front();
-    }
-}
-
-std::vector<std::string> Director::recentSpeakers(double now) const {
-    const double limit = now - cfg_.timing.pingPongWindowSeconds;
-    std::vector<std::string> result;
-    for (auto it = history_.rbegin(); it != history_.rend(); ++it) {
-        if (it->first < limit) {
-            break;
-        }
-        if (std::find(result.begin(), result.end(), it->second) == result.end()) {
-            result.push_back(it->second);
-        }
-    }
-    return result;
+    return (now - it->second) < cfg_.timing.pingPongWindowSeconds;
 }
 
 Decision Director::update(double now, const std::map<std::string, double>& levelsDb) {
@@ -141,7 +122,6 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     const std::string activeId = speaking.empty() ? std::string{} : speaking.front().first;
     if (!activeId.empty()) {
         lastSpeaker_ = activeId;
-        recordSpeakerChange(now, activeId);
     }
 
     const Context ctx = speaking.empty()
@@ -254,6 +234,18 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     }
     decisionKey_ = key;
 
+    // 2bis) ANTI PING-PONG, re-evalue a CHAQUE tick (deterministe, donc hors
+    //   memoisation -> la fenetre est une VRAIE borne de temps, pas couplee au
+    //   temps-max). En contexte MULTIPLE, si la cible memoisee est le plus fort qu'on
+    //   vient de quitter (navette < pingPongWindowSeconds) et qu'on a un plan de
+    //   locuteur a tenir, on RESTE dessus. On vise directement currentOwner_ (pas via
+    //   "current") -> jamais de repli accidentel sur le plus fort.
+    if (ctx == Context::Multiple && !desiredWide && !currentOwner_.empty() &&
+        !speakingSorted_.empty() && desiredOwner == speakingSorted_.front() &&
+        desiredOwner != currentOwner_ && isPingPongBounce(now, desiredOwner)) {
+        desiredOwner = currentOwner_;
+    }
+
     // 3) Comparer la cible a l'etat courant et decider de basculer (ou non).
     const bool init = currentScene_.empty();
 
@@ -343,7 +335,13 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
 }
 
 void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold,
-                      Decision& out) {
+                      Decision& out, bool recordLeave) {
+    // Anti ping-pong : on note l'instant ou l'on QUITTE le proprietaire courant (pour
+    // detecter ensuite un retour trop rapide vers lui = navette). PAS sur un forcage
+    // (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto suivant.
+    if (recordLeave && !currentOwner_.empty() && currentOwner_ != owner) {
+        ownerLeftAt_[currentOwner_] = now;
+    }
     out.switched = (scene != currentScene_);
     currentScene_ = scene;
     currentOwner_ = owner;
@@ -356,7 +354,7 @@ void Director::commit(double now, const std::string& scene, const std::string& o
 Decision Director::forceScene(double now, const std::string& scene, const std::string& owner) {
     Decision out;
     out.context = lastContext_;
-    commit(now, scene, owner, /*hold=*/true, out);
+    commit(now, scene, owner, /*hold=*/true, out, /*recordLeave=*/false);
     decisionKey_.clear();  // un forçage reinitialise la situation memorisee
     return out;
 }
@@ -375,7 +373,7 @@ Decision Director::forceSpeaker(double now, const std::string& speakerId) {
     if (scene.empty()) {
         return out;  // pas de scene jouable pour cet intervenant.
     }
-    commit(now, scene, speakerId, /*hold=*/true, out);
+    commit(now, scene, speakerId, /*hold=*/true, out, /*recordLeave=*/false);
     decisionKey_.clear();  // un forçage reinitialise la situation memorisee
     return out;
 }

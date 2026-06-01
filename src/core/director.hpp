@@ -15,13 +15,14 @@
 //   - une bascule bloquee par le verrou est re-evaluee a chaque tick et
 //     s'execute des que le verrou tombe.
 //
-// Anti-nervosite : assuree aujourd'hui par le verrou temps-mini. La memoire des
-// derniers locuteurs (history_/recentSpeakers) est de la FONDATION exposee pour
-// un raffinement futur facon Gabin (biaiser le choix des plans selon qui vient
-// de parler) ; elle n'influence PAS encore la decision.
+// Anti-nervosite : deux garde-fous complementaires.
+//   - verrou temps-mini : empeche tout re-cut avant minShotSeconds.
+//   - anti ping-pong (ownerLeftAt_) : en contexte MULTIPLE (chevauchement), evite
+//     la navette frenetique entre deux personnes qui s'interrompent -> si basculer
+//     vers le plus fort reviendrait sur un plan qu'on vient de quitter (< fenetre
+//     pingPongWindowSeconds), on prefere RESTER. Fenetre a 0 => anti ping-pong off.
 #pragma once
 
-#include <deque>
 #include <functional>
 #include <map>
 #include <string>
@@ -85,9 +86,6 @@ public:
     // Intervenants qui "parlent" a ce tick, du plus fort au plus faible.
     std::vector<std::string> speakingIds() const { return speakingSorted_; }
 
-    // Ids distincts ayant parle dans la fenetre anti ping-pong (du + recent au + ancien).
-    std::vector<std::string> recentSpeakers(double now) const;
-
 private:
     const Speaker* findSpeaker(const std::string& id) const;
     double rngValue();  // borne le RNG injecte dans [0, 1)
@@ -101,10 +99,15 @@ private:
     // aucun plan large). Renseigne outScene/outOwner en cas de succes.
     bool resolvePlayable(const std::string& owner, bool wide, std::string& outScene,
                          std::string& outOwner);
+    // `recordLeave` (defaut true) : memorise l'instant ou l'on quitte le proprietaire
+    // courant (anti ping-pong). Les FORCAGES (Stream Deck/clavier) passent false : un
+    // choix manuel ne doit pas faire croire a une navette sur le retour auto suivant.
     void commit(double now, const std::string& scene, const std::string& owner, bool hold,
-                Decision& out);
-    void recordSpeakerChange(double now, const std::string& id);
-    void pruneHistory(double now);
+                Decision& out, bool recordLeave = true);
+    // Vrai si basculer vers `owner` serait une NAVETTE : on a quitte ce plan il y a
+    // moins de pingPongWindowSeconds. Toujours faux si la fenetre vaut 0 (anti
+    // ping-pong desactive) ou si owner est vide.
+    bool isPingPongBounce(double now, const std::string& owner) const;
 
     Config cfg_;
     Rng rng_;
@@ -127,7 +130,9 @@ private:
     std::string cachedOwner_;
     bool cachedWide_ = false;
 
-    std::deque<std::pair<double, std::string>> history_;  // (instant, id) des prises de parole
+    // Anti ping-pong : instant ou l'on a QUITTE chaque proprietaire de plan. Sert a
+    // detecter une bascule "retour" trop rapide (navette) -> on prefere alors rester.
+    std::map<std::string, double> ownerLeftAt_;
 };
 
 }  // namespace sd::core

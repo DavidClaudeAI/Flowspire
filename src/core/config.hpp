@@ -40,9 +40,12 @@ struct AudioSettings {
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
-    double minShotSeconds = 5.0;          // verrou anti-nervosite
-    double maxShotSeconds = 12.0;         // rafraichissement du plan
-    double pingPongWindowSeconds = 12.0;  // memoire des derniers locuteurs
+    double minShotSeconds = 5.0;   // verrou anti-nervosite
+    double maxShotSeconds = 12.0;  // rafraichissement du plan
+    // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
+    // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
+    // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
+    double pingPongWindowSeconds = 0.0;
 };
 
 // Contexte B : plusieurs parlent en meme temps (poids relatifs).
