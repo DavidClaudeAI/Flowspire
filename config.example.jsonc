@@ -1,15 +1,20 @@
-// StreamDirector — EXEMPLE de configuration (Run 3, pilotage réel des scènes).
+// StreamDirector — EXEMPLE de structure d'un profil (référence de lecture).
 //
-// COMMENT S'EN SERVIR (procédure exacte, à finaliser au début du Run 3) :
-//   1. Copie ce fichier en "config.json" (sans les commentaires // — le vrai
-//      JSON n'autorise pas les commentaires) à l'emplacement que le plugin
-//      lira. Emplacement prévu : %ProgramData%\obs-studio\plugins\streamdirector\config.json
-//      (Max confirmera/affichera le chemin exact quand le chargement sera codé.)
-//   2. Remplace les noms par TES vrais noms OBS :
-//        - "audioSource" = le nom EXACT de la source dans le mixer audio d'OBS
-//          (ex: "Mic/Aux", "Invité 1", "Desktop Audio"...). Respecte la casse.
-//        - "scene"       = le nom EXACT d'une scène OBS existante.
-//   3. Le plugin bascule sur une scène du pool de la personne qui parle.
+// IMPORTANT : tu n'as normalement JAMAIS besoin d'éditer ce fichier à la main.
+// Toute la configuration se fait dans OBS via l'assistant et les paramètres
+// avancés du plugin. Ce fichier est fourni pour DOCUMENTER la structure JSON
+// d'un profil (utile pour comprendre / inspecter tes fichiers).
+//
+// Où vivent les vrais profils (un fichier <id>.json par profil + index.json) :
+//   Windows : %APPDATA%\obs-studio\plugin_config\streamdirector\profiles\
+//   macOS   : ~/Library/Application Support/obs-studio/plugin_config/streamdirector/profiles/
+//   Linux   : ~/.config/obs-studio/plugin_config/streamdirector/profiles/
+// (Le vrai JSON n'autorise pas les commentaires // : ils sont ici pour l'explication.)
+//
+// Les noms doivent correspondre EXACTEMENT à OBS :
+//   - "audioSource" = nom EXACT de la source dans le mixer audio (ex: "Mic/Aux",
+//     "Invité 1", "Desktop Audio"...). Respecte la casse.
+//   - "scene"       = nom EXACT d'une scène OBS existante.
 //
 // LES POIDS (rappel) : ce sont des proportions relatives, PAS des pourcentages.
 // gros plan 90 / plan large 10 => ~90% du temps le gros plan. Le % est calculé
@@ -54,7 +59,6 @@
   // --- Détection audio (défauts Gabin ; ne touche que si besoin) ---
   "audio": {
     "voiceThresholdDb": -35.0,  // seuil "parle" : plus haut = moins sensible
-    "vadThreshold": 0.75,       // réservé (voix vs bruit)
     "attackFrames": 2,          // frames au-dessus du seuil avant "parle"
     "releaseFrames": 8          // frames sous le seuil avant "ne parle plus"
   },
@@ -63,7 +67,8 @@
   "timing": {
     "minShotSeconds": 5.0,           // temps mini sur un plan (anti-nervosité)
     "maxShotSeconds": 12.0,          // au-delà : on rafraîchit le plan (variété)
-    "pingPongWindowSeconds": 12.0    // mémoire anti ping-pong
+    "pingPongWindowSeconds": 0.0     // anti ping-pong : 0 = désactivé (opt-in) ;
+                                     // n'agit qu'AU-DESSUS du temps mini
   },
 
   // --- Quand PLUSIEURS parlent en même temps (tirage pondéré) ---
