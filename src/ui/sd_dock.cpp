@@ -225,9 +225,11 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 
     // --- Bandeau "mise a jour disponible" (masque ; revele par startUpdateCheck) ---
     updateBanner_ = new QWidget();
+    // rgba() (helper QSS partage) : Qt lit un hex 8 chiffres comme #AARRGGBB -> il NE faut
+    // PAS passer les jetons translucides (#RRGGBBAA) tels quels (cf. statusBadge_).
     updateBanner_->setStyleSheet(QString("background:%1; border:1px solid %2; border-radius:%3px;")
-                                     .arg(th::kAccentFill)
-                                     .arg(th::kAccentBorder)
+                                     .arg(rgba(th::kAccent, 0.15))
+                                     .arg(rgba(th::kAccent, 0.5))
                                      .arg(th::kRadiusButton));
     auto* updateLay = new QHBoxLayout(updateBanner_);
     updateLay->setContentsMargins(10, 6, 10, 6);
@@ -626,7 +628,6 @@ void SdDock::startUpdateCheck() {
         updateBannerLabel_->setText(
             i18n("Update.Available").arg(QString::fromStdString(info.latestVersion)));
         const QString url = QString::fromStdString(info.releaseUrl);
-        disconnect(updateBannerButton_, &QPushButton::clicked, nullptr, nullptr);
         connect(updateBannerButton_, &QPushButton::clicked, this,
                 [url]() { QDesktopServices::openUrl(QUrl(url)); });
         updateBanner_->setVisible(true);

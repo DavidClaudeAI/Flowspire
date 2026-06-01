@@ -9,8 +9,11 @@
 
 #include <nlohmann/json.hpp>
 
+#include <util/base.h>  // LOG_WARNING
+
 #include "core/version.hpp"
 #include "obs/obs_file_store.hpp"
+#include "plugin-support.h"  // obs_log
 
 namespace sd::ui {
 
@@ -39,6 +42,11 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion,
     request.setRawHeader("User-Agent", "StreamDirector");
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
+    // Suivre les redirections 301 : indispensable apres un renommage du depot (l'API
+    // GitHub redirige l'ancienne URL). C'est le defaut en Qt 6, explicite ici pour
+    // verrouiller l'intention "robuste au renommage" et survivre a un changement de defaut.
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
+                         QNetworkRequest::NoLessSafeRedirectPolicy);
 
     QNetworkReply* reply = nam->get(request);
     QObject::connect(reply, &QNetworkReply::finished, ctx,
@@ -49,9 +57,14 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion,
                              try {
                                  const auto json = nlohmann::json::parse(body);
                                  const std::string tag = json.value("tag_name", std::string{});
-                                 if (sd::core::isNewerVersion(tag, currentVersion)) {
+                                 const auto parsed = sd::core::parseSemVer(tag);
+                                 if (parsed && sd::core::isNewerVersion(tag, currentVersion)) {
                                      info.updateAvailable = true;
-                                     info.latestVersion = tag;
+                                     // Version normalisee "M.m.p" (sans prefixe 'v' eventuel) ->
+                                     // affichage coherent avec le label "StreamDirector v%1".
+                                     info.latestVersion = std::to_string(parsed->major) + "." +
+                                                          std::to_string(parsed->minor) + "." +
+                                                          std::to_string(parsed->patch);
                                      info.releaseUrl =
                                          json.value("html_url", std::string{kReleasesPageUrl});
                                  }
@@ -80,7 +93,12 @@ void setUpdateCheckEnabled(bool enabled) {
     sd::obsbridge::ObsFileStore store;
     nlohmann::json json;
     json["checkOnStartup"] = enabled;
-    store.write(kPrefsFile, json.dump(2));  // best-effort : un echec disque est sans gravite
+    const auto res = store.write(kPrefsFile, json.dump(2));
+    // Reglage de vie privee : si l'ecriture rate, la case ne persistera pas -> on TRACE
+    // (sinon le choix utilisateur serait perdu silencieusement). Pas de pop-up (non bloquant).
+    if (!res.ok) {
+        obs_log(LOG_WARNING, "echec d'ecriture de %s : %s", kPrefsFile, res.error.c_str());
+    }
 }
 
 }  // namespace sd::ui
