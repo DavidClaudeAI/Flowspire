@@ -1,6 +1,6 @@
 // StreamDirector — assistant de configuration visuel (implementation, Run 5/6).
 // Voir sd_assistant.hpp pour le contrat. Fenetre modale frameless, 6 ecrans
-// (QStackedWidget), fidele a la maquette Pencil. Ecrit le config.json a la fin.
+// (QStackedWidget), fidele a la maquette Pencil. Ecrit le profil (cree ou actif) a la fin.
 //
 // Run 6 : les 4 etapes editables (Intervenants / Scenes / Plan large / Rythme)
 // sont desormais rendues par les PANNEAUX PARTAGES (sd_config_panels), eux-memes
@@ -30,7 +30,6 @@
 #include <vector>
 
 #include "core/config.hpp"
-#include "obs/config_loader.hpp"
 #include "obs/obs_inventory.hpp"
 #include "obs/profiles_store.hpp"
 #include "ui/sd_config_panels.hpp"
@@ -455,11 +454,11 @@ void SdAssistant::Impl::finish() {
     }
     // Ecriture via le magasin de profils. Deux cas :
     //  - CREATION (newProfileName non vide) : on cree le profil + on l'active ICI, A
-    //    LA FIN seulement. Avant ça, rien n'a touche config.json -> le dock n'affiche
-    //    pas un profil vide "actif" pendant le remplissage (retour David).
+    //    LA FIN seulement. Avant ça, rien n'a ete ecrit -> le dock n'affiche pas un
+    //    profil vide "actif" pendant le remplissage (retour David).
     //  - EDITION (nom vide, compat) : on enregistre le profil ACTIF.
-    // saveConfig/createProfile ecrivent config.json (copie vivante) ET le fichier du
-    // profil, en phase. Le catalogue est garanti par le constructeur (loadList).
+    // createProfile/saveActive ecrivent le SEUL fichier du profil (source de verite
+    // lue par le moteur). Le catalogue est garanti par le constructeur (loadActiveConfig).
     sd::profiles::StoreResult res;
     if (!newProfileName.isEmpty()) {
         res = sd::profiles::createProfile(newProfileName.toStdString(), sanitizedConfig(working),
@@ -490,16 +489,19 @@ SdAssistant::SdAssistant(QWidget* parent, const QString& newProfileName)
     // Inventaire OBS (modale -> listes stables pendant toute la session).
     d_->audioSources = sd::obsbridge::audioSourceNames();
     d_->scenes = sd::obsbridge::sceneNames();
-    // Garantit qu'un catalogue de profils existe (migre l'existant en profil n.1 au
-    // premier usage) -> createProfile/saveActive (a la fin) ont un catalogue valide.
-    sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     // CREATION (nom fourni) -> on part d'une config VIERGE. EDITION (nom vide) -> on
-    // repart de la config existante (profil actif).
+    // repart du profil ACTIF. loadActiveConfig garantit au passage l'existence du
+    // catalogue (migration au premier usage) -> createProfile/saveActive (a la fin)
+    // ont un catalogue valide.
     if (newProfileName.isEmpty()) {
-        const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
-        if (loaded.parsed) {
+        const sd::profiles::ActiveConfigResult loaded =
+            sd::profiles::loadActiveConfig(i18n("Profiles.DefaultName").toStdString());
+        if (loaded.ok) {
             d_->working = loaded.config;
         }
+    } else {
+        // Creation : on s'assure tout de meme que le catalogue existe.
+        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     }
 
     // Panneaux d'edition partages : editent d_->working par reference.

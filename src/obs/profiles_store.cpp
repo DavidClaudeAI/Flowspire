@@ -1,149 +1,169 @@
-// StreamDirector — pont OBS : magasin de profils (implementation IO).
+// StreamDirector — magasin de profils (implementation : gestion + IO via FileStore).
+// OBS-free : n'inclut aucun entete OBS, parle uniquement au FileStore injecte.
 #include "obs/profiles_store.hpp"
 
-#include <obs-module.h>
-#include <util/platform.h>
-
+#include <algorithm>
 #include <exception>
+#include <limits>
 #include <string>
+#include <vector>
 
 #include "core/config.hpp"
 #include "core/profiles.hpp"
-#include "obs/config_loader.hpp"
-#include "obs/fs_atomic.hpp"
 
 namespace sd::profiles {
 
 namespace {
+const std::string kIndexRel = "profiles/index.json";
+const std::string kConfigRel = "config.json";
+const std::string kProfilesDir = "profiles";
+const std::string kJsonExt = ".json";
 
-// Resout %config-plugin%/<rel> (chemin malloc'd par OBS -> a liberer).
-std::string resolvePath(const std::string& rel) {
-    std::string out;
-    char* p = obs_module_config_path(rel.c_str());
-    if (p) {
-        out = p;
-        bfree(p);
-    }
-    return out;
+std::string profileRel(int id) {
+    return "profiles/" + std::to_string(id) + ".json";
 }
 
-std::string indexPath() {
-    return resolvePath("profiles/index.json");
-}
-
-std::string profilePath(int id) {
-    return resolvePath("profiles/" + std::to_string(id) + ".json");
-}
-
-// Lit un fichier texte UTF-8. false si absent/illisible (out inchange).
-bool readFile(const std::string& path, std::string& out) {
-    if (path.empty() || !os_file_exists(path.c_str())) {
-        return false;
+// Id d'un fichier "profiles/<n>.json" si <n> est un entier CANONIQUE (chiffres purs,
+// sans zero de tete, dans la plage int), sinon -1. La verification du round-trip
+// (to_string(id) == stem) ecarte "007.json" (-> 7) dont le fichier reel serait
+// introuvable via profileRel(7), et la garde de taille evite un substr qui
+// deborderait sur un nom plus court que l'extension.
+int parseProfileFileId(const std::string& filename) {
+    if (filename.size() <= kJsonExt.size()) {
+        return -1;
     }
-    char* raw = os_quick_read_utf8_file(path.c_str());
-    if (!raw) {
-        return false;
+    const std::string stem = filename.substr(0, filename.size() - kJsonExt.size());
+    if (stem.empty() ||
+        !std::all_of(stem.begin(), stem.end(), [](char c) { return c >= '0' && c <= '9'; })) {
+        return -1;
     }
-    out = raw;
-    bfree(raw);
-    return true;
+    int id = 0;
+    try {
+        id = std::stoi(stem);
+    } catch (const std::exception&) {
+        return -1;  // hors plage int
+    }
+    if (std::to_string(id) != stem) {
+        return -1;  // nom non canonique (zeros de tete) -> profileRel ne le retrouverait pas
+    }
+    return id;
 }
+}  // namespace
 
-// Ecrit l'index sur disque (atomique).
-sd::obsbridge::FsResult writeIndexFile(const sd::core::ProfileIndex& idx) {
-    const std::string path = indexPath();
-    if (path.empty()) {
-        return {false, "chemin du catalogue de profils introuvable"};
-    }
-    return sd::obsbridge::writeUtf8Atomic(path, sd::core::profileIndexToJson(idx));
-}
-
-// Ecrit le fichier d'un profil (= une Config brute) sur disque (atomique).
-sd::obsbridge::FsResult writeProfileFile(int id, const sd::core::Config& cfg) {
-    const std::string path = profilePath(id);
-    if (path.empty()) {
-        return {false, "chemin de fichier de profil introuvable"};
-    }
-    return sd::obsbridge::writeUtf8Atomic(path, sd::core::toJson(cfg));
-}
-
-// Charge l'index. found=false si index.json absent (-> migration a faire).
-// ok=false avec error si present mais illisible (-> on N'ECRASE PAS, on remonte
-// l'erreur pour ne pas detruire un catalogue recuperable).
-struct RawIndex {
-    sd::core::ProfileIndex index;
-    bool found = false;
-    bool ok = false;
-    std::string error;
-};
-RawIndex loadIndexRaw() {
-    RawIndex r;
-    const std::string path = indexPath();
-    if (path.empty()) {
-        r.error = "chemin du catalogue de profils introuvable";
-        return r;
-    }
+bool ProfileStore::readConfig(const std::string& rel, sd::core::Config& out) const {
     std::string text;
-    if (!readFile(path, text)) {
-        return r;  // absent : found=false, ok=false, pas d'erreur
+    if (!store_.read(rel, text)) {
+        return false;
+    }
+    try {
+        out = sd::core::fromJson(text);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+bool ProfileStore::readIndex(const std::string& rel, sd::core::ProfileIndex& out) const {
+    std::string text;
+    if (!store_.read(rel, text)) {
+        return false;
+    }
+    try {
+        out = sd::core::profileIndexFromJson(text);
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+sd::obsbridge::FsResult ProfileStore::writeIndex(const sd::core::ProfileIndex& idx) {
+    return store_.write(kIndexRel, sd::core::profileIndexToJson(idx));
+}
+
+sd::obsbridge::FsResult ProfileStore::writeProfile(int id, const sd::core::Config& cfg) {
+    return store_.write(profileRel(id), sd::core::toJson(cfg));
+}
+
+ProfileStore::RawIndex ProfileStore::loadIndexRaw() const {
+    RawIndex r;
+    if (!store_.exists(kIndexRel)) {
+        return r;  // absent : found=false, ok=false (-> recuperation/migration)
     }
     r.found = true;
-    try {
-        r.index = sd::core::profileIndexFromJson(text);
+    if (readIndex(kIndexRel, r.index)) {
         r.ok = true;
-    } catch (const std::exception& e) {
-        r.error = std::string("catalogue de profils illisible : ") + e.what();
+    } else {
+        r.error = "catalogue de profils illisible";
     }
     return r;
 }
 
-// Premiere utilisation : cree le dossier profiles/ avec un profil unique a partir
-// du config.json existant (ou des valeurs par defaut), marque actif.
-ListResult migrate(const std::string& defaultName) {
+bool ProfileStore::reconstructFromScan(const std::string& defaultName,
+                                       sd::core::ProfileIndex& out) const {
+    std::vector<int> ids;
+    for (const auto& f : store_.list(kProfilesDir, kJsonExt)) {
+        const int id = parseProfileFileId(f);  // ecarte index.json + noms non canoniques
+        if (id >= 0) {
+            ids.push_back(id);
+        }
+    }
+    if (ids.empty()) {
+        return false;
+    }
+    std::sort(ids.begin(), ids.end());
+    out = sd::core::ProfileIndex{};
+    for (const int id : ids) {
+        // Noms perdus avec l'index : on regenere des noms synthetiques (le contenu
+        // des profils, lui, est intact). L'utilisateur pourra renommer ensuite.
+        out.profiles.push_back({id, defaultName + " " + std::to_string(id)});
+    }
+    out.activeId = ids.front();
+    const int maxId = ids.back();
+    out.nextId = (maxId < std::numeric_limits<int>::max()) ? maxId + 1 : maxId;
+    return true;
+}
+
+void ProfileStore::reconcileNextIdWithFiles(sd::core::ProfileIndex& idx) const {
+    // Rehausse nextId au-dessus de TOUT fichier profiles/<n>.json present sur disque
+    // (pas seulement ceux references par l'index). Indispensable apres une recuperation
+    // depuis un index .bak PERIME : ce .bak peut ignorer un profil cree plus tard dont
+    // le fichier <id>.json existe encore -> sans ce rehaussement, un prochain
+    // createProfile reattribuerait cet id et ECRASERAIT le fichier orphelin.
+    for (const auto& f : store_.list(kProfilesDir, kJsonExt)) {
+        const int id = parseProfileFileId(f);
+        if (id >= 0 && id >= idx.nextId && id < std::numeric_limits<int>::max()) {
+            idx.nextId = id + 1;
+        }
+    }
+}
+
+ListResult ProfileStore::migrate(const std::string& defaultName) {
     ListResult res;
 
-    // Config de depart = config.json existant s'il est lisible, sinon defauts.
+    // Config de depart = ancien config.json s'il est lisible, sinon defauts codes.
     sd::core::Config base;
-    const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
-    if (loaded.parsed) {
-        base = loaded.config;
-    }
+    readConfig(kConfigRel, base);  // ignore l'echec : base garde les defauts
 
-    // Catalogue a un seul profil, actif.
     sd::core::ProfileIndex idx;
     const int id = sd::core::addProfile(idx, defaultName);  // id = 1
     idx.activeId = id;
 
-    const sd::obsbridge::FsResult wp = writeProfileFile(id, base);
+    const sd::obsbridge::FsResult wp = writeProfile(id, base);
     if (!wp.ok) {
         res.error = wp.error;
         return res;
     }
-    const sd::obsbridge::FsResult wi = writeIndexFile(idx);
+    const sd::obsbridge::FsResult wi = writeIndex(idx);
     if (!wi.ok) {
         res.error = wi.error;
         return res;
     }
-    // S'assurer que config.json (copie vivante) existe. On ne le REECRIT JAMAIS
-    // s'il existe deja (meme corrompu) -> aucun ecrasement d'un fichier
-    // potentiellement recuperable ; il se resynchronisera au prochain
-    // enregistrement.
-    if (!loaded.fileFound) {
-        const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(base);
-        if (!sc.saved) {
-            res.error = sc.error;
-            return res;
-        }
-    }
-
     res.index = idx;
     res.ok = true;
     return res;
 }
 
-}  // namespace
-
-ListResult loadList(const std::string& defaultName) {
+ListResult ProfileStore::loadList(const std::string& defaultName) {
     const RawIndex raw = loadIndexRaw();
     if (raw.ok) {
         ListResult res;
@@ -151,32 +171,72 @@ ListResult loadList(const std::string& defaultName) {
         res.ok = true;
         return res;
     }
-    if (raw.found) {  // present mais illisible : on remonte l'erreur (pas de migration destructrice)
+
+    // Index illisible (absent OU corrompu). On recupere SANS perte, dans l'ordre :
+    //   1) .bak de l'index (avant-derniere version valide) -> on heale le fichier.
+    sd::core::ProfileIndex recovered;
+    if (readIndex(kIndexRel + ".bak", recovered)) {
+        // Le .bak peut etre anterieur a une creation de profil : on rehausse nextId
+        // au-dessus des fichiers reellement presents pour ne pas reattribuer (donc
+        // ecraser) l'id d'un profil orphelin encore sur disque.
+        reconcileNextIdWithFiles(recovered);
+        writeIndex(recovered);  // best-effort : remet un index.json sain
         ListResult res;
-        res.error = raw.error.empty() ? "catalogue de profils illisible" : raw.error;
+        res.index = recovered;
+        res.ok = true;
         return res;
     }
-    return migrate(defaultName);  // absent : premiere utilisation
+    //   2) scan des fichiers profiles/<n>.json (les contenus existent toujours).
+    if (reconstructFromScan(defaultName, recovered)) {
+        writeIndex(recovered);
+        ListResult res;
+        res.index = recovered;
+        res.ok = true;
+        return res;
+    }
+    //   3) rien sur disque -> premiere utilisation : migration.
+    return migrate(defaultName);
 }
 
-ConfigResult loadProfile(int id) {
+ConfigResult ProfileStore::loadProfile(int id) {
     ConfigResult res;
-    const std::string path = profilePath(id);
-    std::string text;
-    if (!readFile(path, text)) {
-        res.error = "fichier de profil introuvable";
+    const std::string rel = profileRel(id);
+    if (readConfig(rel, res.config)) {
+        res.ok = true;
         return res;
     }
-    try {
-        res.config = sd::core::fromJson(text);
+    // Fichier absent ou illisible : recuperation depuis le .bak. LECTURE SEULE : on
+    // ne reecrit PAS le fichier courant. Pourquoi : l'ecriture atomique ferait basculer
+    // le contenu corrompu courant dans le .bak (os_safe_replace), detruisant le seul bon
+    // filet. On preserve donc le .bak intact ; le fichier sera regenere au prochain
+    // saveActive normal. Un "load" ne doit pas non plus provoquer d'ecriture surprise.
+    if (readConfig(rel + ".bak", res.config)) {
         res.ok = true;
-    } catch (const std::exception& e) {
-        res.error = e.what();
+        return res;
     }
+    res.error = "fichier de profil introuvable ou illisible";
     return res;
 }
 
-StoreResult setActive(int id) {
+ActiveConfigResult ProfileStore::loadActiveConfig(const std::string& defaultName) {
+    ActiveConfigResult res;
+    const ListResult list = loadList(defaultName);
+    if (!list.ok) {
+        res.error = list.error.empty() ? "catalogue de profils illisible" : list.error;
+        return res;
+    }
+    const ConfigResult pc = loadProfile(list.index.activeId);
+    if (!pc.ok) {
+        res.error = pc.error;
+        return res;
+    }
+    res.config = pc.config;
+    res.activeId = list.index.activeId;
+    res.ok = true;
+    return res;
+}
+
+StoreResult ProfileStore::setActive(int id) {
     StoreResult res;
     const RawIndex raw = loadIndexRaw();
     if (!raw.ok) {
@@ -188,25 +248,10 @@ StoreResult setActive(int id) {
         res.error = "profil introuvable";
         return res;
     }
-    const ConfigResult pc = loadProfile(id);
-    if (!pc.ok) {
-        res.error = pc.error;
-        return res;
-    }
-    // config.json (copie vivante lue par le moteur) puis index (etiquette du profil
-    // actif). NOTE robustesse : ces deux fichiers ne sont PAS ecrits atomiquement
-    // ensemble. Une coupure (panne/kill) dans la micro-fenetre entre les deux laisse
-    // config.json et index.activeId desynchronises (le moteur tourne sur le bon
-    // contenu, mais l'etiquette "actif" peut differer). Correctif racine prevu :
-    // reconciliation au chargement (config.json republie depuis le profil actif) ->
-    // suivi dans la dette technique. Declencheur = power-loss en pleine bascule (rare).
-    const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(pc.config);
-    if (!sc.saved) {
-        res.error = sc.error;
-        return res;
-    }
+    // UNE seule ecriture : l'etiquette "actif" dans l'index. Le moteur lira ensuite
+    // <id>.json directement -> aucune copie de contenu, aucune desync possible.
     sd::core::setActiveProfile(idx, id);
-    const sd::obsbridge::FsResult wi = writeIndexFile(idx);
+    const sd::obsbridge::FsResult wi = writeIndex(idx);
     if (!wi.ok) {
         res.error = wi.error;
         return res;
@@ -216,26 +261,17 @@ StoreResult setActive(int id) {
     return res;
 }
 
-StoreResult saveActive(const sd::core::Config& cfg) {
+StoreResult ProfileStore::saveActive(const sd::core::Config& cfg) {
     StoreResult res;
     const RawIndex raw = loadIndexRaw();
     if (!raw.ok) {
         res.error = raw.error.empty() ? "catalogue de profils introuvable" : raw.error;
         return res;
     }
-    // Fichier du profil actif (snapshot CANONIQUE) D'ABORD, puis config.json (copie
-    // vivante derivee, lue par le moteur). Si une coupure survient entre les deux, le
-    // snapshot du profil porte deja les dernieres modifications : elles sont donc
-    // RECUPERABLES (au prochain rechargement/bascule, le profil les rejoue) plutot que
-    // perdues. L'ordre inverse perdrait l'edition la plus recente.
-    const sd::obsbridge::FsResult wp = writeProfileFile(raw.index.activeId, cfg);
+    // Ecrit le SEUL fichier du profil actif (source de verite lue par le moteur).
+    const sd::obsbridge::FsResult wp = writeProfile(raw.index.activeId, cfg);
     if (!wp.ok) {
         res.error = wp.error;
-        return res;
-    }
-    const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(cfg);
-    if (!sc.saved) {
-        res.error = sc.error;
         return res;
     }
     res.ok = true;
@@ -243,7 +279,8 @@ StoreResult saveActive(const sd::core::Config& cfg) {
     return res;
 }
 
-StoreResult createProfile(const std::string& name, const sd::core::Config& cfg, bool makeActive) {
+StoreResult ProfileStore::createProfile(const std::string& name, const sd::core::Config& cfg,
+                                        bool makeActive) {
     StoreResult res;
     const RawIndex raw = loadIndexRaw();
     if (!raw.ok) {
@@ -252,20 +289,17 @@ StoreResult createProfile(const std::string& name, const sd::core::Config& cfg, 
     }
     sd::core::ProfileIndex idx = raw.index;
     const int id = sd::core::addProfile(idx, name);
-    const sd::obsbridge::FsResult wp = writeProfileFile(id, cfg);
+    // Contenu D'ABORD, puis l'index (commit). Une coupure entre les deux laisse un
+    // fichier orphelin inoffensif (non reference) plutot qu'une entree sans contenu.
+    const sd::obsbridge::FsResult wp = writeProfile(id, cfg);
     if (!wp.ok) {
         res.error = wp.error;
         return res;
     }
     if (makeActive) {
         sd::core::setActiveProfile(idx, id);
-        const sd::obsbridge::ConfigSaveResult sc = sd::obsbridge::saveConfig(cfg);
-        if (!sc.saved) {
-            res.error = sc.error;
-            return res;
-        }
     }
-    const sd::obsbridge::FsResult wi = writeIndexFile(idx);
+    const sd::obsbridge::FsResult wi = writeIndex(idx);
     if (!wi.ok) {
         res.error = wi.error;
         return res;
@@ -275,7 +309,7 @@ StoreResult createProfile(const std::string& name, const sd::core::Config& cfg, 
     return res;
 }
 
-StoreResult duplicateProfile(int id, const std::string& copySuffix) {
+StoreResult ProfileStore::duplicateProfile(int id, const std::string& copySuffix) {
     StoreResult res;
     const RawIndex raw = loadIndexRaw();
     if (!raw.ok) {
@@ -295,12 +329,12 @@ StoreResult duplicateProfile(int id, const std::string& copySuffix) {
         return res;
     }
     const int newId = sd::core::addProfile(idx, desired);  // unicite geree par core
-    const sd::obsbridge::FsResult wp = writeProfileFile(newId, pc.config);
+    const sd::obsbridge::FsResult wp = writeProfile(newId, pc.config);
     if (!wp.ok) {
         res.error = wp.error;
         return res;
     }
-    const sd::obsbridge::FsResult wi = writeIndexFile(idx);
+    const sd::obsbridge::FsResult wi = writeIndex(idx);
     if (!wi.ok) {
         res.error = wi.error;
         return res;
@@ -310,7 +344,7 @@ StoreResult duplicateProfile(int id, const std::string& copySuffix) {
     return res;
 }
 
-StoreResult renameProfile(int id, const std::string& name) {
+StoreResult ProfileStore::renameProfile(int id, const std::string& name) {
     StoreResult res;
     const RawIndex raw = loadIndexRaw();
     if (!raw.ok) {
@@ -322,14 +356,14 @@ StoreResult renameProfile(int id, const std::string& name) {
         res.error = "profil introuvable";
         return res;
     }
-    const sd::obsbridge::FsResult wi = writeIndexFile(idx);
+    const sd::obsbridge::FsResult wi = writeIndex(idx);
     res.ok = wi.ok;
     res.error = wi.error;
     res.id = id;
     return res;
 }
 
-StoreResult removeProfile(int id) {
+StoreResult ProfileStore::removeProfile(int id) {
     StoreResult res;
     const RawIndex raw = loadIndexRaw();
     if (!raw.ok) {
@@ -341,16 +375,15 @@ StoreResult removeProfile(int id) {
         res.error = "suppression refusee (profil actif, dernier restant, ou introuvable)";
         return res;
     }
-    const sd::obsbridge::FsResult wi = writeIndexFile(idx);
+    const sd::obsbridge::FsResult wi = writeIndex(idx);
     if (!wi.ok) {
         res.error = wi.error;
         return res;
     }
-    // Best-effort : retire le fichier orphelin (plus reference par l'index).
-    const std::string path = profilePath(id);
-    if (!path.empty()) {
-        os_unlink(path.c_str());
-    }
+    // Best-effort : retire le fichier orphelin ET son .bak (plus references).
+    const std::string rel = profileRel(id);
+    store_.remove(rel);
+    store_.remove(rel + ".bak");
     res.ok = true;
     return res;
 }

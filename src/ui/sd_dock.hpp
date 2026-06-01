@@ -82,6 +82,11 @@ private:
     };
 
     void tick();     // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
+    // Met a jour le Speaker.thresholdDb de activeConfig_ pour `speakerId` (mode profil
+    // seulement) -> prepare la prochaine ecriture, sans toucher le disque.
+    void rememberSpeakerThreshold(const std::string& speakerId, int db);
+    // Ecrit le profil actif sur disque (saveActive) si on est en mode profil. Best-effort.
+    void saveActiveProfileNow();
     void openAssistant();  // bouton Assistant : demande un nom puis cree un profil guide
     // Ouvre l'assistant en mode CREATION d'un profil nomme (cree + active a la fin).
     void openAssistantWith(const QString& newProfileName);
@@ -104,10 +109,10 @@ private:
     std::unique_ptr<sd::core::Director> director_;
 
     std::vector<DisplaySpeaker> displaySpeakers_;
-    // Seuils regles AU SLIDER, par id d'intervenant. Persistes ICI (pas dans le
-    // Director, qui est recree a chaque reload) -> survivent aux rafraichissements
-    // (manuel ET auto-refresh OBS). Reappliques au Director apres chaque reload.
-    std::map<std::string, double> thresholdOverrides_;
+    // Config du profil ACTIF telle que chargee (source de verite lue par le moteur).
+    // Sert a persister le seuil par intervenant : on y met a jour Speaker.thresholdDb
+    // puis on ecrit via saveActive. Rafraichie a chaque reload().
+    sd::core::Config activeConfig_;
     bool configMode_ = false;
     bool autoEnabled_ = false;    // GARDE-FOU : pilotage auto OFF par defaut.
 
@@ -126,6 +131,9 @@ private:
     QLabel* onAirLabel_ = nullptr;
     QLabel* emptyLabel_ = nullptr;
     QTimer* timer_ = nullptr;
+    // Ecriture differee (debounce) du seuil regle au slider : un glissement souris ou
+    // une rafale clavier/molette ne declenche qu'UNE ecriture disque, apres stabilisation.
+    QTimer* thresholdSaveTimer_ = nullptr;
     int shownStatus_ = -1;
     std::string shownOnAir_ = "\x01";
 };

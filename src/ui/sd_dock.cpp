@@ -30,8 +30,7 @@
 
 #include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
 #include "core/profiles.hpp"       // catalogue de profils (modele pur)
-#include "obs/config_loader.hpp"   // chargement du config.json
-#include "obs/profiles_store.hpp"  // magasin de profils (bascule de profil actif)
+#include "obs/profiles_store.hpp"  // magasin de profils (profil actif = source de verite)
 #include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
 #include "ui/sd_settings.hpp"      // parametres avances (modale)
 #include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
@@ -47,6 +46,9 @@ namespace th = sd::ui::theme;
 
 namespace {
 constexpr int kFloorDb = static_cast<int>(sd::core::kDbFloor);
+// Delai d'ecriture differee du seuil regle au slider (debounce) : couvre une rafale
+// clavier/molette. Le relachement souris, lui, ecrit immediatement.
+constexpr int kThresholdSaveDebounceMs = 500;
 
 int dbToInt(double db) {
     int v = static_cast<int>(std::lround(db));
@@ -390,6 +392,14 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     connect(timer_, &QTimer::timeout, this, [this]() { tick(); });
     timer_->start();
 
+    // Ecriture differee du seuil par intervenant : (re)demarree a chaque pas du slider,
+    // elle n'ecrit le profil qu'une fois le reglage stabilise (~debounce). Le relachement
+    // souris fige immediatement (saveActiveProfileNow), donc ceci couvre clavier/molette.
+    thresholdSaveTimer_ = new QTimer(this);
+    thresholdSaveTimer_->setSingleShot(true);
+    thresholdSaveTimer_->setInterval(kThresholdSaveDebounceMs);
+    connect(thresholdSaveTimer_, &QTimer::timeout, this, [this]() { saveActiveProfileNow(); });
+
     // Auto-refresh : OBS termine de charger ses scenes/sources APRES la creation
     // du dock -> on se reabonne pour recharger tout seul (plus besoin de cliquer
     // Rafraichir au lancement). Callback retire dans le destructeur.
@@ -526,15 +536,44 @@ void SdDock::updateAutoButtons() {
         pillBtnQss(th::kDanger, !autoEnabled_ ? 0.20 : 0.10, !autoEnabled_ ? 0.7 : 0.45, !autoEnabled_));
 }
 
+void SdDock::rememberSpeakerThreshold(const std::string& speakerId, int db) {
+    // Mode profil uniquement : en mode auto (sans config), il n'y a pas de profil
+    // ou ecrire. Les ids affiches y sont des noms de sources, absents du profil.
+    if (!configMode_) {
+        return;
+    }
+    for (auto& sp : activeConfig_.speakers) {
+        if (sp.id == speakerId) {
+            sp.thresholdDb = static_cast<double>(db);
+            return;
+        }
+    }
+    // intervenant hors profil actif : rien a memoriser.
+}
+
+void SdDock::saveActiveProfileNow() {
+    if (!configMode_) {
+        return;
+    }
+    // Ecrit le profil actif (source de verite). Best-effort : un echec disque ne doit
+    // pas casser l'UI ni le pilotage en cours ; il sera re-tente au prochain reglage.
+    sd::profiles::saveActive(activeConfig_);
+}
+
 void SdDock::reload() {
     monitor_.start();
     const std::vector<std::string> names = monitor_.sourceNames();
 
-    const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
+    // Le moteur lit DIRECTEMENT le profil actif (source de verite). loadActiveConfig
+    // garantit l'existence du catalogue (migration au premier usage) et recupere
+    // sans perte un fichier illisible (.bak / scan).
+    const sd::profiles::ActiveConfigResult loaded =
+        sd::profiles::loadActiveConfig(i18n("Profiles.DefaultName").toStdString());
+    activeConfig_ = loaded.config;  // memorise pour persister le seuil par intervenant
 
     sd::core::Config cfg;
     displaySpeakers_.clear();
-    if (loaded.parsed && !loaded.config.speakers.empty()) {
+    if (loaded.ok && !loaded.config.speakers.empty()) {
         configMode_ = true;
         cfg = loaded.config;
         for (const auto& sp : cfg.speakers) {
@@ -557,15 +596,10 @@ void SdDock::reload() {
         autoEnabled_ = false;  // GARDE-FOU : pas de pilotage sans config.
     }
     director_->setAutoEnabled(autoEnabled_);
-
-    // Reapplique les seuils regles au slider : le Director vient d'etre recree
-    // (donc remis aux defauts), mais les reglages live de l'utilisateur sont
-    // memorises dans thresholdOverrides_ -> on les restaure pour qu'un reload
-    // (manuel ou auto-refresh OBS) ne les perde pas. Les ids absents de la config
-    // courante sont ignores par setSpeakerThreshold (no-op).
-    for (const auto& kv : thresholdOverrides_) {
-        director_->setSpeakerThreshold(kv.first, kv.second);
-    }
+    // Pas de re-application d'overrides en session : le seuil par intervenant est
+    // PERSISTE dans le profil (Speaker.thresholdDb) et le Director vient d'etre seme
+    // depuis activeConfig_ par son constructeur (setConfig). La valeur a l'ecran est
+    // donc deja la bonne, sans etat parallele a maintenir (qui fuyait entre profils).
 
     // Reconstruit les cartes intervenants (suppression SYNCHRONE).
     for (auto& row : rows_) {
@@ -640,11 +674,24 @@ void SdDock::reload() {
         meter->setThresholdDb(initThresh);  // marqueur initial sur le vumetre
         const std::string sid = ds.id;
         connect(threshold, &QSlider::valueChanged, this, [this, sid, meter](int v) {
-            thresholdOverrides_[sid] = static_cast<double>(v);  // memorise (survit aux reloads)
             if (director_) {
-                director_->setSpeakerThreshold(sid, static_cast<double>(v));
+                director_->setSpeakerThreshold(sid, static_cast<double>(v));  // moteur en direct
             }
-            meter->setThresholdDb(v);  // le marqueur suit le slider en direct
+            meter->setThresholdDb(v);                  // le marqueur suit le slider en direct
+            rememberSpeakerThreshold(sid, v);          // prepare l'ecriture (pas encore sur disque)
+            // Ecriture DIFFEREE : un glissement souris ou une rafale clavier/molette ne
+            // declenche qu'UNE ecriture, ~apres stabilisation. Evite le martelement disque
+            // et la rotation .bak a chaque pas.
+            if (thresholdSaveTimer_) {
+                thresholdSaveTimer_->start();
+            }
+        });
+        // Relachement souris : on fige tout de suite (pas d'attente de la temporisation).
+        connect(threshold, &QSlider::sliderReleased, this, [this]() {
+            if (thresholdSaveTimer_) {
+                thresholdSaveTimer_->stop();
+            }
+            saveActiveProfileNow();
         });
         threshLay->addWidget(threshLabel);
         threshLay->addWidget(threshold);
@@ -758,8 +805,9 @@ void SdDock::openAssistantWith(const QString& newProfileName) {
     auto* mainWin = static_cast<QWidget*>(obs_frontend_get_main_window());
     SdAssistant dlg(mainWin ? mainWin : this, newProfileName);
     if (dlg.exec() == QDialog::Accepted) {
-        // L'assistant a cree + active le profil (config.json + fichier) -> on recharge.
-        // Puis, s'il a termine par "Activer", on lance le pilotage.
+        // L'assistant a cree + active le profil (<id>.json + index.json) -> on recharge
+        // (le moteur lira le nouveau profil actif). S'il a termine par "Activer", on
+        // lance le pilotage.
         reload();
         if (dlg.activateAutoRequested()) {
             setAuto(true);
@@ -845,8 +893,9 @@ void SdDock::showProfileMenu() {
 }
 
 void SdDock::switchProfile(int id) {
-    // Bascule du profil actif : recopie son contenu dans config.json (copie vivante)
-    // puis on recharge tout le dock (intervenants, scenes, reglages, selecteur).
+    // Bascule du profil actif : une seule ecriture (index.json), puis on recharge
+    // tout le dock. reload() relit DIRECTEMENT le nouveau profil actif (source de
+    // verite) -> intervenants, scenes, reglages et selecteur se mettent a jour.
     const sd::profiles::StoreResult res = sd::profiles::setActive(id);
     if (!res.ok) {
         return;  // best-effort : un echec laisse le profil courant inchange

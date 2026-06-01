@@ -5,7 +5,7 @@
 //
 // Run 7 : l'assistant est une CREATION GUIDEE d'un NOUVEAU profil nomme. On lui passe
 // le nom voulu (`newProfileName`) : il part d'une config VIERGE et, A LA FIN
-// seulement (validation), cree le profil + l'active (config.json + fichier profil).
+// seulement (validation), cree le profil + l'active (ecrit <id>.json + index.json).
 // -> le profil ne devient JAMAIS actif tant que l'assistant n'est pas valide (sinon
 // le dock affichait un profil vide "actif" — retour David). Si `newProfileName` est
 // vide (compat), il edite et enregistre le profil ACTIF.

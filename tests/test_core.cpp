@@ -609,3 +609,48 @@ TEST_CASE("profiles : setActiveProfile valide l'id") {
     CHECK(idx.activeId == b);  // inchange
     CHECK(setActiveProfile(idx, a) == true);
 }
+
+// --- Pilier B (Run 8) : seuil par intervenant persiste dans le profil ---
+
+TEST_CASE("config : thresholdDb par intervenant survit a un aller-retour JSON") {
+    Config c;
+    Speaker a;
+    a.id = "A";
+    a.name = "Alice";
+    a.audioSource = "srcA";
+    a.thresholdDb = -28.0;  // seuil propre regle
+    Speaker b;
+    b.id = "B";
+    b.name = "Bob";
+    b.audioSource = "srcB";  // pas de seuil propre -> doit rester absent
+    c.speakers = {a, b};
+
+    const std::string js = toJson(c);
+    const Config back = fromJson(js);
+    REQUIRE(back.speakers.size() == 2);
+    CHECK(back.speakers[0].thresholdDb.has_value());
+    CHECK(back.speakers[0].thresholdDb.value() == doctest::Approx(-28.0));
+    CHECK_FALSE(back.speakers[1].thresholdDb.has_value());
+}
+
+TEST_CASE("config : un intervenant sans seuil propre n'ecrit pas la cle thresholdDb") {
+    Config c;
+    Speaker a;
+    a.id = "A";
+    a.audioSource = "srcA";  // pas de thresholdDb
+    c.speakers = {a};
+    const std::string js = toJson(c);
+    CHECK(js.find("thresholdDb") == std::string::npos);
+}
+
+TEST_CASE("director : setConfig seme l'override de seuil depuis le profil") {
+    Config c = twoSpeakerConfig();    // A et B, seuil global par defaut (-35)
+    c.audio.voiceThresholdDb = -35.0;
+    c.speakers[0].thresholdDb = -28.0;  // A a un seuil propre ; B non
+    Director dir(c);
+    // A : seuil propre seme depuis le profil ; B : retombe sur le global.
+    CHECK(dir.speakerThresholdDb("A") == doctest::Approx(-28.0));
+    CHECK(dir.speakerThresholdDb("B") == doctest::Approx(-35.0));
+    // Un intervenant inconnu retombe aussi sur le global (pas d'override orphelin).
+    CHECK(dir.speakerThresholdDb("inconnu") == doctest::Approx(-35.0));
+}
