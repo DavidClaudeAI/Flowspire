@@ -1,5 +1,7 @@
 #include "core/config.hpp"
 
+#include <cmath>
+
 #include <nlohmann/json.hpp>
 
 namespace sd::core {
@@ -74,9 +76,14 @@ Config fromJson(const std::string& text) {
                     sp.scenes.push_back(sw);
                 }
             }
-            // Seuil propre a l'intervenant : present uniquement s'il a ete regle.
+            // Seuil propre a l'intervenant : present uniquement s'il a ete regle. On
+            // ecarte une valeur non finie (inf/NaN issue d'un JSON edite a la main) ->
+            // un seuil non fini fausserait toutes les comparaisons de niveau.
             if (js.contains("thresholdDb") && js.at("thresholdDb").is_number()) {
-                sp.thresholdDb = js.at("thresholdDb").get<double>();
+                const double t = js.at("thresholdDb").get<double>();
+                if (std::isfinite(t)) {
+                    sp.thresholdDb = t;
+                }
             }
             cfg.speakers.push_back(sp);
         }

@@ -34,10 +34,11 @@ public:
         if (!failPathContains.empty() && relPath.find(failPathContains) != std::string::npos) {
             return {false, "coupure simulee"};
         }
-        // os_safe_replace : l'ancien contenu (s'il existait) part en .bak.
+        // os_safe_replace : l'ancien contenu (s'il existait) part en .bak (meme
+        // convention que la prod, via backupPath -> pas de divergence test/reel).
         const auto it = files_.find(relPath);
         if (it != files_.end()) {
-            files_[relPath + ".bak"] = it->second;
+            files_[sd::obsbridge::backupPath(relPath)] = it->second;
         }
         files_[relPath] = text;
         return {true, ""};

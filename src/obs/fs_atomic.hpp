@@ -15,6 +15,14 @@ struct FsResult {
     std::string error;
 };
 
+// Chemin du fichier de sauvegarde cree par writeUtf8Atomic : os_safe_replace y
+// deplace l'ancien contenu avant de le remplacer. Centralise ici (et non en
+// litteral disperse) pour que les sites de RECUPERATION (profiles_store) et la
+// simulation de test referencent la MEME convention -> pas de drift silencieux.
+inline std::string backupPath(const std::string& path) {
+    return path + ".bak";
+}
+
 // Cree l'arborescence parente de `path` si besoin (no-op si elle existe).
 // Renvoie false uniquement sur erreur dure de creation.
 bool ensureParentDir(const std::string& path);

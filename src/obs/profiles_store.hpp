@@ -104,6 +104,10 @@ private:
         std::string error;
     };
     RawIndex loadIndexRaw() const;
+    // Charge le catalogue pour une operation MUTANTE : si illisible, renseigne
+    // `res.error` et renvoie false (l'appelant retourne `res` tel quel) ; sinon
+    // remplit `idx` et renvoie true. Mutualise le prologue des 6 methodes d'ecriture.
+    bool loadIndexForWrite(sd::core::ProfileIndex& idx, StoreResult& res) const;
 
     // Lit + parse une Config a `rel` (false si absent ou JSON invalide).
     bool readConfig(const std::string& rel, sd::core::Config& out) const;
