@@ -30,8 +30,8 @@ endif()
 if(ENABLE_QT)
   # Svg : pour rendre les icones lucide (SVG teintes) du dock. La DLL Qt6Svg est
   # fournie avec OBS (runtime) et dans les deps (compile) -> dependance sure.
-  find_package(Qt6 REQUIRED COMPONENTS Widgets Core Svg)
-  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets Qt6::Svg)
+  find_package(Qt6 REQUIRED COMPONENTS Widgets Core Svg Network)
+  target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE Qt6::Core Qt6::Widgets Qt6::Svg Qt6::Network)
   target_compile_options(
     ${CMAKE_PROJECT_NAME}
     PRIVATE $<$<C_COMPILER_ID:Clang,AppleClang>:-Wno-quoted-include-in-framework-header -Wno-comma>
@@ -54,6 +54,7 @@ target_sources(
     src/core/config.cpp
     src/core/director.cpp
     src/core/profiles.cpp
+    src/core/version.cpp
     src/obs/audio_level_monitor.cpp
     src/obs/fs_atomic.cpp
     src/obs/obs_file_store.cpp
@@ -69,6 +70,7 @@ target_sources(
     src/ui/sd_profiles_panel.cpp
     src/ui/sd_settings.cpp
     src/ui/sd_support.cpp
+    src/ui/sd_update_check.cpp
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
 # Fichiers d'en-tete seuls (pas de .cpp) — inclus par les .cpp ci-dessus :

@@ -3,6 +3,7 @@
 #include <obs-frontend-api.h>
 
 #include <QAction>
+#include <QCheckBox>
 #include <QColor>
 #include <QCoreApplication>
 #include <QEvent>
@@ -20,6 +21,8 @@
 #include <QString>
 #include <QTimer>
 #include <QVBoxLayout>
+#include <QDesktopServices>
+#include <QUrl>
 
 #include <algorithm>
 #include <chrono>
@@ -28,11 +31,13 @@
 #include <unordered_set>
 #include <utility>
 
+#include "plugin-support.h"        // PLUGIN_VERSION (derive de buildspec.json par CMake)
 #include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
 #include "core/profiles.hpp"       // catalogue de profils (modele pur)
 #include "obs/profiles_store.hpp"  // magasin de profils (profil actif = source de verite)
 #include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
 #include "ui/sd_settings.hpp"      // parametres avances (modale)
+#include "ui/sd_update_check.hpp"  // verification de mise a jour (Qt Network)
 #include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
 #include "ui/sd_icons.hpp"         // icones lucide teintees
 #include "ui/sd_level_meter.hpp"   // vumetre custom + marqueur de seuil
@@ -218,6 +223,38 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     header->addWidget(statusBadge_);
     root->addLayout(header);
 
+    // --- Bandeau "mise a jour disponible" (masque ; revele par startUpdateCheck) ---
+    updateBanner_ = new QWidget();
+    // rgba() (helper QSS partage) : Qt lit un hex 8 chiffres comme #AARRGGBB -> il NE faut
+    // PAS passer les jetons translucides (#RRGGBBAA) tels quels (cf. statusBadge_).
+    updateBanner_->setStyleSheet(QString("background:%1; border:1px solid %2; border-radius:%3px;")
+                                     .arg(rgba(th::kAccent, 0.15))
+                                     .arg(rgba(th::kAccent, 0.5))
+                                     .arg(th::kRadiusButton));
+    auto* updateLay = new QHBoxLayout(updateBanner_);
+    updateLay->setContentsMargins(10, 6, 10, 6);
+    updateLay->setSpacing(8);
+    updateBannerLabel_ = new QLabel();
+    updateBannerLabel_->setWordWrap(true);
+    updateBannerLabel_->setStyleSheet(QString("color:%1; font-size:%2px; background:transparent;")
+                                          .arg(th::kTextPrimary)
+                                          .arg(th::kFontLabel));
+    updateBannerButton_ = new QPushButton(i18n("Update.Get"));
+    updateBannerButton_->setCursor(Qt::PointingHandCursor);
+    updateBannerButton_->setStyleSheet(
+        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                " color:%4; font-size:%5px; font-weight:600; padding:5px 10px; }"
+                "QPushButton:hover { border-color:%4; }")
+            .arg(th::kSurface3)
+            .arg(rgba(th::kAccent, 0.4))
+            .arg(th::kRadiusButton)
+            .arg(th::kAccent)
+            .arg(th::kFontButton));
+    updateLay->addWidget(updateBannerLabel_, 1);
+    updateLay->addWidget(updateBannerButton_);
+    updateBanner_->setVisible(false);
+    root->addWidget(updateBanner_);
+
     // --- Selecteur de profil (Run 7) : "Profil : [ nom v ] [icone]" ---
     // Bascule du profil actif en 1 clic (le select) + icone qui ouvre les
     // parametres avances directement sur l'onglet Profils (demande David).
@@ -385,12 +422,34 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 
     root->addStretch();
 
+    // Bas du dock : case "verifier les MAJ au demarrage" (reglage GLOBAL, persiste seul,
+    // independamment du modele "Enregistrer" des parametres) a gauche + version a droite.
+    auto* bottomBar = new QHBoxLayout();
+    bottomBar->setSpacing(8);
+    auto* updateCheckBox = new QCheckBox(i18n("Update.CheckOnStartup"));
+    updateCheckBox->setChecked(updateCheckEnabled());
+    updateCheckBox->setCursor(Qt::PointingHandCursor);
+    updateCheckBox->setStyleSheet(QString("QCheckBox { color:%1; font-size:%2px; }")
+                                      .arg(th::kTextTertiary)
+                                      .arg(th::kFontSmall));
+    connect(updateCheckBox, &QCheckBox::toggled, this,
+            [](bool on) { setUpdateCheckEnabled(on); });
+    auto* versionLabel = new QLabel(QString("StreamDirector v%1").arg(PLUGIN_VERSION));
+    versionLabel->setStyleSheet(
+        QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
+    bottomBar->addWidget(updateCheckBox);
+    bottomBar->addStretch();
+    bottomBar->addWidget(versionLabel);
+    root->addLayout(bottomBar);
+
     reload();
 
     timer_ = new QTimer(this);
     timer_->setInterval(kTickMs);
     connect(timer_, &QTimer::timeout, this, [this]() { tick(); });
     timer_->start();
+
+    startUpdateCheck();  // verif MAJ au demarrage (async, silencieuse si hors-ligne)
 
     // Ecriture differee du seuil par intervenant : (re)demarree a chaque pas du slider,
     // elle n'ecrit le profil qu'une fois le reglage stabilise (~debounce). Le relachement
@@ -558,6 +617,21 @@ void SdDock::saveActiveProfileNow() {
     // Ecrit le profil actif (source de verite). Best-effort : un echec disque ne doit
     // pas casser l'UI ni le pilotage en cours ; il sera re-tente au prochain reglage.
     sd::profiles::saveActive(activeConfig_);
+}
+
+void SdDock::startUpdateCheck() {
+    if (!updateCheckEnabled()) return;  // opt-out : aucune requete reseau si l'utilisateur a decoche
+    // Verifie en arriere-plan s'il existe une release plus recente que la version locale.
+    // Aucune release / hors-ligne / erreur -> rien ne s'affiche (updateAvailable == false).
+    checkForUpdate(this, PLUGIN_VERSION, [this](const UpdateInfo& info) {
+        if (!info.updateAvailable) return;
+        updateBannerLabel_->setText(
+            i18n("Update.Available").arg(QString::fromStdString(info.latestVersion)));
+        const QString url = QString::fromStdString(info.releaseUrl);
+        connect(updateBannerButton_, &QPushButton::clicked, this,
+                [url]() { QDesktopServices::openUrl(QUrl(url)); });
+        updateBanner_->setVisible(true);
+    });
 }
 
 void SdDock::reload() {
