@@ -111,7 +111,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     Config in = twoSpeakerConfig();
     // valeurs non-defaut sur TOUS les champs pour detecter une cle oubliee
     in.version = 7;
-    in.audio = {-28.0, -55.0, 0.6, 3, 11};
+    in.audio = {-28.0, -55.0, 3, 11};  // voiceThr, volFloor, attack, release
     in.timing = {2.5, 9.0, 7.0};
     in.whenMultiple = {40, 35, 25};
     in.whenSilence = {70, 30};
@@ -126,7 +126,6 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
 
     CHECK(out.audio.voiceThresholdDb == doctest::Approx(-28.0));
     CHECK(out.audio.volumeFloorDb == doctest::Approx(-55.0));
-    CHECK(out.audio.vadThreshold == doctest::Approx(0.6));
     CHECK(out.audio.attackFrames == 3);
     CHECK(out.audio.releaseFrames == 11);
 

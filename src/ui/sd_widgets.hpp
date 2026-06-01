@@ -525,7 +525,6 @@ inline int pctOf(int v, int sum) {
 // ===========================================================================
 inline QString fmtSeconds(int v) { return QString::number(v) + QStringLiteral(" s"); }
 inline QString fmtDb(int v) { return QString::number(v) + QStringLiteral(" dB"); }
-inline QString fmtVad(int v) { return QString::number(v / 100.0, 'f', 2); }
 inline QString fmtSilence(int frames) {
     return QString::number(frames * sd::ui::kFrameSeconds, 'f', 1) + QStringLiteral(" s");
 }
