@@ -287,6 +287,28 @@ unitairement (doctest/CTest) — on peut faire évoluer la logique de réalisati
 
 ---
 
+## Versions & mises à jour
+
+StreamDirector suit le **versionnage sémantique** (`MAJEUR.MINEUR.CORRECTIF`) :
+
+- **CORRECTIF** — correction de bug, sans changement visible (`0.1.0` → `0.1.1`).
+- **MINEUR** — nouvelle fonctionnalité rétrocompatible (`0.1.0` → `0.2.0`).
+- **MAJEUR** — changement cassant (`0.9.0` → `1.0.0`).
+
+La version vit à **un seul endroit** (`buildspec.json`) et s'affiche en bas du dock. Pour la
+faire évoluer, utilisez le script fourni :
+
+```bat
+python scripts\bump-version.py patch     :: 0.1.0 -> 0.1.1
+python scripts\bump-version.py minor     :: 0.1.0 -> 0.2.0
+python scripts\bump-version.py 1.4.2     :: version explicite
+```
+
+Pour **publier** une version (le CI fabrique alors les installeurs des 3 OS et crée la
+**Release** GitHub) : `git tag X.Y.Z` puis `git push origin main --tags`.
+
+---
+
 ## Crédits & inspiration
 
 StreamDirector s'inspire de **[Gabin](https://github.com/one-click-studio/gabin)**, le

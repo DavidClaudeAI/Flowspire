@@ -101,6 +101,7 @@ private:
     void updateStatusBadge();
     void updateModeLabel();
     void updateAutoButtons();
+    void startUpdateCheck();  // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
     void styleSpeakerCard(Row& row, bool speaking);
     static double nowSeconds();
 
@@ -130,6 +131,9 @@ private:
     QLabel* modeLabel_ = nullptr;
     QLabel* onAirLabel_ = nullptr;
     QLabel* emptyLabel_ = nullptr;
+    QWidget* updateBanner_ = nullptr;          // bandeau "mise a jour dispo" (masque par defaut)
+    QLabel* updateBannerLabel_ = nullptr;
+    QPushButton* updateBannerButton_ = nullptr;
     QTimer* timer_ = nullptr;
     // Ecriture differee (debounce) du seuil regle au slider : un glissement souris ou
     // une rafale clavier/molette ne declenche qu'UNE ecriture disque, apres stabilisation.

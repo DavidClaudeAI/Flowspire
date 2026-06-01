@@ -12,6 +12,7 @@
 #include "core/director.hpp"
 #include "core/profiles.hpp"
 #include "core/speaker_detector.hpp"
+#include "core/version.hpp"
 #include "core/weighted_pick.hpp"
 
 using namespace sd::core;
@@ -687,4 +688,50 @@ TEST_CASE("director : l'anti ping-pong relache APRES la fenetre (vraie borne de 
     // Bien APRES la fenetre (et avant le temps-max=30) -> on bascule enfin sur A.
     dir.update(9.0, {{"A", hi}, {"B", lo}});
     CHECK(dir.update(9.1, {{"A", hi}, {"B", lo}}).owner == "A");
+}
+
+// --- Versions semantiques (systeme de mise a jour) ------------------------------
+
+TEST_CASE("version : parseSemVer accepte X.Y.Z (prefixe 'v' et espaces toleres)") {
+    auto a = parseSemVer("1.2.3");
+    REQUIRE(a.has_value());
+    CHECK(a->major == 1);
+    CHECK(a->minor == 2);
+    CHECK(a->patch == 3);
+    CHECK(parseSemVer("v0.1.0").has_value());
+    CHECK(parseSemVer("V2.0.0").has_value());
+    CHECK(parseSemVer("  0.10.4 ").value() == SemVer{0, 10, 4});
+    CHECK(parseSemVer("10.20.30").value() == SemVer{10, 20, 30});
+}
+
+TEST_CASE("version : parseSemVer rejette les formats invalides") {
+    CHECK_FALSE(parseSemVer("1.2").has_value());        // pas assez de segments
+    CHECK_FALSE(parseSemVer("1.2.3.4").has_value());    // trop de segments
+    CHECK_FALSE(parseSemVer("1.2.3-rc1").has_value());  // pre-release : volontairement nul
+    CHECK_FALSE(parseSemVer("1.2.x").has_value());      // segment non numerique
+    CHECK_FALSE(parseSemVer("1..2").has_value());       // segment vide
+    CHECK_FALSE(parseSemVer("1.2.").has_value());       // dernier segment vide
+    CHECK_FALSE(parseSemVer("").has_value());
+    CHECK_FALSE(parseSemVer("   ").has_value());
+    CHECK_FALSE(parseSemVer("abc").has_value());
+}
+
+TEST_CASE("version : SemVer ordre total (major > minor > patch)") {
+    CHECK(SemVer{0, 1, 0} < SemVer{0, 2, 0});
+    CHECK(SemVer{0, 9, 9} < SemVer{1, 0, 0});
+    CHECK(SemVer{1, 2, 3} < SemVer{1, 2, 4});
+    CHECK_FALSE(SemVer{1, 0, 0} < SemVer{1, 0, 0});
+    CHECK(SemVer{1, 0, 0} == SemVer{1, 0, 0});
+}
+
+TEST_CASE("version : isNewerVersion ne notifie que pour une version stable superieure") {
+    CHECK(isNewerVersion("0.2.0", "0.1.0"));
+    CHECK(isNewerVersion("1.0.0", "0.9.9"));
+    CHECK(isNewerVersion("0.1.1", "0.1.0"));
+    CHECK_FALSE(isNewerVersion("0.1.0", "0.1.0"));  // identique
+    CHECK_FALSE(isNewerVersion("0.1.0", "0.2.0"));  // plus ancienne
+    // Tolerance : si un cote ne parse pas (reseau douteux, pre-release) -> aucune notif.
+    CHECK_FALSE(isNewerVersion("garbage", "0.1.0"));
+    CHECK_FALSE(isNewerVersion("0.2.0", ""));
+    CHECK_FALSE(isNewerVersion("0.2.0-rc1", "0.1.0"));
 }
