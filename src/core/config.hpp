@@ -2,6 +2,7 @@
 // Reflete la "table de reglage" specs/streamdirector-defaults.json.
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -19,6 +20,11 @@ struct Speaker {
     std::string name;                   // nom affiche
     std::string audioSource;            // nom de la source audio OBS
     std::vector<SceneWeight> scenes;    // Contexte A : quand cette personne parle
+    // Seuil de voix PROPRE a cet intervenant (dB). Absent => on utilise le seuil
+    // global (audio.voiceThresholdDb). Regle au slider du dock et persiste dans le
+    // profil -> survit a la fermeture d'OBS. Le Director s'en sert pour positionner
+    // l'override au chargement (cf. setConfig).
+    std::optional<double> thresholdDb;
 };
 
 // Reglages de detection audio.

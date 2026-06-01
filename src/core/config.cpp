@@ -13,12 +13,19 @@ std::string toJson(const Config& cfg) {
         for (const auto& sw : sp.scenes) {
             scenes.push_back({{"scene", sw.scene}, {"weight", sw.weight}});
         }
-        speakers.push_back({
+        json jsp = {
             {"id", sp.id},
             {"name", sp.name},
             {"audioSource", sp.audioSource},
             {"scenes", scenes},
-        });
+        };
+        // Seuil propre a l'intervenant : ecrit UNIQUEMENT s'il a ete regle. Un profil
+        // sans reglage explicite n'embarque pas la cle (retrocompatible, et "absent"
+        // signifie bien "utilise le seuil global").
+        if (sp.thresholdDb.has_value()) {
+            jsp["thresholdDb"] = *sp.thresholdDb;
+        }
+        speakers.push_back(std::move(jsp));
     }
 
     json j = {
@@ -66,6 +73,10 @@ Config fromJson(const std::string& text) {
                     sw.weight = jsc.value("weight", 1);
                     sp.scenes.push_back(sw);
                 }
+            }
+            // Seuil propre a l'intervenant : present uniquement s'il a ete regle.
+            if (js.contains("thresholdDb") && js.at("thresholdDb").is_number()) {
+                sp.thresholdDb = js.at("thresholdDb").get<double>();
             }
             cfg.speakers.push_back(sp);
         }

@@ -4,8 +4,8 @@
 // Run 7 : "plus de pop-up sauf l'assistant" (decision David). Profils et Soutenir
 // sont desormais de vrais PANNEAUX (sd_profiles_panel / sd_support). L'edition
 // (Intervenants/Cameras/Plan large/Rythme) ecrit dans le PROFIL ACTIF via
-// sd::profiles::saveActive (config.json = copie vivante + fichier du profil, en
-// phase). Modele "tout-sur-Enregistrer" pour l'edition ; les actions de profils
+// sd::profiles::saveActive (le fichier <actif>.json = source de verite lue par le
+// moteur). Modele "tout-sur-Enregistrer" pour l'edition ; les actions de profils
 // (charger/nouveau/...) sont, elles, IMMEDIATES, avec garde anti-perte si des
 // reglages d'edition n'ont pas ete enregistres.
 #include "ui/sd_settings.hpp"
@@ -31,7 +31,6 @@
 #include <vector>
 
 #include "core/config.hpp"
-#include "obs/config_loader.hpp"
 #include "obs/obs_inventory.hpp"
 #include "obs/profiles_store.hpp"
 #include "ui/sd_config_panels.hpp"
@@ -60,7 +59,7 @@ struct SdSettings::Impl {
     std::unique_ptr<ConfigPanels> panels;
     std::unique_ptr<ProfilesPanel> profilesPanel;
 
-    bool saved = false;          // config.json a change -> le dock recharge
+    bool saved = false;          // le profil actif a change -> le dock recharge
     QString pendingAssistantName;  // "Nouveau > Avec l'assistant" -> nom a creer via l'assistant
 
     QWidget* root = nullptr;
@@ -91,7 +90,7 @@ struct SdSettings::Impl {
     // --- profils ---
     bool dirty() const;
     bool maybeSaveBeforeSwitch();   // garde anti-perte ; false => annuler le changement
-    void reloadWorkingFromDisk();   // recharge working depuis config.json + recree panels
+    void reloadWorkingFromDisk();   // recharge working depuis le profil actif + recree panels
     void switchActive(int id, bool goToEdit);
     void newProfile(bool withAssistant);
     QString promptName(const QString& initial);
@@ -224,8 +223,8 @@ bool SdSettings::Impl::persist() {
         QMessageBox::warning(q, i18n("Settings.Title"), i18n("Summary.Error.NoSpeaker"));
         return false;
     }
-    // Ecrit dans le PROFIL ACTIF : config.json (copie vivante) ET le fichier du
-    // profil, en phase. saveActive cree le catalogue au premier usage si besoin.
+    // Ecrit dans le PROFIL ACTIF : le fichier <actif>.json (source de verite lue par
+    // le moteur). saveActive s'appuie sur le catalogue (garanti des l'ouverture).
     const sd::profiles::StoreResult res = sd::profiles::saveActive(sanitizedConfig(working));
     if (!res.ok) {
         QMessageBox::warning(q, i18n("Settings.Title"),
@@ -258,8 +257,9 @@ void SdSettings::Impl::reloadWorkingFromDisk() {
     // via leurs lambdas de rebuild) AVANT de recreer panels -> pas de pointeur
     // pendant. clearLayout differe la destruction (hide + deleteLater).
     clearLayout(contentLay);
-    const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
-    working = loaded.parsed ? loaded.config : sd::core::Config{};
+    const sd::profiles::ActiveConfigResult loaded =
+        sd::profiles::loadActiveConfig(i18n("Profiles.DefaultName").toStdString());
+    working = loaded.ok ? loaded.config : sd::core::Config{};
     savedBaseline = working;
     panels = std::make_unique<ConfigPanels>(working, audioSources, scenes);
 }
@@ -274,7 +274,7 @@ void SdSettings::Impl::switchActive(int id, bool goToEdit) {
                              i18n("Profiles.Error.Generic").arg(QString::fromStdString(res.error)));
         return;
     }
-    saved = true;  // config.json a change -> le dock rechargera
+    saved = true;  // le profil actif a change -> le dock rechargera a la fermeture
     reloadWorkingFromDisk();
     if (goToEdit) {
         selPanel = SdSettings::TabSpeakers;
@@ -294,8 +294,8 @@ void SdSettings::Impl::newProfile(bool withAssistant) {
     if (withAssistant) {
         // On NE cree PAS le profil ici : on memorise juste le nom et on ferme. Le dock
         // ouvre alors l'assistant en mode creation, qui creera + activera le profil A
-        // LA FIN seulement. -> rien ne touche config.json avant validation (le dock
-        // n'affiche pas un profil vide "actif" pendant le remplissage). Retour David.
+        // LA FIN seulement. -> rien n'est ecrit avant validation (le dock n'affiche
+        // pas un profil vide "actif" pendant le remplissage). Retour David.
         pendingAssistantName = name;
         q->accept();
         return;
@@ -341,11 +341,12 @@ SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(ne
 
     d_->audioSources = sd::obsbridge::audioSourceNames();
     d_->scenes = sd::obsbridge::sceneNames();
-    // Garantit qu'un catalogue de profils existe (migre l'existant en profil n.1 au
-    // premier usage) puis charge la config du profil ACTIF (= config.json copie vivante).
-    sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
-    const sd::obsbridge::ConfigLoadResult loaded = sd::obsbridge::loadConfig();
-    if (loaded.parsed) {
+    // Charge la config du profil ACTIF (la source de verite lue par le moteur).
+    // loadActiveConfig garantit au passage l'existence du catalogue (migration de
+    // l'existant en profil n.1 au premier usage).
+    const sd::profiles::ActiveConfigResult loaded =
+        sd::profiles::loadActiveConfig(i18n("Profiles.DefaultName").toStdString());
+    if (loaded.ok) {
         d_->working = loaded.config;
     }
     d_->savedBaseline = d_->working;

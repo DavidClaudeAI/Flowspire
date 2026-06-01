@@ -35,7 +35,7 @@ public:
     explicit SdSettings(QWidget* parent = nullptr, Tab initialTab = TabSpeakers);
     ~SdSettings() override;
 
-    // true si le config.json a change pendant la session (enregistrement OU action
+    // true si le profil actif a change pendant la session (enregistrement OU action
     // de profil immediate : charger/nouveau) -> le dock doit recharger, meme si la
     // fenetre s'est fermee par la croix.
     bool savedConfig() const;

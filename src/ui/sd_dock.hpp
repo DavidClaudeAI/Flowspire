@@ -82,6 +82,9 @@ private:
     };
 
     void tick();     // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
+    // Persiste le seuil regle au slider dans le profil ACTIF (mode profil seulement).
+    // Met a jour le Speaker.thresholdDb de activeConfig_ puis ecrit via saveActive.
+    void persistSpeakerThreshold(const std::string& speakerId, int db);
     void openAssistant();  // bouton Assistant : demande un nom puis cree un profil guide
     // Ouvre l'assistant en mode CREATION d'un profil nomme (cree + active a la fin).
     void openAssistantWith(const QString& newProfileName);
@@ -104,9 +107,14 @@ private:
     std::unique_ptr<sd::core::Director> director_;
 
     std::vector<DisplaySpeaker> displaySpeakers_;
+    // Config du profil ACTIF telle que chargee (source de verite lue par le moteur).
+    // Sert a persister le seuil par intervenant : on y met a jour Speaker.thresholdDb
+    // puis on ecrit via saveActive. Rafraichie a chaque reload().
+    sd::core::Config activeConfig_;
     // Seuils regles AU SLIDER, par id d'intervenant. Persistes ICI (pas dans le
     // Director, qui est recree a chaque reload) -> survivent aux rafraichissements
-    // (manuel ET auto-refresh OBS). Reappliques au Director apres chaque reload.
+    // EN SESSION (manuel ET auto-refresh OBS), y compris un geste en cours non encore
+    // ecrit. La persistance disque, elle, passe par activeConfig_/saveActive.
     std::map<std::string, double> thresholdOverrides_;
     bool configMode_ = false;
     bool autoEnabled_ = false;    // GARDE-FOU : pilotage auto OFF par defaut.

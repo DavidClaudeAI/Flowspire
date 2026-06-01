@@ -19,8 +19,10 @@ Acquis :
   (zéro driver/câble virtuel), avec retombée temporelle et accès thread-safe.
 - **Pilotage réel des scènes** (`src/obs/scene_switcher`) — bascule la scène programme OBS selon le
   locuteur ; reprend la main si la scène est changée manuellement.
-- **Configuration par fichier** (`src/obs/config_loader`) — `config.json` (intervenant → source audio
-  → scène(s) pondérées + plan large). Sans config : mode lecture seule.
+- **Profils multi-config** (`src/obs/profiles_store`) — chaque profil = un fichier
+  `profiles/<id>.json` (intervenant → source audio → scène(s) pondérées + plan large) ; le **profil
+  actif** est la **source de vérité** lue par le moteur. Écriture atomique + `.bak`, récupération sans
+  perte (`.bak`, puis scan). Sans intervenant configuré : mode lecture seule.
 - **Raccourcis OBS** — activer/désactiver l'auto, forcer le plan large, forcer un intervenant
   (mappables Stream Deck et clavier).
 - **Dock Qt** (`src/ui`) — interface alignée sur la maquette (thème sombre, icônes), un vumètre par
@@ -48,17 +50,24 @@ L'utilisateur crée ses scènes dans OBS ; le plugin les **pilote** selon la sou
 
 ## Configuration
 
-Le plugin lit un `config.json` (intervenants → source audio → scène(s) pondérées + plan large) à :
+Le plugin gère des **profils** (multi-config). Chaque profil est un fichier JSON (intervenants →
+source audio → scène(s) pondérées + plan large) ; le **profil actif** est la **source de vérité**
+lue par le moteur. Les profils vivent à :
 
 ```
-Windows : %APPDATA%\obs-studio\plugin_config\streamdirector\config.json
-macOS   : ~/Library/Application Support/obs-studio/plugin_config/streamdirector/config.json
-Linux   : ~/.config/obs-studio/plugin_config/streamdirector/config.json
+Windows : %APPDATA%\obs-studio\plugin_config\streamdirector\profiles\
+macOS   : ~/Library/Application Support/obs-studio/plugin_config/streamdirector/profiles/
+Linux   : ~/.config/obs-studio/plugin_config/streamdirector/profiles/
 ```
 
-Voir [`config.example.jsonc`](config.example.jsonc) (modèle commenté). Le dock affiche le chemin
-exact et l'état (chargée / invalide / absente), avec un bouton **Rafraîchir** (rechargement à chaud).
-Sans config valide, le plugin reste en **lecture seule** et ne touche pas aux scènes.
+`index.json` = catalogue + profil actif ; `<id>.json` = contenu d'un profil. Toute écriture est
+**atomique** avec sauvegarde `.bak` ; un fichier illisible est récupéré automatiquement (`.bak`,
+puis reconstruction par scan du dossier). L'ancien `config.json` mono-config est **migré** en profil
+n°1 au premier lancement, puis laissé inerte (jamais relu).
+
+La configuration s'édite **sans toucher au JSON** : assistant guidé (création de profil) et
+paramètres avancés (édition fine, sélecteur de profil dans le dock). Sans aucun intervenant
+configuré, le plugin reste en **lecture seule** et ne touche pas aux scènes.
 
 ## Architecture cible
 

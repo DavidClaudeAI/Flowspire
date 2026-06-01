@@ -26,11 +26,18 @@ Director::Director(Config cfg, Rng rng)
 void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
-    thresholdOverride_.clear();  // la config/JSON redevient la source de verite du seuil
+    // On repart de zero puis on SEME les overrides depuis la config : le seuil
+    // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
+    // donc la config/JSON reste la source de verite au chargement. Un intervenant
+    // sans seuil propre retombe sur le seuil global (pas d'entree d'override).
+    thresholdOverride_.clear();
     for (const auto& sp : cfg_.speakers) {
         detectors_.emplace(
             sp.id, SpeakerDetector(cfg_.audio.voiceThresholdDb, cfg_.audio.attackFrames,
                                    cfg_.audio.releaseFrames));
+        if (sp.thresholdDb.has_value()) {
+            thresholdOverride_[sp.id] = *sp.thresholdDb;
+        }
     }
 }
 

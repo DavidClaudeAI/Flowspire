@@ -28,12 +28,18 @@ add_library(sd_core STATIC
   ${SD_ROOT}/src/core/config.cpp
   ${SD_ROOT}/src/core/director.cpp
   ${SD_ROOT}/src/core/profiles.cpp
+  # OBS-free : la LOGIQUE de gestion des profils parle a un FileStore injecte
+  # (cf. src/obs/file_store.hpp) -> testable hors OBS avec un FakeFileStore.
+  ${SD_ROOT}/src/obs/profiles_store.cpp
 )
 target_include_directories(sd_core PUBLIC ${SD_ROOT}/src)
 target_include_directories(sd_core SYSTEM PUBLIC ${SD_ROOT}/vendor)
 
 enable_testing()
-add_executable(sd_tests ${SD_ROOT}/tests/test_core.cpp)
+add_executable(sd_tests
+  ${SD_ROOT}/tests/test_core.cpp
+  ${SD_ROOT}/tests/test_profiles_store.cpp
+)
 target_link_libraries(sd_tests PRIVATE sd_core)
 target_include_directories(sd_tests SYSTEM PRIVATE ${SD_ROOT}/vendor)
 add_test(NAME sd_tests COMMAND sd_tests)
