@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <exception>
+#include <limits>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,32 @@ const std::string kJsonExt = ".json";
 
 std::string profileRel(int id) {
     return "profiles/" + std::to_string(id) + ".json";
+}
+
+// Id d'un fichier "profiles/<n>.json" si <n> est un entier CANONIQUE (chiffres purs,
+// sans zero de tete, dans la plage int), sinon -1. La verification du round-trip
+// (to_string(id) == stem) ecarte "007.json" (-> 7) dont le fichier reel serait
+// introuvable via profileRel(7), et la garde de taille evite un substr qui
+// deborderait sur un nom plus court que l'extension.
+int parseProfileFileId(const std::string& filename) {
+    if (filename.size() <= kJsonExt.size()) {
+        return -1;
+    }
+    const std::string stem = filename.substr(0, filename.size() - kJsonExt.size());
+    if (stem.empty() ||
+        !std::all_of(stem.begin(), stem.end(), [](char c) { return c >= '0' && c <= '9'; })) {
+        return -1;
+    }
+    int id = 0;
+    try {
+        id = std::stoi(stem);
+    } catch (const std::exception&) {
+        return -1;  // hors plage int
+    }
+    if (std::to_string(id) != stem) {
+        return -1;  // nom non canonique (zeros de tete) -> profileRel ne le retrouverait pas
+    }
+    return id;
 }
 }  // namespace
 
@@ -73,20 +100,11 @@ ProfileStore::RawIndex ProfileStore::loadIndexRaw() const {
 
 bool ProfileStore::reconstructFromScan(const std::string& defaultName,
                                        sd::core::ProfileIndex& out) const {
-    const std::vector<std::string> files = store_.list(kProfilesDir, kJsonExt);
     std::vector<int> ids;
-    for (const auto& f : files) {
-        // f = "<n>.json" -> on retire ".json" et on garde si c'est un entier pur
-        // (ecarte "index.json" et tout fichier non numerique).
-        const std::string stem = f.substr(0, f.size() - kJsonExt.size());
-        if (stem.empty() ||
-            !std::all_of(stem.begin(), stem.end(), [](char c) { return c >= '0' && c <= '9'; })) {
-            continue;
-        }
-        try {
-            ids.push_back(std::stoi(stem));
-        } catch (const std::exception&) {
-            // numero hors plage int : on ignore ce fichier.
+    for (const auto& f : store_.list(kProfilesDir, kJsonExt)) {
+        const int id = parseProfileFileId(f);  // ecarte index.json + noms non canoniques
+        if (id >= 0) {
+            ids.push_back(id);
         }
     }
     if (ids.empty()) {
@@ -100,8 +118,23 @@ bool ProfileStore::reconstructFromScan(const std::string& defaultName,
         out.profiles.push_back({id, defaultName + " " + std::to_string(id)});
     }
     out.activeId = ids.front();
-    out.nextId = ids.back() + 1;
+    const int maxId = ids.back();
+    out.nextId = (maxId < std::numeric_limits<int>::max()) ? maxId + 1 : maxId;
     return true;
+}
+
+void ProfileStore::reconcileNextIdWithFiles(sd::core::ProfileIndex& idx) const {
+    // Rehausse nextId au-dessus de TOUT fichier profiles/<n>.json present sur disque
+    // (pas seulement ceux references par l'index). Indispensable apres une recuperation
+    // depuis un index .bak PERIME : ce .bak peut ignorer un profil cree plus tard dont
+    // le fichier <id>.json existe encore -> sans ce rehaussement, un prochain
+    // createProfile reattribuerait cet id et ECRASERAIT le fichier orphelin.
+    for (const auto& f : store_.list(kProfilesDir, kJsonExt)) {
+        const int id = parseProfileFileId(f);
+        if (id >= 0 && id >= idx.nextId && id < std::numeric_limits<int>::max()) {
+            idx.nextId = id + 1;
+        }
+    }
 }
 
 ListResult ProfileStore::migrate(const std::string& defaultName) {
@@ -143,6 +176,10 @@ ListResult ProfileStore::loadList(const std::string& defaultName) {
     //   1) .bak de l'index (avant-derniere version valide) -> on heale le fichier.
     sd::core::ProfileIndex recovered;
     if (readIndex(kIndexRel + ".bak", recovered)) {
+        // Le .bak peut etre anterieur a une creation de profil : on rehausse nextId
+        // au-dessus des fichiers reellement presents pour ne pas reattribuer (donc
+        // ecraser) l'id d'un profil orphelin encore sur disque.
+        reconcileNextIdWithFiles(recovered);
         writeIndex(recovered);  // best-effort : remet un index.json sain
         ListResult res;
         res.index = recovered;
@@ -168,9 +205,12 @@ ConfigResult ProfileStore::loadProfile(int id) {
         res.ok = true;
         return res;
     }
-    // Fichier absent ou illisible : tentative de recuperation depuis le .bak.
+    // Fichier absent ou illisible : recuperation depuis le .bak. LECTURE SEULE : on
+    // ne reecrit PAS le fichier courant. Pourquoi : l'ecriture atomique ferait basculer
+    // le contenu corrompu courant dans le .bak (os_safe_replace), detruisant le seul bon
+    // filet. On preserve donc le .bak intact ; le fichier sera regenere au prochain
+    // saveActive normal. Un "load" ne doit pas non plus provoquer d'ecriture surprise.
     if (readConfig(rel + ".bak", res.config)) {
-        store_.write(rel, sd::core::toJson(res.config));  // heale le fichier courant
         res.ok = true;
         return res;
     }

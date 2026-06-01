@@ -102,7 +102,12 @@ TEST_CASE("profiles_store : un profil corrompu est recupere depuis son .bak") {
     const ConfigResult pc = store.loadProfile(1);
     REQUIRE(pc.ok);
     CHECK(pc.config.audio.voiceThresholdDb == doctest::Approx(-30.0));  // valeur du .bak
-    // Le fichier courant a ete heale : une 2e lecture repasse par le fichier principal.
+    // LECTURE SEULE : la recuperation ne reecrit pas le fichier courant -> le .bak
+    // reste INTACT (filet preserve) et le fichier courant reste tel quel. Une 2e
+    // lecture repasse donc encore par le .bak et redonne la meme valeur.
+    CHECK(fs.getRaw("profiles/1.json") == "{ ceci n'est pas du JSON");  // non reecrit
+    const Config bak = fromJson(fs.getRaw("profiles/1.json.bak"));
+    CHECK(bak.audio.voiceThresholdDb == doctest::Approx(-30.0));  // .bak non empoisonne
     const ConfigResult again = store.loadProfile(1);
     REQUIRE(again.ok);
     CHECK(again.config.audio.voiceThresholdDb == doctest::Approx(-30.0));
@@ -136,4 +141,39 @@ TEST_CASE("profiles_store : index corrompu recupere depuis son .bak sans perte d
     REQUIRE(l.ok);
     CHECK(l.index.profiles.size() == 1);              // recupere depuis index.bak (v1)
     CHECK(fs.getRaw("profiles/2.json") == profile2);  // contenu du profil 2 intact
+}
+
+TEST_CASE("profiles_store : recup index .bak perime ne reattribue pas l'id d'un orphelin") {
+    sdtest::FakeFileStore fs;
+    ProfileStore store(fs);
+    store.loadActiveConfig("Defaut");  // index v1 {1}, nextId=2
+    const StoreResult b =
+        store.createProfile("B", cfgWithThreshold(-7.0), /*makeActive=*/false);  // v2 {1,2}; .bak=v1
+    REQUIRE(b.ok);
+    REQUIRE(b.id == 2);
+    const std::string profile2 = fs.getRaw("profiles/2.json");
+    fs.setRaw("profiles/index.json", "{ corrompu");  // corruption -> recup depuis .bak v1 (nextId=2)
+    const ListResult l = store.loadList("Defaut");
+    REQUIRE(l.ok);
+    // nextId a ete rehausse au-dessus de profiles/2.json present : une nouvelle creation
+    // NE reattribue PAS l'id 2 (sinon elle ecraserait l'orphelin encore sur disque).
+    const StoreResult c = store.createProfile("C", cfgWithThreshold(-3.0), /*makeActive=*/false);
+    REQUIRE(c.ok);
+    CHECK(c.id != 2);
+    CHECK(c.id >= 3);
+    CHECK(fs.getRaw("profiles/2.json") == profile2);  // contenu de B preserve
+}
+
+TEST_CASE("profiles_store : le scan ignore les noms de fichier non canoniques") {
+    sdtest::FakeFileStore fs;
+    fs.setRaw("profiles/2.json", toJson(cfgWithThreshold(-20.0)));
+    fs.setRaw("profiles/07.json", toJson(cfgWithThreshold(-40.0)));  // zero de tete : non canonique
+    fs.setRaw("profiles/x.json", toJson(cfgWithThreshold(-50.0)));   // non numerique
+    ProfileStore store(fs);
+    const ListResult l = store.loadList("Recup");
+    REQUIRE(l.ok);
+    // Seul "2.json" est canonique -> un seul profil reconstruit, pas d'entree fantome
+    // id=7 dont profiles/7.json n'existe pas (qui ferait echouer loadProfile).
+    REQUIRE(l.index.profiles.size() == 1);
+    CHECK(l.index.profiles[0].id == 2);
 }

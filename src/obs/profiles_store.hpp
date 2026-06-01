@@ -117,6 +117,10 @@ private:
     // synthetiques, actif = plus petit id). false si aucun fichier de profil.
     bool reconstructFromScan(const std::string& defaultName, sd::core::ProfileIndex& out) const;
 
+    // Rehausse idx.nextId au-dessus de tout fichier profiles/<n>.json present sur
+    // disque (evite de reattribuer l'id d'un orphelin apres recuperation d'un .bak).
+    void reconcileNextIdWithFiles(sd::core::ProfileIndex& idx) const;
+
     // Premiere utilisation : profil n.1 depuis l'ancien config.json (s'il est
     // lisible) ou les defauts codes en dur, marque actif.
     ListResult migrate(const std::string& defaultName);
