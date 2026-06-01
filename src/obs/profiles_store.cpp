@@ -18,7 +18,7 @@ namespace {
 // "profiles/" / ".json" disperse qui pourrait diverger).
 const std::string kProfilesDir = "profiles";
 const std::string kJsonExt = ".json";
-const std::string kIndexRel = kProfilesDir + "/index.json";
+const std::string kIndexRel = kProfilesDir + "/index" + kJsonExt;
 const std::string kConfigRel = "config.json";  // ancien fichier (migration uniquement)
 
 std::string profileRel(int id) {
