@@ -99,8 +99,11 @@ private:
     // aucun plan large). Renseigne outScene/outOwner en cas de succes.
     bool resolvePlayable(const std::string& owner, bool wide, std::string& outScene,
                          std::string& outOwner);
+    // `recordLeave` (defaut true) : memorise l'instant ou l'on quitte le proprietaire
+    // courant (anti ping-pong). Les FORCAGES (Stream Deck/clavier) passent false : un
+    // choix manuel ne doit pas faire croire a une navette sur le retour auto suivant.
     void commit(double now, const std::string& scene, const std::string& owner, bool hold,
-                Decision& out);
+                Decision& out, bool recordLeave = true);
     // Vrai si basculer vers `owner` serait une NAVETTE : on a quitte ce plan il y a
     // moins de pingPongWindowSeconds. Toujours faux si la fenetre vaut 0 (anti
     // ping-pong desactive) ou si owner est vide.

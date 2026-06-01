@@ -667,3 +667,24 @@ TEST_CASE("director : l'anti ping-pong amortit la navette (contexte multiple)") 
     CHECK(run(12.0) == "B");  // fenetre active : on RESTE sur B (navette amortie)
     CHECK(run(0.0) == "A");   // anti ping-pong off : on suit le plus fort -> retour A
 }
+
+TEST_CASE("director : l'anti ping-pong relache APRES la fenetre (vraie borne de temps)") {
+    // Prouve que c'est la FENETRE qui borne le maintien, pas le temps-max (regression :
+    // si l'override etait fige dans la memoisation, on resterait colle jusqu'au temps-max).
+    Config c = twoSpeakerConfig();
+    c.timing.minShotSeconds = 3.0;
+    c.timing.maxShotSeconds = 30.0;  // grand expres : ne doit PAS gouverner le relachement
+    c.timing.pingPongWindowSeconds = 5.0;
+    Director dir(c, seq({0.0}));
+    const double hi = mulToDb(0.9);
+    const double lo = mulToDb(0.5);
+    dir.update(0.0, {{"A", hi}, {"B", lo}});
+    dir.update(0.1, {{"A", hi}, {"B", lo}});  // -> A
+    dir.update(3.2, {{"A", lo}, {"B", hi}});
+    dir.update(3.3, {{"A", lo}, {"B", hi}});  // -> B (on a quitte A a 3.2)
+    // A redevient le plus fort, encore DANS la fenetre (3.2 + 5 = 8.2) -> on reste B.
+    CHECK(dir.update(6.0, {{"A", hi}, {"B", lo}}).owner == "B");
+    // Bien APRES la fenetre (et avant le temps-max=30) -> on bascule enfin sur A.
+    dir.update(9.0, {{"A", hi}, {"B", lo}});
+    CHECK(dir.update(9.1, {{"A", hi}, {"B", lo}}).owner == "A");
+}

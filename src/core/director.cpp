@@ -176,15 +176,7 @@ Decision Director::update(double now, const std::map<std::string, double>& level
                 opts.emplace_back("wide", cfg_.whenMultiple.wideShot);
             }
             const std::string* tag = weightedPick(opts, rngValue());
-            std::string choice = tag ? *tag : std::string("loudest");
-            // ANTI PING-PONG : si le tirage veut basculer vers le plus fort mais qu'on
-            // vient juste de le quitter (navette < pingPongWindowSeconds) et qu'on a un
-            // plan a tenir, on RESTE plutot que de le suivre. C'est ce qui empeche
-            // l'aller-retour frenetique entre deux personnes qui se chevauchent.
-            if (choice == "loudest" && loudest != currentOwner_ && !currentScene_.empty() &&
-                isPingPongBounce(now, loudest)) {
-                choice = "current";
-            }
+            const std::string choice = tag ? *tag : std::string("loudest");
             if (choice == "wide") {
                 cachedOwner_.clear();
                 cachedWide_ = true;
@@ -241,6 +233,18 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         desiredWide = cachedWide_;
     }
     decisionKey_ = key;
+
+    // 2bis) ANTI PING-PONG, re-evalue a CHAQUE tick (deterministe, donc hors
+    //   memoisation -> la fenetre est une VRAIE borne de temps, pas couplee au
+    //   temps-max). En contexte MULTIPLE, si la cible memoisee est le plus fort qu'on
+    //   vient de quitter (navette < pingPongWindowSeconds) et qu'on a un plan de
+    //   locuteur a tenir, on RESTE dessus. On vise directement currentOwner_ (pas via
+    //   "current") -> jamais de repli accidentel sur le plus fort.
+    if (ctx == Context::Multiple && !desiredWide && !currentOwner_.empty() &&
+        !speakingSorted_.empty() && desiredOwner == speakingSorted_.front() &&
+        desiredOwner != currentOwner_ && isPingPongBounce(now, desiredOwner)) {
+        desiredOwner = currentOwner_;
+    }
 
     // 3) Comparer la cible a l'etat courant et decider de basculer (ou non).
     const bool init = currentScene_.empty();
@@ -331,10 +335,11 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
 }
 
 void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold,
-                      Decision& out) {
+                      Decision& out, bool recordLeave) {
     // Anti ping-pong : on note l'instant ou l'on QUITTE le proprietaire courant (pour
-    // detecter ensuite un retour trop rapide vers lui = navette).
-    if (!currentOwner_.empty() && currentOwner_ != owner) {
+    // detecter ensuite un retour trop rapide vers lui = navette). PAS sur un forcage
+    // (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto suivant.
+    if (recordLeave && !currentOwner_.empty() && currentOwner_ != owner) {
         ownerLeftAt_[currentOwner_] = now;
     }
     out.switched = (scene != currentScene_);
@@ -349,7 +354,7 @@ void Director::commit(double now, const std::string& scene, const std::string& o
 Decision Director::forceScene(double now, const std::string& scene, const std::string& owner) {
     Decision out;
     out.context = lastContext_;
-    commit(now, scene, owner, /*hold=*/true, out);
+    commit(now, scene, owner, /*hold=*/true, out, /*recordLeave=*/false);
     decisionKey_.clear();  // un forçage reinitialise la situation memorisee
     return out;
 }
@@ -368,7 +373,7 @@ Decision Director::forceSpeaker(double now, const std::string& speakerId) {
     if (scene.empty()) {
         return out;  // pas de scene jouable pour cet intervenant.
     }
-    commit(now, scene, speakerId, /*hold=*/true, out);
+    commit(now, scene, speakerId, /*hold=*/true, out, /*recordLeave=*/false);
     decisionKey_.clear();  // un forçage reinitialise la situation memorisee
     return out;
 }
