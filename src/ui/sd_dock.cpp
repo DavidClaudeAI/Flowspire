@@ -149,6 +149,18 @@ QString tallyQss(bool onAir) {
     return QString("#tally { background:%1; border-radius:2px; }")
         .arg(onAir ? QString::fromUtf8(th::kDanger) : QStringLiteral("transparent"));
 }
+
+// Cree la pilule "tally" (temoin a l'antenne) et l'ajoute a gauche de `lay`, centree.
+// SOURCE UNIQUE de sa geometrie : partagee par la carte intervenant ET la carte plan
+// large -> pas de divergence visuelle silencieuse si on retouche la pilule.
+QWidget* makeTally(QHBoxLayout* lay) {
+    auto* tally = new QWidget();
+    tally->setObjectName(QStringLiteral("tally"));
+    tally->setFixedSize(4, 26);
+    tally->setStyleSheet(tallyQss(false));
+    lay->addWidget(tally, 0, Qt::AlignVCenter);
+    return tally;
+}
 }  // namespace
 
 double SdDock::nowSeconds() {
@@ -551,11 +563,7 @@ void SdDock::reload() {
         // Temoin "tally" : pilule verticale (rouge quand cette scene est a l'antenne).
         // Centree, plus courte que la carte, avec de l'espace de chaque cote (pas sur la
         // bordure). Toujours presente (transparente) -> pas de saut de layout.
-        auto* tally = new QWidget();
-        tally->setObjectName(QStringLiteral("tally"));
-        tally->setFixedSize(4, 26);
-        tally->setStyleSheet(tallyQss(false));
-        lay->addWidget(tally, 0, Qt::AlignVCenter);
+        auto* tally = makeTally(lay);
 
         // Avatar : icone user dans une pastille ronde.
         auto* avatar = new QLabel();
@@ -664,11 +672,7 @@ void SdDock::reload() {
         lay->setContentsMargins(8, 10, 10, 10);
         lay->setSpacing(10);
 
-        auto* tally = new QWidget();
-        tally->setObjectName(QStringLiteral("tally"));
-        tally->setFixedSize(4, 26);
-        tally->setStyleSheet(tallyQss(false));
-        lay->addWidget(tally, 0, Qt::AlignVCenter);
+        auto* tally = makeTally(lay);
 
         auto* avatar = new QLabel();
         avatar->setFixedSize(th::kAvatarSize, th::kAvatarSize);
