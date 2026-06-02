@@ -338,6 +338,85 @@ TEST_CASE("director : silence prolonge — variete au temps-max (re-tirage du ch
     CHECK(d.switched == true);
 }
 
+TEST_CASE("director : le plan large issu d'un silence respecte le temps mini (anti-flash)") {
+    // Demande David : avant, le plan large de silence n'etait PAS un "hold" -> une
+    // reprise de parole le remplacait IMMEDIATEMENT (flash). Desormais TOUT plan tient
+    // le temps-mini. On verifie qu'apres etre passe sur le plan large en silence, une
+    // reprise de parole AVANT minShot ne fait pas basculer, et qu'APRES minShot si.
+    auto rngState = std::make_shared<double>(0.0);
+    Director::Rng rng = [rngState]() {
+        return *rngState;
+    };
+    Config c = twoSpeakerConfig(); // minShot=3, maxShot=12, wide=Plateau
+    Director dir(c, rng);
+
+    // A parle brievement -> A_close (hold, lastSwitch=0.1).
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    REQUIRE(dir.currentScene() == "A_close");
+
+    // Silence + rng force 'wide' : le verrou tient A_close jusqu'au temps-mini, puis on
+    // bascule sur le plan large. On capture l'instant exact de cette bascule.
+    *rngState = 0.99; // 'wide' (silence : last 80 / wide 20)
+    double wideAt = -1.0;
+    double t = 0.2;
+    for (int i = 0; i < 80 && wideAt < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.switched && d.scene == "Plateau") {
+            wideAt = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(wideAt > 0.0);
+    REQUIRE(dir.currentScene() == "Plateau");
+
+    // A reparle TOUT DE SUITE apres le passage au plan large (< minShot) -> on RESTE sur
+    // le plan large (anti-flash : il montre tout le monde, on ne rate rien).
+    dir.update(wideAt + 0.1, {{"A", mulToDb(0.9)}});              // A monte
+    Decision d = dir.update(wideAt + 0.2, {{"A", mulToDb(0.9)}}); // A "parle" (attaque 2 frames)
+    CHECK(d.scene == "Plateau");
+
+    // Apres le temps-mini, A prend l'antenne (rng=0.0 -> A_close).
+    *rngState = 0.0;
+    d = dir.update(wideAt + 3.5, {{"A", mulToDb(0.9)}});
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_close");
+}
+
+TEST_CASE("director : le plan large succedant a une scene FORCEE tient le temps mini (anti-flash)") {
+    // Regression attrapee au /code-review : un critere base sur currentOwner_ laissait le
+    // plan large succedant a une scene FORCEE sans proprietaire (forceScene owner="")
+    // NON verrouille -> flash. Le critere `!init` le couvre : des qu'un plan a ete affiche,
+    // le plan large qui lui succede tient le temps mini.
+    auto rngState = std::make_shared<double>(0.99); // silence sans lastSpeaker -> 'wide'
+    Director::Rng rng = [rngState]() {
+        return *rngState;
+    };
+    Director dir(twoSpeakerConfig(), rng); // minShot=3, wide=Plateau
+
+    // Scene forcee SANS proprietaire (ex. scene hors-regie "comptee comme un plan").
+    dir.forceScene(0.0, "Intro", "");
+    REQUIRE(dir.currentScene() == "Intro");
+
+    // Silence : on bascule sur le plan large apres expiration du verrou de la scene forcee.
+    Decision d;
+    double wideAt = -1.0;
+    double t = 0.1;
+    for (int i = 0; i < 80 && wideAt < 0.0; ++i) {
+        d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.switched && d.scene == "Plateau") {
+            wideAt = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(wideAt > 0.0);
+
+    // Quelqu'un parle juste apres -> le plan large tient le temps mini (pas de flash).
+    dir.update(wideAt + 0.1, {{"A", mulToDb(0.9)}});
+    d = dir.update(wideAt + 0.2, {{"A", mulToDb(0.9)}});
+    CHECK(d.scene == "Plateau");
+}
+
 TEST_CASE("director : single ne re-tire pas a chaque tick (anti-scintillement)") {
     // A a 2 scenes ; le RNG renverrait des scenes differentes a chaque tick s'il
     // etait appele. On verifie que la scene NE change PAS tant qu'on reste sous

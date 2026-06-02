@@ -535,8 +535,11 @@ inline QString fmtSeconds(int v) {
 inline QString fmtDb(int v) {
     return QString::number(v) + QStringLiteral(" dB");
 }
+// Delai en secondes a partir d'un nombre de frames (1 frame = kFrameSeconds = 50 ms).
+// 2 decimales : le pas d'un cran (0,05 s) reste lisible -- sert au delai de silence
+// ET au delai d'attaque.
 inline QString fmtSilence(int frames) {
-    return QString::number(frames * sd::ui::kFrameSeconds, 'f', 1) + QStringLiteral(" s");
+    return QString::number(frames * sd::ui::kFrameSeconds, 'f', 2) + QStringLiteral(" s");
 }
 
 } // namespace sd::ui::widgets

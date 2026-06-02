@@ -262,19 +262,25 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         return out;
     }
 
-    // Cible differente (ou initialisation) : on veut basculer. Le verrou ne
-    // s'applique qu'a un plan "hold" (plan de locuteur ou plan force), pas a un
-    // plan large issu d'un simple silence.
+    // Cible differente (ou initialisation) : on veut basculer. Le verrou temps-mini
+    // s'applique a tout plan en "hold" (cf. willHold ci-dessous) : il tient alors au
+    // moins minShotSeconds avant qu'on puisse en sortir.
     const bool locked = hold_ && !init && (now - lastSwitch_) < cfg_.timing.minShotSeconds;
     if (locked) {
         return out; // re-evalue au prochain tick : la bascule partira des que le verrou tombe.
     }
 
-    // Un plan issu d'un contexte avec locuteurs (Single/Multiple) est un "hold".
-    // Un plan large de silence ne l'est pas (une prise de parole peut le remplacer).
+    // "hold" = le plan tient le temps-mini avant de pouvoir etre remplace.
+    //  - plan de LOCUTEUR : toujours un hold (anti-nervosite).
+    //  - PLAN LARGE : hold des qu'il SUCCEDE a un plan deja affiche (!init) -> evite le
+    //    "flash" (on passe au plan large, puis quelqu'un parle aussitot). PAS un hold s'il
+    //    est l'ecran de DEPART (init == currentScene_ vide, avant toute bascule) -> la 1ere
+    //    parole y est alors suivie sans delai. Critere `!init` (et non "on quitte un
+    //    locuteur") : couvre aussi le plan large succedant a une scene FORCEE sans
+    //    proprietaire (forceScene owner="") -> pas de flash reintroduit.
     std::string scene, owner;
     if (resolvePlayable(desiredOwner, desiredWide, scene, owner)) {
-        const bool willHold = (ctx != Context::Silence);
+        const bool willHold = !owner.empty() || !init;
         commit(now, scene, owner, willHold, out);
     } else {
         // Aucune scene jouable (pas de pool, pas de plan large) : ne pas figer la
