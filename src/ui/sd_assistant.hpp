@@ -53,4 +53,4 @@ private:
     std::unique_ptr<Impl> d_;
 };
 
-}  // namespace sd::ui
+} // namespace sd::ui

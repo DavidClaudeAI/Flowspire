@@ -50,7 +50,7 @@ Config twoSpeakerConfig() {
     c.speakers = {a, b};
     return c;
 }
-}  // namespace
+} // namespace
 
 TEST_CASE("conversion mul -> dB") {
     CHECK(mulToDb(0.0) == doctest::Approx(kDbFloor));
@@ -67,9 +67,9 @@ TEST_CASE("levelsToDb prend le peak max des canaux") {
 
 TEST_CASE("detecteur : attaque sur 2 frames") {
     SpeakerDetector d(-35.0, 2, 8);
-    const double loud = mulToDb(0.5);  // ~ -6 dB
-    CHECK(d.update(loud) == false);    // 1 frame : pas encore
-    CHECK(d.update(loud) == true);     // 2 frames : parle
+    const double loud = mulToDb(0.5); // ~ -6 dB
+    CHECK(d.update(loud) == false);   // 1 frame : pas encore
+    CHECK(d.update(loud) == true);    // 2 frames : parle
 }
 
 TEST_CASE("detecteur : relachement sur 8 frames (anti-respiration)") {
@@ -79,9 +79,9 @@ TEST_CASE("detecteur : relachement sur 8 frames (anti-respiration)") {
     d.update(loud);
     REQUIRE(d.speaking());
     for (int i = 0; i < 7; ++i) {
-        CHECK(d.update(kDbFloor) == true);  // tient encore
+        CHECK(d.update(kDbFloor) == true); // tient encore
     }
-    CHECK(d.update(kDbFloor) == false);  // 8e : ne parle plus
+    CHECK(d.update(kDbFloor) == false); // 8e : ne parle plus
 }
 
 TEST_CASE("detecteur : un pic isole ne declenche pas") {
@@ -112,7 +112,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     Config in = twoSpeakerConfig();
     // valeurs non-defaut sur TOUS les champs pour detecter une cle oubliee
     in.version = 7;
-    in.audio = {-28.0, -55.0, 3, 11};  // voiceThr, volFloor, attack, release
+    in.audio = {-28.0, -55.0, 3, 11}; // voiceThr, volFloor, attack, release
     in.timing = {2.5, 9.0, 7.0};
     in.whenMultiple = {40, 35, 25};
     in.whenSilence = {70, 30};
@@ -144,8 +144,8 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
 TEST_CASE("config : JSON tolerant aux cles absentes") {
     const Config c = fromJson(R"({"version":1,"speakers":[]})");
     CHECK(c.speakers.empty());
-    CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0));  // defaut
-    CHECK(c.whenMultiple.wideShot == 25);                       // defaut
+    CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0)); // defaut
+    CHECK(c.whenMultiple.wideShot == 25);                      // defaut
 }
 
 TEST_CASE("config : JSON invalide leve une exception") {
@@ -192,19 +192,19 @@ TEST_CASE("director : contexte A bascule sur la scene de celui qui parle") {
 TEST_CASE("director : verrou temps-mini empeche un recoupe trop rapide") {
     Director dir(twoSpeakerConfig(), seq({0.0}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // -> A_close a t=0.1
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // -> A_close a t=0.1
     REQUIRE(dir.currentScene() == "A_close");
     // B se met a parler tres vite : attaque 2 frames, mais on est dans le verrou (<3s)
     dir.update(0.2, {{"B", mulToDb(0.9)}});
     Decision d = dir.update(0.3, {{"B", mulToDb(0.9)}});
-    CHECK(d.scene == "A_close");      // verrou : pas de bascule
+    CHECK(d.scene == "A_close"); // verrou : pas de bascule
     CHECK(d.switched == false);
 }
 
 TEST_CASE("director : apres le verrou, bascule sur le nouveau locuteur") {
     Director dir(twoSpeakerConfig(), seq({0.0}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close a t=0.1
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A_close a t=0.1
     // A se tait (8 frames), B parle, le temps depasse minShot (3s)
     for (int i = 0; i < 8; ++i) {
         dir.update(0.2 + i * 0.05, {{"A", kDbFloor}, {"B", mulToDb(0.9)}});
@@ -223,7 +223,7 @@ TEST_CASE("director : contexte B (plusieurs) — le plus fort gagne avec rng=0")
     dir.update(0.0, {{"A", mulToDb(0.4)}, {"B", mulToDb(0.8)}});
     Decision d = dir.update(0.1, {{"A", mulToDb(0.4)}, {"B", mulToDb(0.8)}});
     CHECK(d.context == Context::Multiple);
-    CHECK(d.owner == "B");        // B plus fort
+    CHECK(d.owner == "B"); // B plus fort
     CHECK(d.scene == "B_close");
 }
 
@@ -233,14 +233,14 @@ TEST_CASE("director : contexte B — choix 'plan large' quand plusieurs parlent"
     // rng=0.999 -> derniere option = 'wide' (45+30+25 -> 0.999*100=99.9 dans [75,100[).
     Director dir(twoSpeakerConfig(), seq({0.999}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche (hold)
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A_close affiche (hold)
     // attendre la fin du verrou (minShot=3s) pour autoriser une bascule
     for (int i = 0; i < 8; ++i) {
         dir.update(0.2 + i * 0.05, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
     }
     Decision d = dir.update(4.0, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
     CHECK(d.context == Context::Multiple);
-    CHECK(d.scene == "Plateau");   // bascule sur le plan large
+    CHECK(d.scene == "Plateau"); // bascule sur le plan large
     CHECK(d.owner.empty());
 }
 
@@ -249,14 +249,14 @@ TEST_CASE("director : contexte C (silence) — last 80 / wide 20, pondere") {
     // rng=0.0 -> 'last' (premiere option) -> scene du pool de A (A_close).
     Director dir(twoSpeakerConfig(), seq({0.0}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A devient lastSpeaker
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A devient lastSpeaker
     // silence prolonge (relachement 8 frames + depasser minShot)
     Decision d;
     for (int i = 0; i < 80; ++i) {
         d = dir.update(0.2 + i * 0.1, {{"A", kDbFloor}, {"B", kDbFloor}});
     }
     CHECK(d.context == Context::Silence);
-    CHECK(d.owner == "A");          // 'last' tire -> on garde le dernier locuteur
+    CHECK(d.owner == "A"); // 'last' tire -> on garde le dernier locuteur
     CHECK(d.scene == "A_close");
 }
 
@@ -278,16 +278,18 @@ TEST_CASE("director : rafraichissement au temps-max (variete des plans)") {
     // A a 2 scenes (A_close 90 / A_wide 10). RNG CONTROLABLE : on fixe la valeur
     // retournee selon la phase, pour ne pas dependre du nombre exact de tirages
     // consommes pendant la montee en parole (test robuste).
-    auto rngState = std::make_shared<double>(0.0);  // 0.0 -> A_close
-    Director::Rng rng = [rngState]() { return *rngState; };
+    auto rngState = std::make_shared<double>(0.0); // 0.0 -> A_close
+    Director::Rng rng = [rngState]() {
+        return *rngState;
+    };
 
     Config c = twoSpeakerConfig();
-    c.wideShotScene = "";       // pas de plan large : isole le pool de A
+    c.wideShotScene = ""; // pas de plan large : isole le pool de A
     c.timing.maxShotSeconds = 12.0;
     Director dir(c, rng);
 
-    dir.update(0.0, {{"A", mulToDb(0.5)}});           // frame 1 : montee (pas encore "parle")
-    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});  // frame 2 : A parle -> tirage 0.0 -> A_close
+    dir.update(0.0, {{"A", mulToDb(0.5)}});              // frame 1 : montee (pas encore "parle")
+    Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}}); // frame 2 : A parle -> tirage 0.0 -> A_close
     REQUIRE(dir.currentScene() == "A_close");
     CHECK(d.owner == "A");
 
@@ -297,7 +299,7 @@ TEST_CASE("director : rafraichissement au temps-max (variete des plans)") {
     CHECK(d.switched == false);
 
     // on bascule le RNG vers A_wide, puis on depasse maxShot -> rafraichissement
-    *rngState = 0.95;  // 0.95 -> A_wide (cumul 90/10)
+    *rngState = 0.95; // 0.95 -> A_wide (cumul 90/10)
     d = dir.update(13.0, {{"A", mulToDb(0.5)}});
     CHECK(d.owner == "A");
     CHECK(d.scene == "A_wide");
@@ -308,13 +310,15 @@ TEST_CASE("director : silence prolonge — variete au temps-max (re-tirage du ch
     // Regression (observe en reel par David) : en silence, le choix last/wide
     // etait tire UNE fois puis fige -> on ne repassait jamais au plan large, meme
     // apres 30 s. Au temps-max, le choix doit etre RE-TIRE.
-    Config c = twoSpeakerConfig();           // wideShotScene = "Plateau", maxShot 12s
-    auto rngState = std::make_shared<double>(0.0);  // 1er tirage silence -> 'last'
-    Director::Rng rng = [rngState]() { return *rngState; };
+    Config c = twoSpeakerConfig();                 // wideShotScene = "Plateau", maxShot 12s
+    auto rngState = std::make_shared<double>(0.0); // 1er tirage silence -> 'last'
+    Director::Rng rng = [rngState]() {
+        return *rngState;
+    };
     Director dir(c, rng);
 
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A parle -> A_close, lastSwitch=0.1
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A parle -> A_close, lastSwitch=0.1
     REQUIRE(dir.currentScene() == "A_close");
 
     // Silence : relachement (8 frames) puis le choix 'last' garde A_close.
@@ -323,7 +327,7 @@ TEST_CASE("director : silence prolonge — variete au temps-max (re-tirage du ch
         d = dir.update(1.0 + i * 0.1, {{"A", kDbFloor}, {"B", kDbFloor}});
     }
     REQUIRE(d.context == Context::Silence);
-    CHECK(dir.currentScene() == "A_close");  // 'last' -> dernier locuteur, fige
+    CHECK(dir.currentScene() == "A_close"); // 'last' -> dernier locuteur, fige
 
     // On bascule le RNG vers 'wide' et on depasse le temps-max : le choix doit
     // etre re-tire -> passage au plan large (ce qui ne se produisait jamais avant).
@@ -346,7 +350,7 @@ TEST_CASE("director : single ne re-tire pas a chaque tick (anti-scintillement)")
     const std::string first = dir.currentScene();
     for (int i = 0; i < 20; ++i) {
         Decision d = dir.update(1.0 + i * 0.5, {{"A", mulToDb(0.5)}});
-        CHECK(d.scene == first);       // pas de scintillement
+        CHECK(d.scene == first); // pas de scintillement
         CHECK(d.switched == false);
     }
 }
@@ -364,12 +368,12 @@ TEST_CASE("director : fallback plan large quand le locuteur n'a aucune scene") {
     dir.update(0.0, {{"A", mulToDb(0.5)}});
     Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});
     CHECK(d.context == Context::Single);
-    CHECK(d.scene == "Plateau");   // fallback : on montre le plan large
+    CHECK(d.scene == "Plateau"); // fallback : on montre le plan large
     CHECK(d.owner.empty());
 }
 
 TEST_CASE("director : sans scene ni plan large, rien n'est affiche (pas de crash)") {
-    Config c;  // pas de wideShotScene, speaker sans scene
+    Config c; // pas de wideShotScene, speaker sans scene
     Speaker a;
     a.id = "A";
     a.audioSource = "srcA";
@@ -377,13 +381,13 @@ TEST_CASE("director : sans scene ni plan large, rien n'est affiche (pas de crash
     Director dir(c, seq({0.0}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
     Decision d = dir.update(0.1, {{"A", mulToDb(0.5)}});
-    CHECK(d.scene.empty());        // rien de jouable -> on ne force pas de scene
+    CHECK(d.scene.empty()); // rien de jouable -> on ne force pas de scene
     CHECK(d.switched == false);
 }
 
 TEST_CASE("director : forceScene puis reprise auto apres le verrou") {
     Director dir(twoSpeakerConfig(), seq({0.0}));
-    dir.forceScene(1.0, "Plateau");          // plan force (hold)
+    dir.forceScene(1.0, "Plateau"); // plan force (hold)
     // pendant le verrou (minShot=3s), A parle mais on reste sur Plateau
     dir.update(1.1, {{"A", mulToDb(0.5)}});
     Decision d = dir.update(1.2, {{"A", mulToDb(0.5)}});
@@ -418,7 +422,7 @@ TEST_CASE("director : forceScene applique la scene et arme le verrou") {
 TEST_CASE("director : seuil par intervenant (slider) surpasse le seuil global") {
     Config c = twoSpeakerConfig();
     c.audio.voiceThresholdDb = -35.0;
-    c.audio.attackFrames = 1;  // declenchement immediat pour le test
+    c.audio.attackFrames = 1; // declenchement immediat pour le test
     Director dir(c, seq({0.0}));
 
     // Par defaut : seuil global -35 dB. Un niveau de -20 dB > -35 -> A parle.
@@ -442,16 +446,16 @@ TEST_CASE("director : seuil par intervenant (slider) surpasse le seuil global") 
 TEST_CASE("director : override de seuil inconnu ignore + reset par setConfig") {
     Config c = twoSpeakerConfig();
     Director dir(c, seq({0.0}));
-    dir.setSpeakerThreshold("ZZZ", -10.0);              // inconnu : ignore
+    dir.setSpeakerThreshold("ZZZ", -10.0); // inconnu : ignore
     CHECK(dir.speakerThresholdDb("ZZZ") == doctest::Approx(c.audio.voiceThresholdDb));
     dir.setSpeakerThreshold("A", -12.0);
     CHECK(dir.speakerThresholdDb("A") == doctest::Approx(-12.0));
-    dir.setConfig(c);                                    // recharge : la config reprend la main
+    dir.setConfig(c); // recharge : la config reprend la main
     CHECK(dir.speakerThresholdDb("A") == doctest::Approx(c.audio.voiceThresholdDb));
 }
 
 TEST_CASE("director : forceSpeaker tire une scene du pool de l'intervenant") {
-    Director dir(twoSpeakerConfig(), seq({0.0}));  // 0.0 -> 1er du pool de A = A_close
+    Director dir(twoSpeakerConfig(), seq({0.0})); // 0.0 -> 1er du pool de A = A_close
     Decision d = dir.forceSpeaker(1.0, "A");
     CHECK(d.switched == true);
     CHECK(d.owner == "A");
@@ -469,7 +473,7 @@ TEST_CASE("director : forceSpeaker respecte le pool pondere") {
 TEST_CASE("director : forceSpeaker sur intervenant inconnu ne change rien") {
     Director dir(twoSpeakerConfig(), seq({0.0}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A_close affiche
     Decision d = dir.forceSpeaker(1.0, "ZZZ");
     CHECK(d.switched == false);
     CHECK(dir.currentScene() == "A_close");
@@ -477,10 +481,10 @@ TEST_CASE("director : forceSpeaker sur intervenant inconnu ne change rien") {
 
 TEST_CASE("director : forceSpeaker sans scene dans le pool ne change rien") {
     Config c = twoSpeakerConfig();
-    c.speakers[1].scenes.clear();  // B n'a plus de scene
+    c.speakers[1].scenes.clear(); // B n'a plus de scene
     Director dir(c, seq({0.0}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
-    dir.update(0.1, {{"A", mulToDb(0.5)}});  // A_close affiche
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A_close affiche
     Decision d = dir.forceSpeaker(1.0, "B");
     CHECK(d.switched == false);
     CHECK(dir.currentScene() == "A_close");
@@ -492,24 +496,24 @@ TEST_CASE("director : contexte B 'current' apres plan force sans owner ne part p
     // 'current' (rng dans [45,75[ -> 0.5), on ne doit PAS basculer sur le plan
     // large ; on retombe sur le plus fort (choix sur), jamais sur "Plateau".
     Director dir(twoSpeakerConfig(), seq({0.5}));
-    dir.forceScene(0.0, "A_close", "");  // plan courant sans owner, != wideShotScene
+    dir.forceScene(0.0, "A_close", ""); // plan courant sans owner, != wideShotScene
     // Laisser tomber le verrou (minShot 3s) puis faire parler A+B.
     for (int i = 0; i < 8; ++i) {
         dir.update(0.2 + i * 0.05, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
     }
     Decision d = dir.update(4.0, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
     CHECK(d.context == Context::Multiple);
-    CHECK(d.scene != "Plateau");   // surtout PAS le plan large par erreur
-    CHECK(d.owner == "B");         // retombe sur le plus fort
+    CHECK(d.scene != "Plateau"); // surtout PAS le plan large par erreur
+    CHECK(d.owner == "B");       // retombe sur le plus fort
 }
 
 TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
     Director dir(twoSpeakerConfig(), seq({0.0}));
-    dir.forceSpeaker(1.0, "B");  // -> B_close (hold), lastSwitch = 1.0
+    dir.forceSpeaker(1.0, "B"); // -> B_close (hold), lastSwitch = 1.0
     CHECK(dir.currentScene() == "B_close");
     // A parle juste apres : le verrou (minShot 3s) tient le plan force.
     dir.update(1.5, {{"A", mulToDb(0.9)}});
-    dir.update(1.6, {{"A", mulToDb(0.9)}});  // A "parle" (attaque 2 frames)
+    dir.update(1.6, {{"A", mulToDb(0.9)}}); // A "parle" (attaque 2 frames)
     CHECK(dir.currentScene() == "B_close");
     // Une fois le verrou ecoule, A prend l'antenne.
     Decision d = dir.update(4.5, {{"A", mulToDb(0.9)}});
@@ -518,7 +522,7 @@ TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
 }
 
 TEST_CASE("director : sceneInProgram reconnait pool, plan large et hors-regie") {
-    Director dir(twoSpeakerConfig());  // wide=Plateau ; A:{A_close,A_wide} ; B:{B_close}
+    Director dir(twoSpeakerConfig()); // wide=Plateau ; A:{A_close,A_wide} ; B:{B_close}
     std::string owner = "sentinelle";
     // Scene d'un intervenant -> owner renseigne.
     CHECK(dir.sceneInProgram("A_close", owner));
@@ -539,26 +543,26 @@ TEST_CASE("director : sceneInProgram reconnait pool, plan large et hors-regie") 
 
 TEST_CASE("director : sceneInProgram — le plan large prime sur un pool homonyme") {
     Config c = twoSpeakerConfig();
-    c.speakers[0].scenes = {{"Plateau", 50}, {"A_close", 50}};  // A a aussi le plan large
+    c.speakers[0].scenes = {{"Plateau", 50}, {"A_close", 50}}; // A a aussi le plan large
     Director dir(c);
     std::string owner = "sentinelle";
     CHECK(dir.sceneInProgram("Plateau", owner));
-    CHECK(owner.empty());  // reconnu comme plan large, pas comme scene de A
+    CHECK(owner.empty()); // reconnu comme plan large, pas comme scene de A
 }
 
 TEST_CASE("director : sceneInProgram — un intervenant a id vide n'est jamais proprietaire") {
     // Invariant : owner vide <=> plan large. Un id vide (config corrompue) ne doit pas
     // faire passer une scene d'intervenant pour le plan large.
     Config c;
-    c.wideShotScene = "";  // pas de plan large -> isole le cas
+    c.wideShotScene = ""; // pas de plan large -> isole le cas
     Speaker bad;
-    bad.id = "";  // corrompu
+    bad.id = ""; // corrompu
     bad.audioSource = "src";
     bad.scenes = {{"X_close", 100}};
     c.speakers = {bad};
     Director dir(c);
     std::string owner = "sentinelle";
-    CHECK_FALSE(dir.sceneInProgram("X_close", owner));  // pas reconnu comme dans la regie
+    CHECK_FALSE(dir.sceneInProgram("X_close", owner)); // pas reconnu comme dans la regie
 }
 
 // ===========================================================================
@@ -575,7 +579,7 @@ TEST_CASE("profiles : round-trip JSON du catalogue") {
     REQUIRE(back.profiles.size() == 3);
     CHECK(back.profiles[0].id == 2);
     CHECK(back.profiles[0].name == "4 invites + moi");
-    CHECK(back.profiles[2].name == "Duo");  // l'ordre d'affichage est preserve
+    CHECK(back.profiles[2].name == "Duo"); // l'ordre d'affichage est preserve
 }
 
 TEST_CASE("profiles : fromJson normalise nextId et activeId") {
@@ -585,8 +589,8 @@ TEST_CASE("profiles : fromJson normalise nextId et activeId") {
         "profiles": [ {"id": 5, "name": "A"}, {"id": 8, "name": "B"} ]
     })";
     const ProfileIndex idx = profileIndexFromJson(js);
-    CHECK(idx.nextId == 9);    // au-dessus du plus grand id (8)
-    CHECK(idx.activeId == 5);  // 99 invalide -> premier profil
+    CHECK(idx.nextId == 9);   // au-dessus du plus grand id (8)
+    CHECK(idx.activeId == 5); // 99 invalide -> premier profil
 }
 
 TEST_CASE("profiles : addProfile attribue des ids croissants sans reutilisation") {
@@ -597,10 +601,10 @@ TEST_CASE("profiles : addProfile attribue des ids croissants sans reutilisation"
     CHECK(b == 2);
     CHECK(idx.nextId == 3);
     // suppression de B puis ajout : l'id de B n'est PAS recycle.
-    idx.activeId = a;  // a est actif, b est supprimable
+    idx.activeId = a; // a est actif, b est supprimable
     CHECK(removeProfile(idx, b) == true);
     const int c = addProfile(idx, "C");
-    CHECK(c == 3);  // pas 2
+    CHECK(c == 3); // pas 2
 }
 
 TEST_CASE("profiles : noms rendus uniques") {
@@ -622,10 +626,10 @@ TEST_CASE("profiles : removeProfile protege l'actif et le dernier") {
     const int a = addProfile(idx, "A");
     const int b = addProfile(idx, "B");
     idx.activeId = a;
-    CHECK(removeProfile(idx, a) == false);    // a est actif
-    CHECK(removeProfile(idx, 999) == false);  // id absent
+    CHECK(removeProfile(idx, a) == false);   // a est actif
+    CHECK(removeProfile(idx, 999) == false); // id absent
     CHECK(removeProfile(idx, b) == true);
-    CHECK(removeProfile(idx, a) == false);  // a est le dernier restant
+    CHECK(removeProfile(idx, a) == false); // a est le dernier restant
     REQUIRE(idx.profiles.size() == 1);
 }
 
@@ -636,7 +640,7 @@ TEST_CASE("profiles : setActiveProfile valide l'id") {
     CHECK(setActiveProfile(idx, b) == true);
     CHECK(idx.activeId == b);
     CHECK(setActiveProfile(idx, 999) == false);
-    CHECK(idx.activeId == b);  // inchange
+    CHECK(idx.activeId == b); // inchange
     CHECK(setActiveProfile(idx, a) == true);
 }
 
@@ -648,11 +652,11 @@ TEST_CASE("config : thresholdDb par intervenant survit a un aller-retour JSON") 
     a.id = "A";
     a.name = "Alice";
     a.audioSource = "srcA";
-    a.thresholdDb = -28.0;  // seuil propre regle
+    a.thresholdDb = -28.0; // seuil propre regle
     Speaker b;
     b.id = "B";
     b.name = "Bob";
-    b.audioSource = "srcB";  // pas de seuil propre -> doit rester absent
+    b.audioSource = "srcB"; // pas de seuil propre -> doit rester absent
     c.speakers = {a, b};
 
     const std::string js = toJson(c);
@@ -667,16 +671,16 @@ TEST_CASE("config : un intervenant sans seuil propre n'ecrit pas la cle threshol
     Config c;
     Speaker a;
     a.id = "A";
-    a.audioSource = "srcA";  // pas de thresholdDb
+    a.audioSource = "srcA"; // pas de thresholdDb
     c.speakers = {a};
     const std::string js = toJson(c);
     CHECK(js.find("thresholdDb") == std::string::npos);
 }
 
 TEST_CASE("director : setConfig seme l'override de seuil depuis le profil") {
-    Config c = twoSpeakerConfig();    // A et B, seuil global par defaut (-35)
+    Config c = twoSpeakerConfig(); // A et B, seuil global par defaut (-35)
     c.audio.voiceThresholdDb = -35.0;
-    c.speakers[0].thresholdDb = -28.0;  // A a un seuil propre ; B non
+    c.speakers[0].thresholdDb = -28.0; // A a un seuil propre ; B non
     Director dir(c);
     // A : seuil propre seme depuis le profil ; B : retombe sur le global.
     CHECK(dir.speakerThresholdDb("A") == doctest::Approx(-28.0));
@@ -696,8 +700,8 @@ TEST_CASE("director : l'anti ping-pong amortit la navette (contexte multiple)") 
         c.timing.minShotSeconds = 3.0;
         c.timing.pingPongWindowSeconds = window;
         Director dir(c, seq({0.0}));
-        const double hi = mulToDb(0.9);  // ~ -0.9 dB (le plus fort)
-        const double lo = mulToDb(0.5);  // ~ -6 dB
+        const double hi = mulToDb(0.9); // ~ -0.9 dB (le plus fort)
+        const double lo = mulToDb(0.5); // ~ -6 dB
         // Phase 1 : A le plus fort -> on finit par montrer A.
         dir.update(0.0, {{"A", hi}, {"B", lo}});
         dir.update(0.1, {{"A", hi}, {"B", lo}});
@@ -709,8 +713,8 @@ TEST_CASE("director : l'anti ping-pong amortit la navette (contexte multiple)") 
         const Decision d = dir.update(6.5, {{"A", hi}, {"B", lo}});
         return d.owner;
     };
-    CHECK(run(12.0) == "B");  // fenetre active : on RESTE sur B (navette amortie)
-    CHECK(run(0.0) == "A");   // anti ping-pong off : on suit le plus fort -> retour A
+    CHECK(run(12.0) == "B"); // fenetre active : on RESTE sur B (navette amortie)
+    CHECK(run(0.0) == "A");  // anti ping-pong off : on suit le plus fort -> retour A
 }
 
 TEST_CASE("director : l'anti ping-pong relache APRES la fenetre (vraie borne de temps)") {
@@ -718,15 +722,15 @@ TEST_CASE("director : l'anti ping-pong relache APRES la fenetre (vraie borne de 
     // si l'override etait fige dans la memoisation, on resterait colle jusqu'au temps-max).
     Config c = twoSpeakerConfig();
     c.timing.minShotSeconds = 3.0;
-    c.timing.maxShotSeconds = 30.0;  // grand expres : ne doit PAS gouverner le relachement
+    c.timing.maxShotSeconds = 30.0; // grand expres : ne doit PAS gouverner le relachement
     c.timing.pingPongWindowSeconds = 5.0;
     Director dir(c, seq({0.0}));
     const double hi = mulToDb(0.9);
     const double lo = mulToDb(0.5);
     dir.update(0.0, {{"A", hi}, {"B", lo}});
-    dir.update(0.1, {{"A", hi}, {"B", lo}});  // -> A
+    dir.update(0.1, {{"A", hi}, {"B", lo}}); // -> A
     dir.update(3.2, {{"A", lo}, {"B", hi}});
-    dir.update(3.3, {{"A", lo}, {"B", hi}});  // -> B (on a quitte A a 3.2)
+    dir.update(3.3, {{"A", lo}, {"B", hi}}); // -> B (on a quitte A a 3.2)
     // A redevient le plus fort, encore DANS la fenetre (3.2 + 5 = 8.2) -> on reste B.
     CHECK(dir.update(6.0, {{"A", hi}, {"B", lo}}).owner == "B");
     // Bien APRES la fenetre (et avant le temps-max=30) -> on bascule enfin sur A.
@@ -749,12 +753,12 @@ TEST_CASE("version : parseSemVer accepte X.Y.Z (prefixe 'v' et espaces toleres)"
 }
 
 TEST_CASE("version : parseSemVer rejette les formats invalides") {
-    CHECK_FALSE(parseSemVer("1.2").has_value());        // pas assez de segments
-    CHECK_FALSE(parseSemVer("1.2.3.4").has_value());    // trop de segments
-    CHECK_FALSE(parseSemVer("1.2.3-rc1").has_value());  // pre-release : volontairement nul
-    CHECK_FALSE(parseSemVer("1.2.x").has_value());      // segment non numerique
-    CHECK_FALSE(parseSemVer("1..2").has_value());       // segment vide
-    CHECK_FALSE(parseSemVer("1.2.").has_value());       // dernier segment vide
+    CHECK_FALSE(parseSemVer("1.2").has_value());       // pas assez de segments
+    CHECK_FALSE(parseSemVer("1.2.3.4").has_value());   // trop de segments
+    CHECK_FALSE(parseSemVer("1.2.3-rc1").has_value()); // pre-release : volontairement nul
+    CHECK_FALSE(parseSemVer("1.2.x").has_value());     // segment non numerique
+    CHECK_FALSE(parseSemVer("1..2").has_value());      // segment vide
+    CHECK_FALSE(parseSemVer("1.2.").has_value());      // dernier segment vide
     CHECK_FALSE(parseSemVer("").has_value());
     CHECK_FALSE(parseSemVer("   ").has_value());
     CHECK_FALSE(parseSemVer("abc").has_value());
@@ -772,8 +776,8 @@ TEST_CASE("version : isNewerVersion ne notifie que pour une version stable super
     CHECK(isNewerVersion("0.2.0", "0.1.0"));
     CHECK(isNewerVersion("1.0.0", "0.9.9"));
     CHECK(isNewerVersion("0.1.1", "0.1.0"));
-    CHECK_FALSE(isNewerVersion("0.1.0", "0.1.0"));  // identique
-    CHECK_FALSE(isNewerVersion("0.1.0", "0.2.0"));  // plus ancienne
+    CHECK_FALSE(isNewerVersion("0.1.0", "0.1.0")); // identique
+    CHECK_FALSE(isNewerVersion("0.1.0", "0.2.0")); // plus ancienne
     // Tolerance : si un cote ne parse pas (reseau douteux, pre-release) -> aucune notif.
     CHECK_FALSE(isNewerVersion("garbage", "0.1.0"));
     CHECK_FALSE(isNewerVersion("0.2.0", ""));

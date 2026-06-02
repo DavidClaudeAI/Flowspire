@@ -30,20 +30,20 @@
 #include <unordered_set>
 #include <utility>
 
-#include "plugin-support.h"        // PLUGIN_VERSION (derive de buildspec.json par CMake)
-#include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
-#include "core/profiles.hpp"       // catalogue de profils (modele pur)
-#include "obs/profiles_store.hpp"  // magasin de profils (profil actif = source de verite)
-#include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
-#include "ui/sd_prefs.hpp"         // preferences globales (verif MAJ, scene hors regie)
-#include "ui/sd_settings.hpp"      // parametres avances (modale)
-#include "ui/sd_update_check.hpp"  // verification de mise a jour (Qt Network)
-#include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
-#include "ui/sd_icons.hpp"         // icones lucide teintees
-#include "ui/sd_level_meter.hpp"   // vumetre custom + marqueur de seuil
-#include "ui/sd_runtime.hpp"       // kTickMs (cadence partagee dock <-> assistant)
-#include "ui/sd_style.hpp"         // rgba() (helper QSS partage)
-#include "ui/sd_theme.hpp"         // jetons de design (couleurs/typo)
+#include "plugin-support.h"       // PLUGIN_VERSION (derive de buildspec.json par CMake)
+#include "core/audio_util.hpp"    // source de verite du plancher (kDbFloor)
+#include "core/profiles.hpp"      // catalogue de profils (modele pur)
+#include "obs/profiles_store.hpp" // magasin de profils (profil actif = source de verite)
+#include "ui/sd_assistant.hpp"    // assistant de configuration (modale)
+#include "ui/sd_prefs.hpp"        // preferences globales (verif MAJ, scene hors regie)
+#include "ui/sd_settings.hpp"     // parametres avances (modale)
+#include "ui/sd_update_check.hpp" // verification de mise a jour (Qt Network)
+#include "ui/sd_i18n.hpp"         // i18n native OBS (i18n)
+#include "ui/sd_icons.hpp"        // icones lucide teintees
+#include "ui/sd_level_meter.hpp"  // vumetre custom + marqueur de seuil
+#include "ui/sd_runtime.hpp"      // kTickMs (cadence partagee dock <-> assistant)
+#include "ui/sd_style.hpp"        // rgba() (helper QSS partage)
+#include "ui/sd_theme.hpp"        // jetons de design (couleurs/typo)
 
 namespace sd::ui {
 
@@ -74,8 +74,7 @@ const QEvent::Type kActionEventType = static_cast<QEvent::Type>(QEvent::register
 
 class ActionEvent : public QEvent {
 public:
-    explicit ActionEvent(std::function<void()> fn)
-        : QEvent(kActionEventType), fn_(std::move(fn)) {}
+    explicit ActionEvent(std::function<void()> fn) : QEvent(kActionEventType), fn_(std::move(fn)) {}
     void run() {
         if (fn_) {
             fn_();
@@ -99,8 +98,7 @@ private:
 // clignotement. Le tick lui-meme detecte le changement manuel (handleManualSceneChange),
 // AVANT sa decision -> source de verite unique, pas de combat de bascule.
 void frontendEventCb(enum obs_frontend_event event, void* data) {
-    if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING &&
-        event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
+    if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING && event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
         return;
     }
     auto* dock = static_cast<SdDock*>(data);
@@ -129,12 +127,11 @@ QString dockQss() {
 
 // Slider de seuil. handle clair ; bordure verte quand l'intervenant parle.
 QString sliderQss(bool active) {
-    return QString(
-               "QSlider::groove:horizontal { height:%1px; background:%2; border-radius:3px; }"
-               "QSlider::sub-page:horizontal { height:%1px; background:%2; border-radius:3px; }"
-               "QSlider::add-page:horizontal { height:%1px; background:%2; border-radius:3px; }"
-               "QSlider::handle:horizontal { width:12px; height:12px; margin:-4px 0;"
-               " border-radius:6px; background:%3; border:2px solid %4; }")
+    return QString("QSlider::groove:horizontal { height:%1px; background:%2; border-radius:3px; }"
+                   "QSlider::sub-page:horizontal { height:%1px; background:%2; border-radius:3px; }"
+                   "QSlider::add-page:horizontal { height:%1px; background:%2; border-radius:3px; }"
+                   "QSlider::handle:horizontal { width:12px; height:12px; margin:-4px 0;"
+                   " border-radius:6px; background:%3; border:2px solid %4; }")
         .arg(th::kMeterHeight)
         .arg(th::kSurface3)
         .arg(th::kTextPrimary)
@@ -161,7 +158,7 @@ QWidget* makeTally(QHBoxLayout* lay) {
     lay->addWidget(tally, 0, Qt::AlignVCenter);
     return tally;
 }
-}  // namespace
+} // namespace
 
 double SdDock::nowSeconds() {
     using namespace std::chrono;
@@ -181,7 +178,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scroll->setStyleSheet(QStringLiteral("QScrollArea { background:transparent; border:none; }"));
     auto* content = new QWidget();
-    content->setObjectName(QStringLiteral("StreamDirectorDock"));  // cible du fond (dockQss)
+    content->setObjectName(QStringLiteral("StreamDirectorDock")); // cible du fond (dockQss)
     scroll->setWidget(content);
     outer->addWidget(scroll);
 
@@ -195,9 +192,8 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     auto* brandIcon = new QLabel();
     brandIcon->setPixmap(icon(Icon::Clapperboard, th::kAccent, 18));
     auto* brand = new QLabel(i18n("Dock.Title"));
-    brand->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;")
-                             .arg(th::kTextPrimary)
-                             .arg(th::kFontTitle));
+    brand->setStyleSheet(
+        QString("color:%1; font-size:%2px; font-weight:700;").arg(th::kTextPrimary).arg(th::kFontTitle));
     header->addWidget(brandIcon);
     header->addWidget(brand);
     header->addStretch();
@@ -234,20 +230,18 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     updateLay->setSpacing(8);
     updateBannerLabel_ = new QLabel();
     updateBannerLabel_->setWordWrap(true);
-    updateBannerLabel_->setStyleSheet(QString("color:%1; font-size:%2px; background:transparent;")
-                                          .arg(th::kTextPrimary)
-                                          .arg(th::kFontLabel));
+    updateBannerLabel_->setStyleSheet(
+        QString("color:%1; font-size:%2px; background:transparent;").arg(th::kTextPrimary).arg(th::kFontLabel));
     updateBannerButton_ = new QPushButton(i18n("Update.Get"));
     updateBannerButton_->setCursor(Qt::PointingHandCursor);
-    updateBannerButton_->setStyleSheet(
-        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                " color:%4; font-size:%5px; font-weight:600; padding:5px 10px; }"
-                "QPushButton:hover { border-color:%4; }")
-            .arg(th::kSurface3)
-            .arg(rgba(th::kAccent, 0.4))
-            .arg(th::kRadiusButton)
-            .arg(th::kAccent)
-            .arg(th::kFontButton));
+    updateBannerButton_->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                                               " color:%4; font-size:%5px; font-weight:600; padding:5px 10px; }"
+                                               "QPushButton:hover { border-color:%4; }")
+                                           .arg(th::kSurface3)
+                                           .arg(rgba(th::kAccent, 0.4))
+                                           .arg(th::kRadiusButton)
+                                           .arg(th::kAccent)
+                                           .arg(th::kFontButton));
     updateLay->addWidget(updateBannerLabel_, 1);
     updateLay->addWidget(updateBannerButton_);
     updateBanner_->setVisible(false);
@@ -259,28 +253,25 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     auto* profileBar = new QHBoxLayout();
     profileBar->setSpacing(8);
     auto* profileLabel = new QLabel(i18n("Dock.Profile"));
-    profileLabel->setStyleSheet(
-        QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontLabel));
+    profileLabel->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontLabel));
     // Bouton-select : nom a GAUCHE + chevron a DROITE (layout interne ; labels
     // transparents a la souris -> le clic remonte au bouton). text-align ne suffit pas
     // a coller le chevron a droite, d'ou ce layout (retour David : chevron a droite).
     profileButton_ = new QPushButton();
     profileButton_->setCursor(Qt::PointingHandCursor);
-    profileButton_->setStyleSheet(
-        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px; }"
-                "QPushButton:hover { border-color:%4; }")
-            .arg(th::kSurface3)
-            .arg(th::kBorder)
-            .arg(th::kRadiusButton)
-            .arg(rgba(th::kAccent, 0.6)));
+    profileButton_->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px; }"
+                                          "QPushButton:hover { border-color:%4; }")
+                                      .arg(th::kSurface3)
+                                      .arg(th::kBorder)
+                                      .arg(th::kRadiusButton)
+                                      .arg(rgba(th::kAccent, 0.6)));
     auto* pbLay = new QHBoxLayout(profileButton_);
     pbLay->setContentsMargins(10, 7, 8, 7);
     pbLay->setSpacing(8);
     profileNameLabel_ = new QLabel();
     profileNameLabel_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     profileNameLabel_->setStyleSheet(
-        QString("color:%1; font-size:12px; font-weight:600; background:transparent;")
-            .arg(th::kTextPrimary));
+        QString("color:%1; font-size:12px; font-weight:600; background:transparent;").arg(th::kTextPrimary));
     auto* pbChevron = new QLabel();
     pbChevron->setAttribute(Qt::WA_TransparentForMouseEvents, true);
     pbChevron->setPixmap(icon(Icon::ChevronDown, th::kTextSecondary, 14));
@@ -292,16 +283,14 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     profileEdit->setIcon(icon(Icon::Settings, th::kAccent, 14));
     profileEdit->setCursor(Qt::PointingHandCursor);
     profileEdit->setToolTip(i18n("Settings.Nav.Profiles"));
-    profileEdit->setStyleSheet(
-        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                " padding:7px 9px; }"
-                "QPushButton:hover { border-color:%4; }")
-            .arg(th::kSurface3)
-            .arg(rgba(th::kAccent, 0.4))
-            .arg(th::kRadiusButton)
-            .arg(th::kAccent));
-    connect(profileEdit, &QPushButton::clicked, this,
-            [this]() { openSettings(SdSettings::TabProfiles); });
+    profileEdit->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                                       " padding:7px 9px; }"
+                                       "QPushButton:hover { border-color:%4; }")
+                                   .arg(th::kSurface3)
+                                   .arg(rgba(th::kAccent, 0.4))
+                                   .arg(th::kRadiusButton)
+                                   .arg(th::kAccent));
+    connect(profileEdit, &QPushButton::clicked, this, [this]() { openSettings(SdSettings::TabProfiles); });
     profileBar->addWidget(profileLabel);
     profileBar->addWidget(profileButton_, 1);
     profileBar->addWidget(profileEdit);
@@ -347,14 +336,13 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     // Footer : deux acces ACTIFS (Run 5/6), accent pour inviter au clic. Meme style.
     auto* footer = new QHBoxLayout();
     footer->setSpacing(8);
-    const QString footerBtnQss =
-        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                " color:%4; font-size:12px; font-weight:600; padding:8px 10px; }"
-                "QPushButton:hover { border-color:%4; }")
-            .arg(th::kSurface3)
-            .arg(rgba(th::kAccent, 0.4))
-            .arg(th::kRadiusButton)
-            .arg(th::kAccent);
+    const QString footerBtnQss = QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                                         " color:%4; font-size:12px; font-weight:600; padding:8px 10px; }"
+                                         "QPushButton:hover { border-color:%4; }")
+                                     .arg(th::kSurface3)
+                                     .arg(rgba(th::kAccent, 0.4))
+                                     .arg(th::kRadiusButton)
+                                     .arg(th::kAccent);
 
     // Parametres avances (Run 6) : ouvre la fenetre de reglages fins.
     auto* settingsBtn = new QPushButton(i18n("Footer.AdvancedSettings"));
@@ -382,8 +370,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     auto* bottomBar = new QHBoxLayout();
     bottomBar->setSpacing(8);
     auto* versionLabel = new QLabel(QString("StreamDirector v%1").arg(PLUGIN_VERSION));
-    versionLabel->setStyleSheet(
-        QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
+    versionLabel->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
     bottomBar->addStretch();
     bottomBar->addWidget(versionLabel);
     root->addLayout(bottomBar);
@@ -395,7 +382,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     connect(timer_, &QTimer::timeout, this, [this]() { tick(); });
     timer_->start();
 
-    startUpdateCheck();  // verif MAJ au demarrage (async, silencieuse si hors-ligne)
+    startUpdateCheck(); // verif MAJ au demarrage (async, silencieuse si hors-ligne)
 
     // Ecriture differee du seuil par intervenant : (re)demarree a chaque pas du slider,
     // elle n'ecrit le profil qu'une fois le reglage stabilise (~debounce). Le relachement
@@ -443,11 +430,10 @@ void SdDock::styleSpeakerCard(Row& row, bool speaking) {
                                 .arg(th::kRadiusCard));
     // Avatar : icone user teintee (vert si actif), fond rond translucide.
     row.avatar->setPixmap(icon(Icon::User, speaking ? th::kSuccess : th::kTextTertiary, 18));
-    row.avatar->setStyleSheet(
-        QString("background:%1; border:2px solid %2; border-radius:%3px;")
-            .arg(speaking ? rgba(th::kSuccess, 0.18) : QString::fromUtf8(th::kSurface3))
-            .arg(speaking ? QString::fromUtf8(th::kSuccess) : rgba(th::kBorder, 1.0))
-            .arg(th::kAvatarSize / 2));
+    row.avatar->setStyleSheet(QString("background:%1; border:2px solid %2; border-radius:%3px;")
+                                  .arg(speaking ? rgba(th::kSuccess, 0.18) : QString::fromUtf8(th::kSurface3))
+                                  .arg(speaking ? QString::fromUtf8(th::kSuccess) : rgba(th::kBorder, 1.0))
+                                  .arg(th::kAvatarSize / 2));
     row.nameLabel->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:600;")
                                      .arg(speaking ? th::kTextPrimary : th::kTextSecondary)
                                      .arg(th::kFontBody));
@@ -485,16 +471,16 @@ void SdDock::saveActiveProfileNow() {
 
 void SdDock::startUpdateCheck() {
     // opt-out (onglet Parametres generaux) : aucune requete reseau si l'utilisateur a decoche.
-    if (!loadPrefs().checkUpdatesOnStartup) return;
+    if (!loadPrefs().checkUpdatesOnStartup)
+        return;
     // Verifie en arriere-plan s'il existe une release plus recente que la version locale.
     // Aucune release / hors-ligne / erreur -> rien ne s'affiche (updateAvailable == false).
     checkForUpdate(this, PLUGIN_VERSION, [this](const UpdateInfo& info) {
-        if (!info.updateAvailable) return;
-        updateBannerLabel_->setText(
-            i18n("Update.Available").arg(QString::fromStdString(info.latestVersion)));
+        if (!info.updateAvailable)
+            return;
+        updateBannerLabel_->setText(i18n("Update.Available").arg(QString::fromStdString(info.latestVersion)));
         const QString url = QString::fromStdString(info.releaseUrl);
-        connect(updateBannerButton_, &QPushButton::clicked, this,
-                [url]() { QDesktopServices::openUrl(QUrl(url)); });
+        connect(updateBannerButton_, &QPushButton::clicked, this, [url]() { QDesktopServices::openUrl(QUrl(url)); });
         updateBanner_->setVisible(true);
     });
 }
@@ -508,7 +494,7 @@ void SdDock::reload() {
     // sans perte un fichier illisible (.bak / scan).
     const sd::profiles::ActiveConfigResult loaded =
         sd::profiles::loadActiveConfig(i18n("Profiles.DefaultName").toStdString());
-    activeConfig_ = loaded.config;  // memorise pour persister le seuil par intervenant
+    activeConfig_ = loaded.config; // memorise pour persister le seuil par intervenant
 
     sd::core::Config cfg;
     displaySpeakers_.clear();
@@ -532,7 +518,7 @@ void SdDock::reload() {
 
     director_ = std::make_unique<sd::core::Director>(cfg);
     if (!configMode_) {
-        autoEnabled_ = false;  // GARDE-FOU : pas de pilotage sans config.
+        autoEnabled_ = false; // GARDE-FOU : pas de pilotage sans config.
     }
     director_->setAutoEnabled(autoEnabled_);
     // Pas de re-application d'overrides en session : le seuil par intervenant est
@@ -557,7 +543,7 @@ void SdDock::reload() {
         // (le contenu ne sera pas coupe ; le defilement prend le relais).
         card->setMinimumHeight(th::kAvatarSize + 20);
         auto* lay = new QHBoxLayout(card);
-        lay->setContentsMargins(8, 10, 10, 10);  // marge gauche reduite : espace du tally
+        lay->setContentsMargins(8, 10, 10, 10); // marge gauche reduite : espace du tally
         lay->setSpacing(10);
 
         // Temoin "tally" : pilule verticale (rouge quand cette scene est a l'antenne).
@@ -581,9 +567,8 @@ void SdDock::reload() {
         nameRowLay->setSpacing(6);
         auto* nameLabel = new QLabel(QString::fromStdString(ds.name));
         auto* stateLabel = new QLabel(i18n("Speaker.State.Silent"));
-        stateLabel->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;")
-                                      .arg(th::kTextTertiary)
-                                      .arg(th::kFontSmall));
+        stateLabel->setStyleSheet(
+            QString("color:%1; font-size:%2px; font-weight:700;").arg(th::kTextTertiary).arg(th::kFontSmall));
         nameRowLay->addWidget(nameLabel);
         nameRowLay->addStretch();
         nameRowLay->addWidget(stateLabel);
@@ -599,29 +584,27 @@ void SdDock::reload() {
         threshLay->setContentsMargins(0, 0, 0, 0);
         threshLay->setSpacing(4);
         auto* threshLabel = new QLabel(i18n("Speaker.Threshold"));
-        threshLabel->setStyleSheet(
-            QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
+        threshLabel->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
         auto* threshold = new QSlider(Qt::Horizontal);
         // Borne basse = kFloorDb + 1 (et non kFloorDb) : tout en bas, le seuil
         // resterait AU plancher de silence -> avec le comparateur "niveau >= seuil"
         // une source muette (niveau == plancher) passerait pour "parle" en
         // permanence. On garde donc le minimum un cran au-dessus du silence absolu.
-        threshold->setRange(kFloorDb + 1, 0);  // dB : [-59, 0]
-        int initThresh =
-            director_ ? static_cast<int>(std::lround(director_->speakerThresholdDb(ds.id))) : -35;
+        threshold->setRange(kFloorDb + 1, 0); // dB : [-59, 0]
+        int initThresh = director_ ? static_cast<int>(std::lround(director_->speakerThresholdDb(ds.id))) : -35;
         if (initThresh < kFloorDb + 1) {
-            initThresh = kFloorDb + 1;  // clamp si une config descend au plancher
+            initThresh = kFloorDb + 1; // clamp si une config descend au plancher
         }
         threshold->setValue(initThresh);
         threshold->setStyleSheet(sliderQss(false));
-        meter->setThresholdDb(initThresh);  // marqueur initial sur le vumetre
+        meter->setThresholdDb(initThresh); // marqueur initial sur le vumetre
         const std::string sid = ds.id;
         connect(threshold, &QSlider::valueChanged, this, [this, sid, meter](int v) {
             if (director_) {
-                director_->setSpeakerThreshold(sid, static_cast<double>(v));  // moteur en direct
+                director_->setSpeakerThreshold(sid, static_cast<double>(v)); // moteur en direct
             }
-            meter->setThresholdDb(v);                  // le marqueur suit le slider en direct
-            rememberSpeakerThreshold(sid, v);          // prepare l'ecriture (pas encore sur disque)
+            meter->setThresholdDb(v);         // le marqueur suit le slider en direct
+            rememberSpeakerThreshold(sid, v); // prepare l'ecriture (pas encore sur disque)
             // Ecriture DIFFEREE : un glissement souris ou une rafale clavier/molette ne
             // declenche qu'UNE ecriture, ~apres stabilisation. Evite le martelement disque
             // et la rotation .bak a chaque pas.
@@ -709,8 +692,7 @@ void SdDock::reload() {
 }
 
 void SdDock::updateStatusBadge() {
-    const int status =
-        !configMode_ ? StatusReadOnly : (autoEnabled_ ? StatusActive : StatusPaused);
+    const int status = !configMode_ ? StatusReadOnly : (autoEnabled_ ? StatusActive : StatusPaused);
     if (status == shownStatus_) {
         return;
     }
@@ -731,18 +713,16 @@ void SdDock::updateStatusBadge() {
         borderC = th::kWarning;
         text = i18n("Dock.Status.Paused");
     } else {
-        fillA = 1.0;  // lecture seule : fond surface3 plein
+        fillA = 1.0; // lecture seule : fond surface3 plein
     }
-    const QString fill = (status == StatusReadOnly) ? QString::fromUtf8(th::kSurface3)
-                                                    : rgba(color, fillA);
+    const QString fill = (status == StatusReadOnly) ? QString::fromUtf8(th::kSurface3) : rgba(color, fillA);
     statusBadge_->setStyleSheet(QString("#statusBadge { background:%1; border:1px solid %2;"
                                         " border-radius:6px; }")
                                     .arg(fill)
                                     .arg(rgba(borderC, status == StatusReadOnly ? 1.0 : 0.5)));
     statusDot_->setStyleSheet(QString("color:%1; font-size:%2px;").arg(color).arg(th::kFontBody));
     statusText_->setText(text);
-    statusText_->setStyleSheet(
-        QString("color:%1; font-size:%2px; font-weight:700;").arg(color).arg(th::kFontBody));
+    statusText_->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;").arg(color).arg(th::kFontBody));
 }
 
 void SdDock::updateModeLabel() {
@@ -765,7 +745,7 @@ void SdDock::updateModeLabel() {
 
 void SdDock::setAuto(bool on) {
     if (on && !configMode_) {
-        return;  // GARDE-FOU : pas d'activation sans config (couvre la hotkey).
+        return; // GARDE-FOU : pas d'activation sans config (couvre la hotkey).
     }
     autoEnabled_ = on;
     if (director_) {
@@ -839,37 +819,33 @@ void SdDock::updateProfileBar() {
     if (!profileNameLabel_) {
         return;
     }
-    const sd::profiles::ListResult list =
-        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    const sd::profiles::ListResult list = sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     QString name;
     if (list.ok) {
-        if (const sd::core::ProfileEntry* e =
-                sd::core::findProfile(list.index, list.index.activeId)) {
+        if (const sd::core::ProfileEntry* e = sd::core::findProfile(list.index, list.index.activeId)) {
             name = QString::fromStdString(e->name);
         }
     }
     if (name.isEmpty()) {
         name = i18n("Profiles.DefaultName");
     }
-    profileNameLabel_->setText(name);  // le chevron est un label fixe a droite du bouton
+    profileNameLabel_->setText(name); // le chevron est un label fixe a droite du bouton
 }
 
 void SdDock::showProfileMenu() {
-    const sd::profiles::ListResult list =
-        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    const sd::profiles::ListResult list = sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     if (!list.ok) {
-        openSettings(SdSettings::TabProfiles);  // catalogue illisible : on ouvre la gestion
+        openSettings(SdSettings::TabProfiles); // catalogue illisible : on ouvre la gestion
         return;
     }
     QMenu menu;
-    menu.setStyleSheet(
-        QString("QMenu { background:%1; border:1px solid %2; border-radius:6px; padding:4px; }"
-                "QMenu::item { color:%3; padding:6px 22px 6px 12px; border-radius:4px; }"
-                "QMenu::item:selected { background:%4; }")
-            .arg(th::kSurface2)
-            .arg(th::kBorder)
-            .arg(th::kTextPrimary)
-            .arg(rgba(th::kAccent, 0.25)));
+    menu.setStyleSheet(QString("QMenu { background:%1; border:1px solid %2; border-radius:6px; padding:4px; }"
+                               "QMenu::item { color:%3; padding:6px 22px 6px 12px; border-radius:4px; }"
+                               "QMenu::item:selected { background:%4; }")
+                           .arg(th::kSurface2)
+                           .arg(th::kBorder)
+                           .arg(th::kTextPrimary)
+                           .arg(rgba(th::kAccent, 0.25)));
     // Menu aussi large que le bouton (retour David : le sous-menu prend toute la largeur).
     menu.setMinimumWidth(profileButton_->width());
     for (const auto& e : list.index.profiles) {
@@ -900,7 +876,7 @@ void SdDock::switchProfile(int id) {
     // verite) -> intervenants, scenes, reglages et selecteur se mettent a jour.
     const sd::profiles::StoreResult res = sd::profiles::setActive(id);
     if (!res.ok) {
-        return;  // best-effort : un echec laisse le profil courant inchange
+        return; // best-effort : un echec laisse le profil courant inchange
     }
     reload();
 }
@@ -941,7 +917,7 @@ void SdDock::forceWide() {
     }
     const sd::core::Decision decision = director_->forceScene(nowSeconds(), wide, "");
     const std::string scene = decision.scene.empty() ? wide : decision.scene;
-    lastRequestedScene_ = scene;  // bascule initiee par nous (cf. handleManualSceneChange)
+    lastRequestedScene_ = scene; // bascule initiee par nous (cf. handleManualSceneChange)
     sceneSwitcher_.switchTo(scene);
 }
 
@@ -952,7 +928,7 @@ void SdDock::forceSpeakerByIndex(int index) {
     const sd::core::Decision decision =
         director_->forceSpeaker(nowSeconds(), displaySpeakers_[static_cast<size_t>(index)].id);
     if (!decision.scene.empty()) {
-        lastRequestedScene_ = decision.scene;  // bascule initiee par nous (cf. handleManualSceneChange)
+        lastRequestedScene_ = decision.scene; // bascule initiee par nous (cf. handleManualSceneChange)
         sceneSwitcher_.switchTo(decision.scene);
     }
 }
@@ -1002,8 +978,7 @@ void SdDock::tick() {
     std::map<std::string, double> levelsById;
     for (const auto& ds : displaySpeakers_) {
         const auto it = levelsBySource.find(ds.audioSource);
-        levelsById[ds.id] =
-            (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
+        levelsById[ds.id] = (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
     }
 
     const sd::core::Decision decision = director_->update(now, levelsById);
@@ -1016,8 +991,7 @@ void SdDock::tick() {
     // identifie son proprietaire pour le tally. sceneInProgram renvoie true + owner vide
     // UNIQUEMENT pour le plan large -> wideOnAir. owner non vide -> carte d'un intervenant.
     std::string onAirOwner;
-    const bool inProgram =
-        director_->sceneInProgram(sceneSwitcher_.currentProgramScene(), onAirOwner);
+    const bool inProgram = director_->sceneInProgram(sceneSwitcher_.currentProgramScene(), onAirOwner);
     const bool wideOnAir = inProgram && onAirOwner.empty();
 
     for (auto& row : rows_) {
@@ -1025,8 +999,7 @@ void SdDock::tick() {
         // (la carte "Plan large" n'a ni source audio ni vumetre -> meter nul).
         if (row.meter) {
             const auto it = levelsBySource.find(row.audioSource);
-            const double db =
-                (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
+            const double db = (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
 
             const int dbInt = dbToInt(db);
             if (dbInt != row.shownDb) {
@@ -1037,8 +1010,7 @@ void SdDock::tick() {
             const int speakingNow = speakingSet.count(row.id) ? 1 : 0;
             if (speakingNow != row.shownSpeaking) {
                 row.shownSpeaking = speakingNow;
-                row.stateLabel->setText(speakingNow ? i18n("Speaker.State.Speaking")
-                                                    : i18n("Speaker.State.Silent"));
+                row.stateLabel->setText(speakingNow ? i18n("Speaker.State.Speaking") : i18n("Speaker.State.Silent"));
                 row.stateLabel->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;")
                                                   .arg(speakingNow ? th::kSuccess : th::kTextTertiary)
                                                   .arg(th::kFontSmall));
@@ -1048,9 +1020,7 @@ void SdDock::tick() {
 
         // Tally : allume (rouge) si la scene a l'antenne est celle de cette carte
         // (le plan large pour la carte "Plan large", sinon le pool d'un intervenant).
-        const int onAirNow = (row.isWide ? wideOnAir : (!onAirOwner.empty() && row.id == onAirOwner))
-                                 ? 1
-                                 : 0;
+        const int onAirNow = (row.isWide ? wideOnAir : (!onAirOwner.empty() && row.id == onAirOwner)) ? 1 : 0;
         if (onAirNow != row.shownOnAir) {
             row.shownOnAir = onAirNow;
             if (row.tally) {
@@ -1060,4 +1030,4 @@ void SdDock::tick() {
     }
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

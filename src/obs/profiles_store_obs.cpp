@@ -16,7 +16,7 @@ ProfileStore& defaultStore() {
     static ProfileStore store(fileStore);
     return store;
 }
-}  // namespace
+} // namespace
 
 ListResult loadList(const std::string& defaultName) {
     return defaultStore().loadList(defaultName);
@@ -46,4 +46,4 @@ StoreResult removeProfile(int id) {
     return defaultStore().removeProfile(id);
 }
 
-}  // namespace sd::profiles
+} // namespace sd::profiles

@@ -27,28 +27,28 @@ inline constexpr const char* kTextTertiary = "#6E6E76";
 // Variantes translucides (fond/bordure teintes) — memes valeurs que la maquette.
 inline constexpr const char* kAccentFill = "#4A9EFF26";
 inline constexpr const char* kAccentBorder = "#4A9EFF80";
-inline constexpr const char* kSuccessFillSoft = "#3FB9502B";  // badge actif
-inline constexpr const char* kSuccessFill = "#3FB95024";      // bouton Auto ON
+inline constexpr const char* kSuccessFillSoft = "#3FB9502B"; // badge actif
+inline constexpr const char* kSuccessFill = "#3FB95024";     // bouton Auto ON
 inline constexpr const char* kSuccessBorder = "#3FB95080";
-inline constexpr const char* kSuccessBorderStrong = "#3FB95099";  // carte active
-inline constexpr const char* kSuccessAvatarFill = "#3FB9502E";    // avatar actif
+inline constexpr const char* kSuccessBorderStrong = "#3FB95099"; // carte active
+inline constexpr const char* kSuccessAvatarFill = "#3FB9502E";   // avatar actif
 inline constexpr const char* kDangerFill = "#E8555024";
 inline constexpr const char* kDangerBorder = "#E8555080";
 inline constexpr const char* kWarningFill = "#E0A23B14";
 
 // --- Typographie (px) ---
-inline constexpr int kFontTitle = 15;     // titre du dock (header)
-inline constexpr int kFontBody = 13;      // nom d'intervenant
-inline constexpr int kFontButton = 12;    // libelles boutons
-inline constexpr int kFontLabel = 11;     // labels
-inline constexpr int kFontSection = 10;   // entetes de section (interlettrage)
-inline constexpr int kFontSmall = 9;      // seuil, raccourcis
+inline constexpr int kFontTitle = 15;   // titre du dock (header)
+inline constexpr int kFontBody = 13;    // nom d'intervenant
+inline constexpr int kFontButton = 12;  // libelles boutons
+inline constexpr int kFontLabel = 11;   // labels
+inline constexpr int kFontSection = 10; // entetes de section (interlettrage)
+inline constexpr int kFontSmall = 9;    // seuil, raccourcis
 
 // --- Geometrie ---
 inline constexpr int kRadiusCard = 8;
 inline constexpr int kRadiusDock = 10;
 inline constexpr int kRadiusButton = 6;
-inline constexpr int kMeterHeight = 6;    // hauteur piste vumetre / slider
+inline constexpr int kMeterHeight = 6; // hauteur piste vumetre / slider
 inline constexpr int kAvatarSize = 36;
 
-}  // namespace sd::ui::theme
+} // namespace sd::ui::theme

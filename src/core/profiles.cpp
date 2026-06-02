@@ -32,7 +32,7 @@ ProfileIndex profileIndexFromJson(const std::string& text) {
             ProfileEntry e;
             e.id = jp.value("id", 0);
             e.name = jp.value("name", std::string{});
-            if (e.id > 0) {  // ignore les entrees sans id valide
+            if (e.id > 0) { // ignore les entrees sans id valide
                 idx.profiles.push_back(e);
             }
         }
@@ -106,10 +106,10 @@ bool renameProfile(ProfileIndex& idx, int id, const std::string& desiredName) {
 
 bool removeProfile(ProfileIndex& idx, int id) {
     if (id == idx.activeId) {
-        return false;  // on ne supprime pas le profil actif (basculer d'abord)
+        return false; // on ne supprime pas le profil actif (basculer d'abord)
     }
     if (idx.profiles.size() <= 1) {
-        return false;  // toujours au moins un profil
+        return false; // toujours au moins un profil
     }
     for (auto it = idx.profiles.begin(); it != idx.profiles.end(); ++it) {
         if (it->id == id) {
@@ -117,7 +117,7 @@ bool removeProfile(ProfileIndex& idx, int id) {
             return true;
         }
     }
-    return false;  // id absent
+    return false; // id absent
 }
 
 bool setActiveProfile(ProfileIndex& idx, int id) {
@@ -128,4 +128,4 @@ bool setActiveProfile(ProfileIndex& idx, int id) {
     return true;
 }
 
-}  // namespace sd::core
+} // namespace sd::core

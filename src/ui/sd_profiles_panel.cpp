@@ -39,18 +39,17 @@ QString summarize(const sd::core::Config& cfg) {
             ++sources;
         }
     }
-    const QString left = sources == 1 ? i18n("Profiles.Card.Source1")
-                                      : i18n("Profiles.Card.SourceN").arg(sources);
-    const QString right =
-        cfg.wideShotScene.empty()
-            ? i18n("Profiles.Card.NoWide")
-            : i18n("Profiles.Card.Wide").arg(QString::fromStdString(cfg.wideShotScene));
+    const QString left = sources == 1 ? i18n("Profiles.Card.Source1") : i18n("Profiles.Card.SourceN").arg(sources);
+    const QString right = cfg.wideShotScene.empty()
+                              ? i18n("Profiles.Card.NoWide")
+                              : i18n("Profiles.Card.Wide").arg(QString::fromStdString(cfg.wideShotScene));
     return left + QStringLiteral(" · ") + right;
 }
-}  // namespace
+} // namespace
 
 ProfilesPanel::ProfilesPanel(QWidget* dialogParent, Callbacks callbacks)
-    : dialogParent_(dialogParent), cb_(std::move(callbacks)) {}
+    : dialogParent_(dialogParent),
+      cb_(std::move(callbacks)) {}
 
 void ProfilesPanel::mount(QVBoxLayout* host) {
     host_ = host;
@@ -65,11 +64,9 @@ void ProfilesPanel::rebuild() {
 
     host_->addWidget(buildHeaderRow());
 
-    const sd::profiles::ListResult list =
-        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    const sd::profiles::ListResult list = sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     if (!list.ok) {
-        host_->addWidget(
-            makeHint(i18n("Profiles.Error.Generic").arg(QString::fromStdString(list.error))));
+        host_->addWidget(makeHint(i18n("Profiles.Error.Generic").arg(QString::fromStdString(list.error))));
         return;
     }
 
@@ -120,11 +117,10 @@ QWidget* ProfilesPanel::buildHeaderRow() {
 QWidget* ProfilesPanel::buildCard(int id, const QString& name, bool active, const QString& summary) {
     auto* card = new QWidget();
     card->setObjectName(QStringLiteral("profCard"));
-    card->setStyleSheet(
-        QString("#profCard { background:%1; border:1px solid %2; border-radius:%3px; }")
-            .arg(th::kSurface2)
-            .arg(active ? rgba(th::kAccent, 0.6) : QString::fromUtf8(th::kBorder))
-            .arg(th::kRadiusCard));
+    card->setStyleSheet(QString("#profCard { background:%1; border:1px solid %2; border-radius:%3px; }")
+                            .arg(th::kSurface2)
+                            .arg(active ? rgba(th::kAccent, 0.6) : QString::fromUtf8(th::kBorder))
+                            .arg(th::kRadiusCard));
     auto* lay = new QHBoxLayout(card);
     lay->setContentsMargins(12, 12, 12, 12);
     lay->setSpacing(12);
@@ -135,8 +131,7 @@ QWidget* ProfilesPanel::buildCard(int id, const QString& name, bool active, cons
     iconBox->setAlignment(Qt::AlignCenter);
     iconBox->setPixmap(icon(Icon::Users, active ? th::kAccent : th::kTextSecondary, 16));
     iconBox->setStyleSheet(QString("background:%1; border-radius:8px;")
-                               .arg(active ? rgba(th::kAccent, 0.14)
-                                           : QString::fromUtf8(th::kSurface3)));
+                               .arg(active ? rgba(th::kAccent, 0.14) : QString::fromUtf8(th::kSurface3)));
 
     // Bloc texte : nom + resume.
     auto* mid = new QWidget();
@@ -144,8 +139,7 @@ QWidget* ProfilesPanel::buildCard(int id, const QString& name, bool active, cons
     midLay->setContentsMargins(0, 0, 0, 0);
     midLay->setSpacing(2);
     auto* nameLbl = new QLabel(name);
-    nameLbl->setStyleSheet(
-        QString("color:%1; font-size:13px; font-weight:600;").arg(th::kTextPrimary));
+    nameLbl->setStyleSheet(QString("color:%1; font-size:13px; font-weight:600;").arg(th::kTextPrimary));
     auto* sumLbl = new QLabel(summary);
     sumLbl->setStyleSheet(QString("color:%1; font-size:11px;").arg(th::kTextTertiary));
     midLay->addWidget(nameLbl);
@@ -196,8 +190,7 @@ QWidget* ProfilesPanel::buildCard(int id, const QString& name, bool active, cons
     more->setCursor(Qt::PointingHandCursor);
     more->setFlat(true);
     more->setStyleSheet(iconBtnQss());
-    QObject::connect(more, &QPushButton::clicked, more,
-                     [this, id, active, more]() { showRowMenu(id, active, more); });
+    QObject::connect(more, &QPushButton::clicked, more, [this, id, active, more]() { showRowMenu(id, active, more); });
     lay->addWidget(more, 0, Qt::AlignVCenter);
 
     return card;
@@ -228,8 +221,7 @@ void ProfilesPanel::showRowMenu(int id, bool active, QWidget* anchor) {
         }
     } else if (chosen == del) {
         // Nom courant pour la confirmation.
-        const sd::profiles::ListResult list =
-            sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+        const sd::profiles::ListResult list = sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
         QString name;
         if (list.ok) {
             if (const sd::core::ProfileEntry* e = sd::core::findProfile(list.index, id)) {
@@ -242,8 +234,7 @@ void ProfilesPanel::showRowMenu(int id, bool active, QWidget* anchor) {
 
 void ProfilesPanel::doRename(int id) {
     // Nom courant pour pre-remplir.
-    const sd::profiles::ListResult list =
-        sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
+    const sd::profiles::ListResult list = sd::profiles::loadList(i18n("Profiles.DefaultName").toStdString());
     QString current;
     if (list.ok) {
         if (const sd::core::ProfileEntry* e = sd::core::findProfile(list.index, id)) {
@@ -252,13 +243,11 @@ void ProfilesPanel::doRename(int id) {
     }
     bool ok = false;
     const QString name = QInputDialog::getText(dialogParent_, i18n("Profiles.NamePrompt.Title"),
-                                               i18n("Profiles.NamePrompt.Body"), QLineEdit::Normal,
-                                               current, &ok);
+                                               i18n("Profiles.NamePrompt.Body"), QLineEdit::Normal, current, &ok);
     if (!ok || name.trimmed().isEmpty()) {
         return;
     }
-    const sd::profiles::StoreResult res =
-        sd::profiles::renameProfile(id, name.trimmed().toStdString());
+    const sd::profiles::StoreResult res = sd::profiles::renameProfile(id, name.trimmed().toStdString());
     if (!res.ok) {
         QMessageBox::warning(dialogParent_, i18n("Settings.Title"),
                              i18n("Profiles.Error.Generic").arg(QString::fromStdString(res.error)));
@@ -267,8 +256,7 @@ void ProfilesPanel::doRename(int id) {
 }
 
 void ProfilesPanel::doDuplicate(int id) {
-    const sd::profiles::StoreResult res =
-        sd::profiles::duplicateProfile(id, i18n("Profiles.CopySuffix").toStdString());
+    const sd::profiles::StoreResult res = sd::profiles::duplicateProfile(id, i18n("Profiles.CopySuffix").toStdString());
     if (!res.ok) {
         QMessageBox::warning(dialogParent_, i18n("Settings.Title"),
                              i18n("Profiles.Error.Generic").arg(QString::fromStdString(res.error)));
@@ -277,9 +265,9 @@ void ProfilesPanel::doDuplicate(int id) {
 }
 
 void ProfilesPanel::doDelete(int id, const QString& name) {
-    const QMessageBox::StandardButton answer = QMessageBox::question(
-        dialogParent_, i18n("Profiles.Delete.Title"), i18n("Profiles.Delete.Body").arg(name),
-        QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+    const QMessageBox::StandardButton answer =
+        QMessageBox::question(dialogParent_, i18n("Profiles.Delete.Title"), i18n("Profiles.Delete.Body").arg(name),
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
     if (answer != QMessageBox::Yes) {
         return;
     }
@@ -291,4 +279,4 @@ void ProfilesPanel::doDelete(int id, const QString& name) {
     rebuild();
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

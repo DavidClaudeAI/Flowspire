@@ -20,4 +20,4 @@ std::vector<std::string> audioSourceNames();
 // que SceneSwitcher sait activer.
 std::vector<std::string> sceneNames();
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

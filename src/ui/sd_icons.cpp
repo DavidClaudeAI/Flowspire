@@ -106,13 +106,12 @@ const char* iconBody(Icon which) {
     }
     return "";
 }
-}  // namespace
+} // namespace
 
 QPixmap icon(Icon which, const QString& colorHex, int sizePx) {
     const QString svg =
-        QStringLiteral(
-            "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' "
-            "stroke='%1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>%2</svg>")
+        QStringLiteral("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' "
+                       "stroke='%1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'>%2</svg>")
             .arg(colorHex, QString::fromUtf8(iconBody(which)));
 
     // Rendu a la resolution physique de l'ecran (net sur HiDPI).
@@ -136,4 +135,4 @@ QPixmap icon(Icon which, const QString& colorHex, int sizePx) {
     return pm;
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

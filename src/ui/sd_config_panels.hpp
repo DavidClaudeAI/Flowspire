@@ -45,8 +45,7 @@ class ConfigPanels {
 public:
     // `cfg` est edite PAR REFERENCE (doit survivre a ce ConfigPanels). `audioSources`
     // et `scenes` = inventaire OBS pour les listes deroulantes (capture a l'ouverture).
-    ConfigPanels(sd::core::Config& cfg, std::vector<std::string> audioSources,
-                 std::vector<std::string> scenes);
+    ConfigPanels(sd::core::Config& cfg, std::vector<std::string> audioSources, std::vector<std::string> scenes);
 
     // Monte un panneau dans `host` (vide d'abord le host). Re-appelable.
     void mountSpeakers(QVBoxLayout* host);
@@ -72,7 +71,7 @@ private:
     std::vector<std::string> audioSources_;
     std::vector<std::string> scenes_;
     int idCounter_ = 0;
-    int selSpeaker_ = 0;  // onglet actif du panneau Scenes
+    int selSpeaker_ = 0; // onglet actif du panneau Scenes
 
     // QPointer (et non pointeur brut) : l'hote appartient a l'appelant (la fenetre)
     // qui peut le detruire en changeant de panneau. QPointer se remet a null tout
@@ -86,4 +85,4 @@ private:
     std::vector<QLabel*> sceneWeightBadges_;
 };
 
-}  // namespace sd::ui
+} // namespace sd::ui

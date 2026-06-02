@@ -42,10 +42,9 @@ QStringList toOptions(const std::vector<std::string>& names) {
 // Libelle d'un intervenant (nom, ou "Intervenant N" si vide) — pour les onglets.
 QString speakerLabelOf(const sd::core::Config& cfg, std::size_t i) {
     const std::string& n = cfg.speakers[i].name;
-    return n.empty() ? i18n("Speakers.DefaultName").arg(static_cast<int>(i) + 1)
-                     : QString::fromStdString(n);
+    return n.empty() ? i18n("Speakers.DefaultName").arg(static_cast<int>(i) + 1) : QString::fromStdString(n);
 }
-}  // namespace
+} // namespace
 
 // Nettoie une config avant ecriture : retire les intervenants sans nom OU sans
 // source, et les scenes vides ou de poids nul. Partage assistant + parametres
@@ -55,7 +54,7 @@ sd::core::Config sanitizedConfig(const sd::core::Config& in) {
     std::vector<sd::core::Speaker> kept;
     for (sd::core::Speaker s : out.speakers) {
         if (s.name.empty() || s.audioSource.empty()) {
-            continue;  // intervenant incomplet -> non enregistre
+            continue; // intervenant incomplet -> non enregistre
         }
         std::vector<sd::core::SceneWeight> scenes;
         for (const auto& w : s.scenes) {
@@ -72,7 +71,9 @@ sd::core::Config sanitizedConfig(const sd::core::Config& in) {
 
 ConfigPanels::ConfigPanels(sd::core::Config& cfg, std::vector<std::string> audioSources,
                            std::vector<std::string> scenes)
-    : cfg_(cfg), audioSources_(std::move(audioSources)), scenes_(std::move(scenes)) {}
+    : cfg_(cfg),
+      audioSources_(std::move(audioSources)),
+      scenes_(std::move(scenes)) {}
 
 // --- helpers config ---------------------------------------------------------
 sd::core::Speaker* ConfigPanels::findSpeaker(const std::string& id) {
@@ -114,7 +115,7 @@ void ConfigPanels::rebuildSpeakers() {
     }
     clearLayout(speakersHost_);
     if (cfg_.speakers.empty()) {
-        addBlankSpeaker();  // toujours au moins une carte a remplir
+        addBlankSpeaker(); // toujours au moins une carte a remplir
     }
     auto* list = new QWidget();
     auto* ll = new QVBoxLayout(list);
@@ -226,8 +227,7 @@ void ConfigPanels::rebuildCameras() {
         auto* tb = new ClickButton();
         tb->setMargins(16, 9);
         tb->setIconPix(icon(Icon::User, active ? th::kAccent : th::kTextTertiary, 14));
-        tb->setLabel(speakerLabelOf(cfg_, i), active ? th::kAccent : th::kTextSecondary, 13,
-                     active ? 700 : 600);
+        tb->setLabel(speakerLabelOf(cfg_, i), active ? th::kAccent : th::kTextSecondary, 13, active ? 700 : 600);
         tb->setBox(tabBoxQss(active));
         const int idx = static_cast<int>(i);
         tb->setOnClick([this, idx]() {
@@ -365,8 +365,7 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     auto* scIcon = new QLabel();
     scIcon->setPixmap(icon(Icon::LayoutGrid, th::kAccent, 16));
     auto* scTitle = new QLabel(i18n("Wide.SceneLabel"));
-    scTitle->setStyleSheet(
-        QString("color:%1; font-size:11px; font-weight:700; letter-spacing:1px;").arg(th::kAccent));
+    scTitle->setStyleSheet(QString("color:%1; font-size:11px; font-weight:700; letter-spacing:1px;").arg(th::kAccent));
     scHeadLay->addWidget(scIcon);
     scHeadLay->addWidget(scTitle);
     scHeadLay->addStretch();
@@ -402,14 +401,12 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     g1l->setContentsMargins(14, 12, 14, 12);
     g1l->setSpacing(10);
     g1l->addWidget(makeGroupHeader(i18n("Wide.Multiple")));
-    auto* r1 = new SliderRow(i18n("Wide.Loudest"), 0, 100, cfg_.whenMultiple.loudestSpeaker, nullptr,
-                             true);
+    auto* r1 = new SliderRow(i18n("Wide.Loudest"), 0, 100, cfg_.whenMultiple.loudestSpeaker, nullptr, true);
     r1->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.loudestSpeaker = v;
         recompute(multRows);
     });
-    auto* r2 = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr,
-                             true);
+    auto* r2 = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr, true);
     r2->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.currentSpeaker = v;
         recompute(multRows);
@@ -433,8 +430,7 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     g2l->setContentsMargins(14, 12, 14, 12);
     g2l->setSpacing(10);
     g2l->addWidget(makeGroupHeader(i18n("Wide.Silence")));
-    auto* s1 = new SliderRow(i18n("Wide.LastSpeaker"), 0, 100, cfg_.whenSilence.lastSpeaker, nullptr,
-                             true);
+    auto* s1 = new SliderRow(i18n("Wide.LastSpeaker"), 0, 100, cfg_.whenSilence.lastSpeaker, nullptr, true);
     s1->setOnChange([this, silRows, recompute](int v) {
         cfg_.whenSilence.lastSpeaker = v;
         recompute(silRows);
@@ -470,22 +466,20 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     auto minRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
 
-    auto* minR = new SliderRow(i18n("Rhythm.MinShot"), 0, 30,
-                               static_cast<int>(std::lround(cfg_.timing.minShotSeconds)), fmtSeconds,
-                               false);
+    auto* minR = new SliderRow(i18n("Rhythm.MinShot"), 0, 30, static_cast<int>(std::lround(cfg_.timing.minShotSeconds)),
+                               fmtSeconds, false);
     minR->setOnChange([this, minRowPtr, maxRowPtr](int v) {
         cfg_.timing.minShotSeconds = v;
         if (*maxRowPtr && (*maxRowPtr)->value() < v) {
-            (*maxRowPtr)->setValue(v);  // remonte le max au niveau du min
+            (*maxRowPtr)->setValue(v); // remonte le max au niveau du min
         }
     });
-    auto* maxR = new SliderRow(i18n("Rhythm.MaxShot"), 0, 60,
-                               static_cast<int>(std::lround(cfg_.timing.maxShotSeconds)), fmtSeconds,
-                               false);
+    auto* maxR = new SliderRow(i18n("Rhythm.MaxShot"), 0, 60, static_cast<int>(std::lround(cfg_.timing.maxShotSeconds)),
+                               fmtSeconds, false);
     maxR->setOnChange([this, minRowPtr, maxRowPtr](int v) {
         cfg_.timing.maxShotSeconds = v;
         if (*minRowPtr && (*minRowPtr)->value() > v) {
-            (*minRowPtr)->setValue(v);  // redescend le min au niveau du max
+            (*minRowPtr)->setValue(v); // redescend le min au niveau du max
         }
     });
     minR->setInfo(i18n("Tip.Rhythm.MinShot"));
@@ -496,8 +490,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     // Formateur special : a 0 (curseur tout a gauche), l'anti ping-pong est coupe
     // -> on affiche "Desactive" au lieu de "0 s" pour que ce soit explicite.
     auto* ppR = new SliderRow(
-        i18n("Rhythm.PingPong"), 0, 30,
-        static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
+        i18n("Rhythm.PingPong"), 0, 30, static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
         [](int v) { return v == 0 ? i18n("Rhythm.PingPongOff") : fmtSeconds(v); }, false);
     ppR->setOnChange([this](int v) { cfg_.timing.pingPongWindowSeconds = v; });
     ppR->setInfo(i18n("Tip.Rhythm.PingPong"));
@@ -528,4 +521,4 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     host->addWidget(audio);
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

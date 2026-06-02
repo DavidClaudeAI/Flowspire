@@ -17,8 +17,8 @@ namespace sd::ui {
 
 struct UpdateInfo {
     bool updateAvailable = false;
-    std::string latestVersion;  // ex. "0.2.0" (sans prefixe)
-    std::string releaseUrl;     // page a ouvrir pour telecharger
+    std::string latestVersion; // ex. "0.2.0" (sans prefixe)
+    std::string releaseUrl;    // page a ouvrir pour telecharger
 };
 
 // Lance la verification. `ctx` = parent Qt (gestion de vie : passer le dock). `onResult`
@@ -28,7 +28,6 @@ struct UpdateInfo {
 // L'opt-out "verifier au demarrage" vit desormais dans les preferences globales
 // (sd_prefs : GlobalPrefs::checkUpdatesOnStartup) ; l'appelant garde cette requete
 // sous condition.
-void checkForUpdate(QObject* ctx, const std::string& currentVersion,
-                    std::function<void(const UpdateInfo&)> onResult);
+void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::function<void(const UpdateInfo&)> onResult);
 
-}  // namespace sd::ui
+} // namespace sd::ui

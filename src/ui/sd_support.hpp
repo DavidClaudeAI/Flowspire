@@ -18,4 +18,4 @@ namespace sd::ui {
 // ouvrent le navigateur via QDesktopServices.
 void mountSupport(QVBoxLayout* host);
 
-}  // namespace sd::ui
+} // namespace sd::ui

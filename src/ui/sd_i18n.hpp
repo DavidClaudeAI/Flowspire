@@ -28,4 +28,4 @@ inline QString i18n(const char* key) {
     return QString::fromUtf8(obs_module_text(key));
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

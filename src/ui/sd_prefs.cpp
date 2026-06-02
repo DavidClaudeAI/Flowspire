@@ -8,10 +8,10 @@
 
 #include <nlohmann/json.hpp>
 
-#include <util/base.h>  // LOG_WARNING
+#include <util/base.h> // LOG_WARNING
 
 #include "obs/obs_file_store.hpp"
-#include "plugin-support.h"  // obs_log
+#include "plugin-support.h" // obs_log
 
 namespace sd::ui {
 
@@ -31,23 +31,21 @@ OffSceneBehavior fromKey(const std::string& s) {
     // Valeur inconnue -> defaut (pause), coherent avec GlobalPrefs.
     return s == kForceAsShot ? OffSceneBehavior::ForceAsShot : OffSceneBehavior::PauseAuto;
 }
-}  // namespace
+} // namespace
 
 GlobalPrefs loadPrefs() {
-    GlobalPrefs prefs;  // valeurs par defaut
+    GlobalPrefs prefs; // valeurs par defaut
     sd::obsbridge::ObsFileStore store;
     std::string text;
     if (!store.read(kPrefsFile, text)) {
-        return prefs;  // absent / illisible -> defauts
+        return prefs; // absent / illisible -> defauts
     }
     try {
         const auto json = nlohmann::json::parse(text);
-        prefs.checkUpdatesOnStartup =
-            json.value("checkUpdatesOnStartup", prefs.checkUpdatesOnStartup);
-        prefs.offSceneBehavior =
-            fromKey(json.value("offSceneBehavior", std::string(toKey(prefs.offSceneBehavior))));
+        prefs.checkUpdatesOnStartup = json.value("checkUpdatesOnStartup", prefs.checkUpdatesOnStartup);
+        prefs.offSceneBehavior = fromKey(json.value("offSceneBehavior", std::string(toKey(prefs.offSceneBehavior))));
     } catch (...) {
-        return GlobalPrefs{};  // contenu invalide -> defauts (jamais d'echec)
+        return GlobalPrefs{}; // contenu invalide -> defauts (jamais d'echec)
     }
     return prefs;
 }
@@ -65,4 +63,4 @@ void savePrefs(const GlobalPrefs& prefs) {
     }
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

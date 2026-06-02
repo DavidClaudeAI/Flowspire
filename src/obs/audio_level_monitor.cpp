@@ -10,7 +10,7 @@ namespace sd::obsbridge {
 namespace {
 // Plancher coherent avec le coeur (sd::core::kDbFloor).
 constexpr float kFloorDb = -60.0f;
-}  // namespace
+} // namespace
 
 AudioLevelMonitor::~AudioLevelMonitor() {
     stop();
@@ -21,8 +21,8 @@ double AudioLevelMonitor::monotonicNow() {
     return duration<double>(steady_clock::now().time_since_epoch()).count();
 }
 
-void AudioLevelMonitor::volmeterCallback(void* param, const float magnitude[],
-                                         const float peak[], const float inputPeak[]) {
+void AudioLevelMonitor::volmeterCallback(void* param, const float magnitude[], const float peak[],
+                                         const float inputPeak[]) {
     (void)magnitude;
     (void)inputPeak;
     auto* meter = static_cast<SourceMeter*>(param);
@@ -66,7 +66,7 @@ void AudioLevelMonitor::start() {
                     }
                 }
             }
-            return true;  // continuer l'enumeration
+            return true; // continuer l'enumeration
         },
         &ctx);
 
@@ -113,8 +113,7 @@ void AudioLevelMonitor::stop() {
             // remove_callback d'abord : OBS le serialise avec l'invocation du
             // callback (meme callback_mutex), donc apres ce point plus aucun
             // callback n'ecrira dans peakDb -> destruction sure.
-            obs_volmeter_remove_callback(meter->volmeter, &AudioLevelMonitor::volmeterCallback,
-                                         meter.get());
+            obs_volmeter_remove_callback(meter->volmeter, &AudioLevelMonitor::volmeterCallback, meter.get());
             obs_volmeter_detach_source(meter->volmeter);
             obs_volmeter_destroy(meter->volmeter);
             meter->volmeter = nullptr;
@@ -137,8 +136,7 @@ std::vector<std::string> AudioLevelMonitor::sourceNames() const {
     return names;
 }
 
-std::map<std::string, double> AudioLevelMonitor::snapshot(double nowSeconds,
-                                                          double staleSeconds) const {
+std::map<std::string, double> AudioLevelMonitor::snapshot(double nowSeconds, double staleSeconds) const {
     std::lock_guard<std::mutex> lock(metersMutex_);
     std::map<std::string, double> out;
     for (const auto& meter : meters_) {
@@ -175,4 +173,4 @@ std::map<std::string, double> AudioLevelMonitor::snapshot(double nowSeconds,
     return out;
 }
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

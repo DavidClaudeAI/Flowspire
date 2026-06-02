@@ -64,13 +64,13 @@ private:
         std::string id;           // id d'intervenant (cle cote Director)
         std::string audioSource;  // nom de la source audio OBS (cle cote monitor)
         QWidget* card = nullptr;  // carte (sa destruction detruit les enfants)
-        QLabel* avatar = nullptr;     // icone user teintee selon l'etat
+        QLabel* avatar = nullptr; // icone user teintee selon l'etat
         QLabel* nameLabel = nullptr;
         LevelMeter* meter = nullptr;  // vumetre custom (+ marqueur de seuil)
         QSlider* threshold = nullptr; // slider de seuil par intervenant
         QLabel* stateLabel = nullptr;
-        QWidget* tally = nullptr;  // temoin vertical "a l'antenne" (rouge), a gauche de la carte
-        bool isWide = false;       // carte "Plan large" (pas un intervenant : ni audio ni vumetre)
+        QWidget* tally = nullptr; // temoin vertical "a l'antenne" (rouge), a gauche de la carte
+        bool isWide = false;      // carte "Plan large" (pas un intervenant : ni audio ni vumetre)
         int shownDb = 1;          // hors plage [-60,0] -> force la 1ere maj
         int shownSpeaking = -1;   // -1 inconnu, 0 silence, 1 parle
         int shownOnAir = -1;      // -1 inconnu, 0 hors antenne, 1 a l'antenne (tally)
@@ -84,21 +84,21 @@ private:
         std::string audioSource;
     };
 
-    void tick();     // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
+    void tick(); // timer : lit l'audio, nourrit le coeur, pilote OBS, rafraichit
     // Met a jour le Speaker.thresholdDb de activeConfig_ pour `speakerId` (mode profil
     // seulement) -> prepare la prochaine ecriture, sans toucher le disque.
     void rememberSpeakerThreshold(const std::string& speakerId, int db);
     // Ecrit le profil actif sur disque (saveActive) si on est en mode profil. Best-effort.
     void saveActiveProfileNow();
-    void openAssistant();  // bouton Assistant : demande un nom puis cree un profil guide
+    void openAssistant(); // bouton Assistant : demande un nom puis cree un profil guide
     // Ouvre l'assistant en mode CREATION d'un profil nomme (cree + active a la fin).
     void openAssistantWith(const QString& newProfileName);
     // Ouvre les parametres avances (modale) sur l'onglet `initialTab` (cf. SdSettings::Tab,
     // passe en int pour eviter d'inclure sd_settings.hpp ici). Recharge a la fermeture.
     void openSettings(int initialTab = 0);
-    void updateProfileBar();  // rafraichit le nom du profil actif (selecteur du dock)
-    void showProfileMenu();   // menu du selecteur : liste des profils + "Gerer..."
-    void switchProfile(int id);  // bascule le profil actif (1 clic) puis recharge
+    void updateProfileBar();    // rafraichit le nom du profil actif (selecteur du dock)
+    void showProfileMenu();     // menu du selecteur : liste des profils + "Gerer..."
+    void switchProfile(int id); // bascule le profil actif (1 clic) puis recharge
     void applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir);
     // Detecte et traite un changement de la scene programme NON initie par nous (clic
     // dans le dock natif d'OBS, hotkey OBS, transition externe). Appelee EN DEBUT de
@@ -108,7 +108,7 @@ private:
     void handleManualSceneChange(const std::string& onAir, double now);
     void updateStatusBadge();
     void updateModeLabel();
-    void startUpdateCheck();  // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
+    void startUpdateCheck(); // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
     void styleSpeakerCard(Row& row, bool speaking);
     static double nowSeconds();
 
@@ -122,7 +122,7 @@ private:
     // puis on ecrit via saveActive. Rafraichie a chaque reload().
     sd::core::Config activeConfig_;
     bool configMode_ = false;
-    bool autoEnabled_ = false;    // GARDE-FOU : pilotage auto OFF par defaut.
+    bool autoEnabled_ = false; // GARDE-FOU : pilotage auto OFF par defaut.
 
     // Derniere scene que NOUS avons demandee a l'antenne (auto ou forcage). Le tick
     // compare l'antenne reelle a ce repere : si elle differe, c'est un changement venu
@@ -131,14 +131,14 @@ private:
 
     QVBoxLayout* rowsLayout_ = nullptr;
     std::vector<Row> rows_;
-    QPushButton* profileButton_ = nullptr;     // selecteur de profil (en-tete du dock)
-    QLabel* profileNameLabel_ = nullptr;       // nom du profil actif (dans le selecteur)
+    QPushButton* profileButton_ = nullptr; // selecteur de profil (en-tete du dock)
+    QLabel* profileNameLabel_ = nullptr;   // nom du profil actif (dans le selecteur)
     QLabel* statusDot_ = nullptr;
     QLabel* statusText_ = nullptr;
     QWidget* statusBadge_ = nullptr;
     QLabel* modeLabel_ = nullptr;
     QLabel* emptyLabel_ = nullptr;
-    QWidget* updateBanner_ = nullptr;          // bandeau "mise a jour dispo" (masque par defaut)
+    QWidget* updateBanner_ = nullptr; // bandeau "mise a jour dispo" (masque par defaut)
     QLabel* updateBannerLabel_ = nullptr;
     QPushButton* updateBannerButton_ = nullptr;
     QTimer* timer_ = nullptr;
@@ -148,4 +148,4 @@ private:
     int shownStatus_ = -1;
 };
 
-}  // namespace sd::ui
+} // namespace sd::ui

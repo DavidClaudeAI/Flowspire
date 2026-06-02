@@ -10,6 +10,6 @@
 namespace sd::ui {
 
 inline constexpr int kTickMs = 50;                        // periode du timer du dock (~20 Hz)
-inline constexpr double kFrameSeconds = kTickMs / 1000.0;  // duree d'un frame du detecteur (s)
+inline constexpr double kFrameSeconds = kTickMs / 1000.0; // duree d'un frame du detecteur (s)
 
-}  // namespace sd::ui
+} // namespace sd::ui

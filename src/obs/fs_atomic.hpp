@@ -31,4 +31,4 @@ bool ensureParentDir(const std::string& path);
 // l'ancien contenu de `path` dans `path.bak` (filet de recuperation : cf. .cpp).
 FsResult writeUtf8Atomic(const std::string& path, const std::string& text);
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

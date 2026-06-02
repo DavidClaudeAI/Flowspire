@@ -19,4 +19,4 @@ public:
     std::string currentProgramScene() const;
 };
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

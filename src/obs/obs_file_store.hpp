@@ -18,8 +18,7 @@ public:
     bool exists(const std::string& relPath) const override;
     FsResult write(const std::string& relPath, const std::string& text) override;
     bool remove(const std::string& relPath) override;
-    std::vector<std::string> list(const std::string& relDir,
-                                  const std::string& ext) const override;
+    std::vector<std::string> list(const std::string& relDir, const std::string& ext) const override;
 };
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

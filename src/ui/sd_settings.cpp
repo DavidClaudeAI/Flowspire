@@ -56,15 +56,15 @@ struct SdSettings::Impl {
 
     // `working`/`savedBaseline` AVANT `panels` : panels detient une reference sur
     // working et doit etre detruit en premier (ordre de destruction inverse).
-    sd::core::Config working;        // config en cours d'edition (profil actif)
-    sd::core::Config savedBaseline;  // dernier etat enregistre -> detection "modifie"
+    sd::core::Config working;       // config en cours d'edition (profil actif)
+    sd::core::Config savedBaseline; // dernier etat enregistre -> detection "modifie"
     std::vector<std::string> audioSources;
     std::vector<std::string> scenes;
     std::unique_ptr<ConfigPanels> panels;
     std::unique_ptr<ProfilesPanel> profilesPanel;
 
-    bool saved = false;          // le profil actif a change -> le dock recharge
-    QString pendingAssistantName;  // "Nouveau > Avec l'assistant" -> nom a creer via l'assistant
+    bool saved = false;           // le profil actif a change -> le dock recharge
+    QString pendingAssistantName; // "Nouveau > Avec l'assistant" -> nom a creer via l'assistant
 
     // Preferences GLOBALES (onglet Parametres generaux) : chargees a l'ouverture,
     // modifiees + persistees IMMEDIATEMENT a chaque changement (hors modele "Enregistrer").
@@ -84,9 +84,7 @@ struct SdSettings::Impl {
 
     // Le bouton "Reinitialiser aux defauts" ne concerne que les REGLAGES FINS
     // (Rythme + Plan large) -> visible uniquement la (retour David Run 6).
-    static bool panelHasDefaults(int p) {
-        return p == SdSettings::TabWide || p == SdSettings::TabRhythm;
-    }
+    static bool panelHasDefaults(int p) { return p == SdSettings::TabWide || p == SdSettings::TabRhythm; }
 
     QString panelTitle(int p) const;
     QWidget* makeNavItem(Icon ic, const QString& label, bool active, std::function<void()> onClick,
@@ -94,35 +92,43 @@ struct SdSettings::Impl {
     void rebuildNav();
     void showPanel(int p);
     void resetToDefaults();
-    void mountGeneral(QVBoxLayout* host);  // panneau "Parametres generaux" (persistance immediate)
+    void mountGeneral(QVBoxLayout* host); // panneau "Parametres generaux" (persistance immediate)
 
     // --- profils ---
     bool dirty() const;
-    bool maybeSaveBeforeSwitch();   // garde anti-perte ; false => annuler le changement
-    void reloadWorkingFromDisk();   // recharge working depuis le profil actif + recree panels
+    bool maybeSaveBeforeSwitch(); // garde anti-perte ; false => annuler le changement
+    void reloadWorkingFromDisk(); // recharge working depuis le profil actif + recree panels
     void switchActive(int id, bool goToEdit);
     void newProfile(bool withAssistant);
     QString promptName(const QString& initial);
 
-    bool persist();  // garde anti-perte + ecriture (profil actif) ; true si ecrit
+    bool persist(); // garde anti-perte + ecriture (profil actif) ; true si ecrit
     void finish();
 };
 
 QString SdSettings::Impl::panelTitle(int p) const {
     switch (p) {
-    case SdSettings::TabSpeakers: return i18n("Settings.Nav.Speakers");
-    case SdSettings::TabCameras: return i18n("Settings.Nav.Cameras");
-    case SdSettings::TabWide: return i18n("Settings.Nav.Wide");
-    case SdSettings::TabRhythm: return i18n("Settings.Nav.Rhythm");
-    case SdSettings::TabProfiles: return i18n("Settings.Nav.Profiles");
-    case SdSettings::TabSupport: return i18n("Settings.Nav.Support");
-    case SdSettings::TabGeneral: return i18n("Settings.Nav.General");
-    default: return QString();
+    case SdSettings::TabSpeakers:
+        return i18n("Settings.Nav.Speakers");
+    case SdSettings::TabCameras:
+        return i18n("Settings.Nav.Cameras");
+    case SdSettings::TabWide:
+        return i18n("Settings.Nav.Wide");
+    case SdSettings::TabRhythm:
+        return i18n("Settings.Nav.Rhythm");
+    case SdSettings::TabProfiles:
+        return i18n("Settings.Nav.Profiles");
+    case SdSettings::TabSupport:
+        return i18n("Settings.Nav.Support");
+    case SdSettings::TabGeneral:
+        return i18n("Settings.Nav.General");
+    default:
+        return QString();
     }
 }
 
-QWidget* SdSettings::Impl::makeNavItem(Icon ic, const QString& label, bool active,
-                                       std::function<void()> onClick, const char* tint) {
+QWidget* SdSettings::Impl::makeNavItem(Icon ic, const QString& label, bool active, std::function<void()> onClick,
+                                       const char* tint) {
     auto* item = new ClickButton();
     item->setMargins(10, 9);
     item->setFillLeft();
@@ -142,10 +148,8 @@ void SdSettings::Impl::rebuildNav() {
         Icon ic;
         int panel;
     } items[] = {
-        {Icon::Users, SdSettings::TabSpeakers},
-        {Icon::Video, SdSettings::TabCameras},
-        {Icon::LayoutGrid, SdSettings::TabWide},
-        {Icon::Clock, SdSettings::TabRhythm},
+        {Icon::Users, SdSettings::TabSpeakers},    {Icon::Video, SdSettings::TabCameras},
+        {Icon::LayoutGrid, SdSettings::TabWide},   {Icon::Clock, SdSettings::TabRhythm},
         {Icon::Bookmark, SdSettings::TabProfiles},
     };
     for (const auto& it : items) {
@@ -169,14 +173,14 @@ void SdSettings::Impl::rebuildNav() {
                                       rebuildNav();
                                       showPanel(SdSettings::TabGeneral);
                                   }));
-    navLay->addWidget(makeNavItem(Icon::Heart, i18n("Settings.Nav.Support"),
-                                  selPanel == SdSettings::TabSupport,
-                                  [this]() {
-                                      selPanel = SdSettings::TabSupport;
-                                      rebuildNav();
-                                      showPanel(SdSettings::TabSupport);
-                                  },
-                                  th::kDanger));
+    navLay->addWidget(makeNavItem(
+        Icon::Heart, i18n("Settings.Nav.Support"), selPanel == SdSettings::TabSupport,
+        [this]() {
+            selPanel = SdSettings::TabSupport;
+            rebuildNav();
+            showPanel(SdSettings::TabSupport);
+        },
+        th::kDanger));
     navLay->addStretch();
 }
 
@@ -190,14 +194,29 @@ void SdSettings::Impl::showPanel(int p) {
     host->setSpacing(p == SdSettings::TabSpeakers ? 10 : (p == SdSettings::TabProfiles ? 12 : 14));
 
     switch (p) {
-    case SdSettings::TabSpeakers: panels->mountSpeakers(host); break;
-    case SdSettings::TabCameras: panels->mountCameras(host); break;
-    case SdSettings::TabWide: panels->mountWide(host); break;
-    case SdSettings::TabRhythm: panels->mountRhythm(host); break;
-    case SdSettings::TabProfiles: profilesPanel->mount(host); break;
-    case SdSettings::TabSupport: mountSupport(host); break;
-    case SdSettings::TabGeneral: mountGeneral(host); break;
-    default: break;
+    case SdSettings::TabSpeakers:
+        panels->mountSpeakers(host);
+        break;
+    case SdSettings::TabCameras:
+        panels->mountCameras(host);
+        break;
+    case SdSettings::TabWide:
+        panels->mountWide(host);
+        break;
+    case SdSettings::TabRhythm:
+        panels->mountRhythm(host);
+        break;
+    case SdSettings::TabProfiles:
+        profilesPanel->mount(host);
+        break;
+    case SdSettings::TabSupport:
+        mountSupport(host);
+        break;
+    case SdSettings::TabGeneral:
+        mountGeneral(host);
+        break;
+    default:
+        break;
     }
     contentLay->addWidget(hostW);
     contentLay->addStretch();
@@ -240,7 +259,7 @@ void SdSettings::Impl::mountGeneral(QVBoxLayout* host) {
     updCheck->setStyleSheet(checkBoxQss());
     QObject::connect(updCheck, &QCheckBox::toggled, q, [this](bool on) {
         generalPrefs.checkUpdatesOnStartup = on;
-        savePrefs(generalPrefs);  // persistance immediate
+        savePrefs(generalPrefs); // persistance immediate
     });
     updLay->addWidget(updCheck);
     updLay->addWidget(makeHint(i18n("Settings.General.UpdatesHint")));
@@ -300,8 +319,7 @@ void SdSettings::Impl::mountGeneral(QVBoxLayout* host) {
 bool SdSettings::Impl::dirty() const {
     // Comparaison robuste : serialisation des configs nettoyees. Egales => aucun
     // changement non enregistre (pas de faux positif a l'ouverture).
-    return sd::core::toJson(sanitizedConfig(working)) !=
-           sd::core::toJson(sanitizedConfig(savedBaseline));
+    return sd::core::toJson(sanitizedConfig(working)) != sd::core::toJson(sanitizedConfig(savedBaseline));
 }
 
 bool SdSettings::Impl::persist() {
@@ -324,7 +342,7 @@ bool SdSettings::Impl::persist() {
                              i18n("Summary.Error.Save").arg(QString::fromStdString(res.error)));
         return false;
     }
-    savedBaseline = working;  // l'etat enregistre devient la nouvelle reference
+    savedBaseline = working; // l'etat enregistre devient la nouvelle reference
     saved = true;
     return true;
 }
@@ -333,16 +351,16 @@ bool SdSettings::Impl::maybeSaveBeforeSwitch() {
     if (!dirty()) {
         return true;
     }
-    const QMessageBox::StandardButton btn = QMessageBox::question(
-        q, i18n("Profiles.Unsaved.Title"), i18n("Profiles.Unsaved.Body"),
-        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
+    const QMessageBox::StandardButton btn =
+        QMessageBox::question(q, i18n("Profiles.Unsaved.Title"), i18n("Profiles.Unsaved.Body"),
+                              QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel, QMessageBox::Save);
     if (btn == QMessageBox::Cancel) {
         return false;
     }
     if (btn == QMessageBox::Save) {
-        return persist();  // si l'enregistrement echoue (0 intervenant) -> on annule
+        return persist(); // si l'enregistrement echoue (0 intervenant) -> on annule
     }
-    return true;  // Discard : on bascule sans enregistrer
+    return true; // Discard : on bascule sans enregistrer
 }
 
 void SdSettings::Impl::reloadWorkingFromDisk() {
@@ -367,7 +385,7 @@ void SdSettings::Impl::switchActive(int id, bool goToEdit) {
                              i18n("Profiles.Error.Generic").arg(QString::fromStdString(res.error)));
         return;
     }
-    saved = true;  // le profil actif a change -> le dock rechargera a la fermeture
+    saved = true; // le profil actif a change -> le dock rechargera a la fermeture
     reloadWorkingFromDisk();
     if (goToEdit) {
         selPanel = SdSettings::TabSpeakers;
@@ -411,9 +429,8 @@ void SdSettings::Impl::newProfile(bool withAssistant) {
 
 QString SdSettings::Impl::promptName(const QString& initial) {
     bool ok = false;
-    const QString name = QInputDialog::getText(q, i18n("Profiles.NamePrompt.Title"),
-                                               i18n("Profiles.NamePrompt.Body"), QLineEdit::Normal,
-                                               initial, &ok);
+    const QString name = QInputDialog::getText(q, i18n("Profiles.NamePrompt.Title"), i18n("Profiles.NamePrompt.Body"),
+                                               QLineEdit::Normal, initial, &ok);
     return ok ? name.trimmed() : QString();
 }
 
@@ -427,7 +444,7 @@ void SdSettings::Impl::finish() {
 SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(new Impl) {
     d_->q = this;
     d_->selPanel = initialTab;
-    d_->generalPrefs = loadPrefs();  // etat initial de l'onglet Parametres generaux
+    d_->generalPrefs = loadPrefs(); // etat initial de l'onglet Parametres generaux
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setModal(true);
@@ -449,10 +466,18 @@ SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(ne
     // Panneau Profils : actions de structure internes, actions d'edition/fenetre
     // deleguees (garde anti-perte + rechargement + changement d'onglet vivent ici).
     ProfilesPanel::Callbacks cbs;
-    cbs.onLoad = [this](int id) { d_->switchActive(id, /*goToEdit=*/false); };
-    cbs.onEdit = [this](int id) { d_->switchActive(id, /*goToEdit=*/true); };
-    cbs.onNewWithAssistant = [this]() { d_->newProfile(/*withAssistant=*/true); };
-    cbs.onNewBlank = [this]() { d_->newProfile(/*withAssistant=*/false); };
+    cbs.onLoad = [this](int id) {
+        d_->switchActive(id, /*goToEdit=*/false);
+    };
+    cbs.onEdit = [this](int id) {
+        d_->switchActive(id, /*goToEdit=*/true);
+    };
+    cbs.onNewWithAssistant = [this]() {
+        d_->newProfile(/*withAssistant=*/true);
+    };
+    cbs.onNewBlank = [this]() {
+        d_->newProfile(/*withAssistant=*/false);
+    };
     d_->profilesPanel = std::make_unique<ProfilesPanel>(this, std::move(cbs));
 
     auto* outer = new QVBoxLayout(this);
@@ -529,8 +554,7 @@ SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(ne
     contentOuterLay->setContentsMargins(20, 18, 20, 18);
     contentOuterLay->setSpacing(14);
     d_->contentTitle = new QLabel();
-    d_->contentTitle->setStyleSheet(
-        QString("color:%1; font-size:15px; font-weight:700;").arg(th::kTextPrimary));
+    d_->contentTitle->setStyleSheet(QString("color:%1; font-size:15px; font-weight:700;").arg(th::kTextPrimary));
     contentOuterLay->addWidget(d_->contentTitle);
 
     auto* scroll = new QScrollArea();
@@ -626,4 +650,4 @@ void SdSettings::showEvent(QShowEvent* event) {
     }
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

@@ -30,4 +30,4 @@ private:
     bool speaking_ = false;
 };
 
-}  // namespace sd::ui
+} // namespace sd::ui

@@ -15,8 +15,8 @@ namespace sd::ui {
 // Que faire quand l'utilisateur passe MANUELLEMENT (dock natif d'OBS) sur une scene
 // QUI N'EST PAS dans la regie (ni le pool d'un intervenant, ni le plan large) ?
 enum class OffSceneBehavior {
-    ForceAsShot,  // la compter comme un plan : forcage TEMPORAIRE, l'auto reprend
-    PauseAuto,    // mettre la regie EN PAUSE : on reste dessus jusqu'a reactivation
+    ForceAsShot, // la compter comme un plan : forcage TEMPORAIRE, l'auto reprend
+    PauseAuto,   // mettre la regie EN PAUSE : on reste dessus jusqu'a reactivation
 };
 
 struct GlobalPrefs {
@@ -34,4 +34,4 @@ GlobalPrefs loadPrefs();
 // est trace (obs_log) sans bloquer l'UI ni le pilotage en cours.
 void savePrefs(const GlobalPrefs& prefs);
 
-}  // namespace sd::ui
+} // namespace sd::ui

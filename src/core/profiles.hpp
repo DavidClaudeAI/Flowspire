@@ -23,7 +23,7 @@ struct ProfileEntry {
 struct ProfileIndex {
     int activeId = 0;
     int nextId = 1;
-    std::vector<ProfileEntry> profiles;  // ordre d'affichage
+    std::vector<ProfileEntry> profiles; // ordre d'affichage
 };
 
 // Serialise le catalogue (texte indente, pas de BOM).
@@ -60,4 +60,4 @@ bool removeProfile(ProfileIndex& idx, int id);
 // Marque `id` comme actif. Renvoie false si l'id est absent.
 bool setActiveProfile(ProfileIndex& idx, int id);
 
-}  // namespace sd::core
+} // namespace sd::core

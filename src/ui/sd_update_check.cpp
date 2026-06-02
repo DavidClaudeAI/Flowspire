@@ -19,15 +19,12 @@ namespace {
 // l'app), changer ces deux lignes ici (et nulle part ailleurs). NB : GitHub redirige
 // automatiquement les anciennes URLs apres un renommage, donc rien ne casse dans
 // l'intervalle.
-constexpr const char* kReleasesApiUrl =
-    "https://api.github.com/repos/DavidClaudeAI/StreamDirector/releases/latest";
-constexpr const char* kReleasesPageUrl =
-    "https://github.com/DavidClaudeAI/StreamDirector/releases/latest";
+constexpr const char* kReleasesApiUrl = "https://api.github.com/repos/DavidClaudeAI/StreamDirector/releases/latest";
+constexpr const char* kReleasesPageUrl = "https://github.com/DavidClaudeAI/StreamDirector/releases/latest";
 
-}  // namespace
+} // namespace
 
-void checkForUpdate(QObject* ctx, const std::string& currentVersion,
-                    std::function<void(const UpdateInfo&)> onResult) {
+void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::function<void(const UpdateInfo&)> onResult) {
     auto* nam = new QNetworkAccessManager(ctx);
 
     QNetworkRequest request{QUrl(QString::fromUtf8(kReleasesApiUrl))};
@@ -38,37 +35,34 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion,
     // Suivre les redirections 301 : indispensable apres un renommage du depot (l'API
     // GitHub redirige l'ancienne URL). C'est le defaut en Qt 6, explicite ici pour
     // verrouiller l'intention "robuste au renommage" et survivre a un changement de defaut.
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
     QNetworkReply* reply = nam->get(request);
-    QObject::connect(reply, &QNetworkReply::finished, ctx,
-                     [reply, nam, currentVersion, onResult = std::move(onResult)]() {
-                         UpdateInfo info;
-                         if (reply->error() == QNetworkReply::NoError) {
-                             const std::string body = reply->readAll().toStdString();
-                             try {
-                                 const auto json = nlohmann::json::parse(body);
-                                 const std::string tag = json.value("tag_name", std::string{});
-                                 const auto parsed = sd::core::parseSemVer(tag);
-                                 if (parsed && sd::core::isNewerVersion(tag, currentVersion)) {
-                                     info.updateAvailable = true;
-                                     // Version normalisee "M.m.p" (sans prefixe 'v' eventuel) ->
-                                     // affichage coherent avec le label "StreamDirector v%1".
-                                     info.latestVersion = std::to_string(parsed->major) + "." +
-                                                          std::to_string(parsed->minor) + "." +
-                                                          std::to_string(parsed->patch);
-                                     info.releaseUrl =
-                                         json.value("html_url", std::string{kReleasesPageUrl});
-                                 }
-                             } catch (...) {
-                                 // JSON inattendu -> on ne notifie pas (silencieux).
-                             }
-                         }
-                         reply->deleteLater();
-                         nam->deleteLater();
-                         onResult(info);
-                     });
+    QObject::connect(
+        reply, &QNetworkReply::finished, ctx, [reply, nam, currentVersion, onResult = std::move(onResult)]() {
+            UpdateInfo info;
+            if (reply->error() == QNetworkReply::NoError) {
+                const std::string body = reply->readAll().toStdString();
+                try {
+                    const auto json = nlohmann::json::parse(body);
+                    const std::string tag = json.value("tag_name", std::string{});
+                    const auto parsed = sd::core::parseSemVer(tag);
+                    if (parsed && sd::core::isNewerVersion(tag, currentVersion)) {
+                        info.updateAvailable = true;
+                        // Version normalisee "M.m.p" (sans prefixe 'v' eventuel) ->
+                        // affichage coherent avec le label "StreamDirector v%1".
+                        info.latestVersion = std::to_string(parsed->major) + "." + std::to_string(parsed->minor) + "." +
+                                             std::to_string(parsed->patch);
+                        info.releaseUrl = json.value("html_url", std::string{kReleasesPageUrl});
+                    }
+                } catch (...) {
+                    // JSON inattendu -> on ne notifie pas (silencieux).
+                }
+            }
+            reply->deleteLater();
+            nam->deleteLater();
+            onResult(info);
+        });
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

@@ -17,12 +17,12 @@ struct SemVer {
     int minor = 0;
     int patch = 0;
 
-    bool operator==(const SemVer& o) const {
-        return major == o.major && minor == o.minor && patch == o.patch;
-    }
+    bool operator==(const SemVer& o) const { return major == o.major && minor == o.minor && patch == o.patch; }
     bool operator<(const SemVer& o) const {
-        if (major != o.major) return major < o.major;
-        if (minor != o.minor) return minor < o.minor;
+        if (major != o.major)
+            return major < o.major;
+        if (minor != o.minor)
+            return minor < o.minor;
         return patch < o.patch;
     }
 };
@@ -36,4 +36,4 @@ std::optional<SemVer> parseSemVer(const std::string& text);
 // Tolerant : si l'un des deux ne parse pas, renvoie false (jamais de fausse notif).
 bool isNewerVersion(const std::string& latest, const std::string& current);
 
-}  // namespace sd::core
+} // namespace sd::core
