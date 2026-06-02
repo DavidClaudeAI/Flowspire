@@ -272,14 +272,15 @@ Decision Director::update(double now, const std::map<std::string, double>& level
 
     // "hold" = le plan tient le temps-mini avant de pouvoir etre remplace.
     //  - plan de LOCUTEUR : toujours un hold (anti-nervosite).
-    //  - PLAN LARGE : hold s'il SUCCEDE a un locuteur (currentOwner_ non vide) -> evite
-    //    le "flash" (on passe au plan large, puis quelqu'un parle aussitot). PAS un hold
-    //    s'il est l'ecran de depart (tout debut, personne n'a encore parle) -> la 1ere
-    //    parole y est suivie sans delai. En pratique on quitte quasi toujours quelqu'un,
-    //    donc le plan large tient le temps-mini SAUF au tout premier plan du stream.
+    //  - PLAN LARGE : hold des qu'il SUCCEDE a un plan deja affiche (!init) -> evite le
+    //    "flash" (on passe au plan large, puis quelqu'un parle aussitot). PAS un hold s'il
+    //    est l'ecran de DEPART (init == currentScene_ vide, avant toute bascule) -> la 1ere
+    //    parole y est alors suivie sans delai. Critere `!init` (et non "on quitte un
+    //    locuteur") : couvre aussi le plan large succedant a une scene FORCEE sans
+    //    proprietaire (forceScene owner="") -> pas de flash reintroduit.
     std::string scene, owner;
     if (resolvePlayable(desiredOwner, desiredWide, scene, owner)) {
-        const bool willHold = !owner.empty() || !currentOwner_.empty();
+        const bool willHold = !owner.empty() || !init;
         commit(now, scene, owner, willHold, out);
     } else {
         // Aucune scene jouable (pas de pool, pas de plan large) : ne pas figer la

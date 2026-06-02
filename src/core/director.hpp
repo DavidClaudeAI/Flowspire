@@ -8,10 +8,10 @@
 // Garde-fous :
 //   - "hold" : un plan affiche est maintenu un minimum de temps (verrou temps-mini,
 //     minShotSeconds) avant de pouvoir etre remplace. Concerne les plans de LOCUTEUR,
-//     les plans FORCES, et le PLAN LARGE des qu'il succede a un locuteur (evite le
-//     "flash" : on passe au plan large puis quelqu'un parle aussitot). Seule exception :
-//     le plan large de DEPART (tout debut, avant toute parole) n'est pas un hold -> la
-//     premiere prise de parole y est suivie sans delai.
+//     les plans FORCES, et le PLAN LARGE des qu'il succede a un plan deja affiche (evite
+//     le "flash" : on passe au plan large puis quelqu'un parle aussitot). Seule exception :
+//     le plan large de DEPART (init, avant toute bascule) n'est pas un hold -> la premiere
+//     prise de parole y est suivie sans delai.
 //   - rafraichissement au temps-max (variete des plans).
 //   - memoisation du tirage aleatoire par "situation" -> pas de scintillement.
 //   - une bascule bloquee par le verrou est re-evaluee a chaque tick et

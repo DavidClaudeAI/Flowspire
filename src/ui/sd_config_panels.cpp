@@ -509,8 +509,9 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     auto* thrR = new SliderRow(i18n("Rhythm.Threshold"), -60, 0, thr, fmtDb, false);
     thrR->setOnChange([this](int v) { cfg_.audio.voiceThresholdDb = v; });
     thrR->setInfo(i18n("Tip.Rhythm.Threshold"));
-    // Delai d'attaque (releaseFrames symetrique) : duree de voix continue avant de
-    // confirmer qu'une personne PARLE (anti faux declenchement sur un bruit bref).
+    // Delai d'attaque (attackFrames ; pendant du delai de silence cote DEBUT de parole,
+    // mais reglage distinct : defaut 2 vs 8) : duree de voix continue avant de confirmer
+    // qu'une personne PARLE (anti faux declenchement sur un bruit bref).
     // Clamp d'AFFICHAGE seulement (l'invariant attackFrames>=1 est garanti par fromJson).
     int att = std::max(1, std::min(20, cfg_.audio.attackFrames));
     auto* attR = new SliderRow(i18n("Rhythm.Attack"), 1, 20, att, fmtSilence, false);
