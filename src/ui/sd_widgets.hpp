@@ -140,6 +140,19 @@ inline QString segQss(bool filled) {
         .arg(filled ? QString::fromUtf8(theme::kAccent) : QString::fromUtf8(theme::kSurface3));
 }
 
+// Case a cocher / bouton radio : on ne stylise QUE le texte et l'espacement, et on
+// laisse l'INDICATEUR natif de l'OS (coche / pastille) -> rendu standard, fiable sur
+// Windows/macOS/Linux et coherent avec les reglages d'OBS (eviter le piege Qt du
+// `::indicator` custom qui exige une image pour la coche).
+inline QString checkBoxQss() {
+    return QString("QCheckBox { color:%1; font-size:13px; spacing:8px; }")
+        .arg(theme::kTextPrimary);
+}
+inline QString radioQss() {
+    return QString("QRadioButton { color:%1; font-size:13px; spacing:8px; padding:2px 0; }")
+        .arg(theme::kTextPrimary);
+}
+
 // ===========================================================================
 // Aide contextuelle (tooltips) — petit ⓘ au survol.
 // ===========================================================================

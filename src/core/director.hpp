@@ -80,6 +80,13 @@ public:
     // est inconnu ou n'a aucune scene jouable.
     Decision forceSpeaker(double now, const std::string& speakerId);
 
+    // Une scene fait-elle partie de la REGIE ? -> true si c'est le plan large OU une
+    // scene du pool d'un intervenant. Renseigne alors `owner` : id de l'intervenant
+    // proprietaire, ou "" pour le plan large. Sert au forcage par clic dans le dock
+    // natif d'OBS : distinguer une scene DE la regie (toujours forcage temporaire)
+    // d'une scene HORS regie (comportement configurable). Pur, sans effet de bord.
+    bool sceneInProgram(const std::string& scene, std::string& owner) const;
+
     const std::string& currentScene() const { return currentScene_; }
     Context lastContext() const { return lastContext_; }
 

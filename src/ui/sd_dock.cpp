@@ -3,7 +3,6 @@
 #include <obs-frontend-api.h>
 
 #include <QAction>
-#include <QCheckBox>
 #include <QColor>
 #include <QCoreApplication>
 #include <QEvent>
@@ -36,6 +35,7 @@
 #include "core/profiles.hpp"       // catalogue de profils (modele pur)
 #include "obs/profiles_store.hpp"  // magasin de profils (profil actif = source de verite)
 #include "ui/sd_assistant.hpp"     // assistant de configuration (modale)
+#include "ui/sd_prefs.hpp"         // preferences globales (verif MAJ, scene hors regie)
 #include "ui/sd_settings.hpp"      // parametres avances (modale)
 #include "ui/sd_update_check.hpp"  // verification de mise a jour (Qt Network)
 #include "ui/sd_i18n.hpp"          // i18n native OBS (i18n)
@@ -86,14 +86,18 @@ private:
     std::function<void()> fn_;
 };
 
-// Callback d'evenements frontend OBS. `data` = le dock. On rafraichit
-// AUTOMATIQUEMENT aux moments ou la liste des scenes/sources devient valide :
-// - FINISHED_LOADING : OBS a fini de charger au demarrage (le dock, lui, est cree
-//   plus tot en post_load -> sans ca, la liste serait vide jusqu'a un rechargement).
+// Callback d'evenements frontend OBS. `data` = le dock. On rafraichit AUTOMATIQUEMENT
+// aux moments ou la liste des scenes/sources devient valide :
+// - FINISHED_LOADING : OBS a fini de charger au demarrage (le dock, lui, est cree plus
+//   tot en post_load -> sans ca, la liste serait vide jusqu'a un rechargement).
 // - SCENE_COLLECTION_CHANGED : on bascule sur une autre collection (tout change).
-// On ne rafraichit PAS sur chaque ajout/suppression de source : un reload recree
-// le Director (reset des reglages live) -> on evite de perturber une regie en cours.
-// (Le rechargement se fait aussi a la fermeture de l'assistant / des parametres.)
+// On ne rafraichit PAS sur chaque ajout/suppression de source : un reload recree le
+// Director (reset des reglages live) -> on evite de perturber une regie en cours.
+//
+// Le FORCAGE par clic dans le dock natif d'OBS n'est PAS gere ici (via un evenement
+// SCENE_CHANGED) : ce serait un 2e chemin concurrent avec le tick (50 ms) -> race et
+// clignotement. Le tick lui-meme detecte le changement manuel (handleManualSceneChange),
+// AVANT sa decision -> source de verite unique, pas de combat de bascule.
 void frontendEventCb(enum obs_frontend_event event, void* data) {
     if (event != OBS_FRONTEND_EVENT_FINISHED_LOADING &&
         event != OBS_FRONTEND_EVENT_SCENE_COLLECTION_CHANGED) {
@@ -123,35 +127,6 @@ QString dockQss() {
         .arg(th::kBorder);
 }
 
-// Bouton "pilule" : fond + bordure + texte. Selecteur QPushButton (feuille, sans
-// enfants) -> pas de cascade. fillAlpha/borderAlpha en rgba pour les teintes.
-QString pillBtnQss(const char* color, double fillAlpha, double borderAlpha, bool bold) {
-    return QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                   " color:%4; font-size:12px; font-weight:%5; padding:8px 8px; }"
-                   "QPushButton:hover:enabled { border-color:%4; }"
-                   "QPushButton:disabled { color:%6; }")
-        .arg(rgba(color, fillAlpha))
-        .arg(rgba(color, borderAlpha))
-        .arg(th::kRadiusButton)
-        .arg(QString::fromUtf8(color))
-        .arg(bold ? 700 : 600)
-        .arg(rgba(th::kTextTertiary, 0.6));
-}
-
-// Bouton neutre (surface3, texte secondaire) : invites, footer, rafraichir.
-QString neutralBtnQss() {
-    return QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                   " color:%4; font-size:12px; font-weight:600; padding:8px 10px; text-align:center; }"
-                   "QPushButton:hover:enabled { border-color:%5; }"
-                   "QPushButton:disabled { color:%6; }")
-        .arg(th::kSurface3)
-        .arg(th::kBorder)
-        .arg(th::kRadiusButton)
-        .arg(th::kTextPrimary)
-        .arg(th::kTextSecondary)
-        .arg(rgba(th::kTextTertiary, 0.5));
-}
-
 // Slider de seuil. handle clair ; bordure verte quand l'intervenant parle.
 QString sliderQss(bool active) {
     return QString(
@@ -164,6 +139,15 @@ QString sliderQss(bool active) {
         .arg(th::kSurface3)
         .arg(th::kTextPrimary)
         .arg(active ? QString::fromUtf8(th::kSuccess) : rgba(th::kBorder, 1.0));
+}
+
+// Temoin "tally" : petite pilule verticale a gauche de la carte. Rouge = cette scene
+// est A L'ANTENNE (convention broadcast) ; transparente sinon (la pilule reste dans le
+// layout -> pas de saut de mise en page quand elle s'allume). Plus courte que la carte
+// et separee de la bordure (espace de chaque cote) pour ne pas chevaucher le contour.
+QString tallyQss(bool onAir) {
+    return QString("#tally { background:%1; border-radius:2px; }")
+        .arg(onAir ? QString::fromUtf8(th::kDanger) : QStringLiteral("transparent"));
 }
 }  // namespace
 
@@ -209,14 +193,16 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     statusBadge_ = new QWidget();
     statusBadge_->setObjectName(QStringLiteral("statusBadge"));
     auto* badgeLay = new QHBoxLayout(statusBadge_);
-    badgeLay->setContentsMargins(12, 4, 12, 4);
-    badgeLay->setSpacing(6);
+    // Badge agrandi (surtout en hauteur) : c'est desormais LE controle du dock
+    // (activer/couper la regie), la section "Realisation" ayant ete retiree.
+    badgeLay->setContentsMargins(14, 8, 14, 8);
+    badgeLay->setSpacing(7);
     statusDot_ = new QLabel(QStringLiteral("●"));
     statusText_ = new QLabel();
     badgeLay->addWidget(statusDot_);
     badgeLay->addWidget(statusText_);
-    // Badge cliquable : raccourci pour activer/couper le pilotage auto (ergonomie
-    // demandee par David). On garde aussi les boutons Auto ON/OFF en bas.
+    // Badge cliquable : c'est le toggle du pilotage auto (ON/OFF). Les memes actions
+    // restent accessibles par les hotkeys OBS (clavier / Stream Deck / Companion).
     statusBadge_->setCursor(Qt::PointingHandCursor);
     statusBadge_->setToolTip(i18n("Control.ToggleAuto"));
     statusBadge_->installEventFilter(this);
@@ -313,8 +299,8 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     modeLabel_->setWordWrap(true);
     root->addWidget(modeLabel_);
 
-    // --- Section intervenants ---
-    auto* speakersSection = new QLabel(i18n("Section.Speakers"));
+    // --- Section scenes (intervenants + plan large) ---
+    auto* speakersSection = new QLabel(i18n("Section.Scenes"));
     speakersSection->setStyleSheet(sectionLabelQss());
     root->addWidget(speakersSection);
 
@@ -327,58 +313,14 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     emptyLabel_->setStyleSheet(QString("color:%1;").arg(th::kTextSecondary));
     rowsLayout_->addWidget(emptyLabel_);
 
-    // --- Carte "a l'antenne" ---
-    auto* onAirCard = new QWidget();
-    onAirCard->setObjectName(QStringLiteral("onAirCard"));
-    onAirCard->setStyleSheet(QString("#onAirCard { background:%1; border:1px solid %2;"
-                                     " border-radius:%3px; }")
-                                 .arg(th::kSurface2)
-                                 .arg(th::kBorder)
-                                 .arg(th::kRadiusCard));
-    auto* onAirLay = new QHBoxLayout(onAirCard);
-    onAirLay->setContentsMargins(10, 12, 10, 12);
-    auto* onAirCaption = new QLabel(i18n("OnAir.Label"));
-    onAirCaption->setStyleSheet(
-        QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontLabel));
-    onAirLabel_ = new QLabel();
-    onAirLabel_->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:600;")
-                                   .arg(th::kTextPrimary)
-                                   .arg(th::kFontBody));
-    onAirLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    onAirLay->addWidget(onAirCaption);
-    onAirLay->addStretch();
-    onAirLay->addWidget(onAirLabel_);
-    root->addWidget(onAirCard);
-
-    // --- Section pilotage ---
-    auto* directingSection = new QLabel(i18n("Section.Directing"));
-    directingSection->setStyleSheet(sectionLabelQss());
-    root->addWidget(directingSection);
-
-    directingLayout_ = new QVBoxLayout();
-    directingLayout_->setSpacing(8);
-    root->addLayout(directingLayout_);
-
-    // --- Bandeau Stream Deck (icone grid + texte, fond jaune tres subtil) ---
-    auto* deckCard = new QWidget();
-    deckCard->setObjectName(QStringLiteral("deckCard"));
-    deckCard->setStyleSheet(QString("#deckCard { background:%1; border-radius:%2px; }")
-                                .arg(rgba(th::kWarning, 0.08))
-                                .arg(th::kRadiusButton));
-    auto* deckLay = new QHBoxLayout(deckCard);
-    deckLay->setContentsMargins(8, 8, 8, 8);
-    deckLay->setSpacing(8);
-    auto* deckIcon = new QLabel();
-    deckIcon->setPixmap(icon(Icon::LayoutGrid, th::kWarning, 14));
-    deckIcon->setAlignment(Qt::AlignTop);
-    auto* deckHint = new QLabel(i18n("StreamDeck.Hint"));
-    deckHint->setWordWrap(true);
-    deckHint->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:500;")
-                                .arg(th::kWarning)
-                                .arg(th::kFontSection));
-    deckLay->addWidget(deckIcon);
-    deckLay->addWidget(deckHint, 1);
-    root->addWidget(deckCard);
+    // La scene a l'antenne n'est plus affichee en TEXTE ici (doublon avec le
+    // gestionnaire de scenes natif d'OBS qui la surligne deja). A la place, un temoin
+    // vertical ("tally") sur la carte de l'intervenant a l'antenne (cf. reload + tick).
+    //
+    // La section "Realisation" (boutons Forcer / Plan large / Auto ON-OFF) a ete
+    // retiree : on pilote desormais via le gestionnaire de scenes natif d'OBS et les
+    // hotkeys (clavier / Stream Deck / Companion). L'activation/coupure de la regie
+    // se fait par le badge d'etat (en haut), qui sert de toggle.
 
     // (Run 7 polish) Le libelle "config chargee + chemin" et le bouton "Rafraichir"
     // ont ete retires : sans interet pour l'utilisateur final, et le rechargement
@@ -422,22 +364,14 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 
     root->addStretch();
 
-    // Bas du dock : case "verifier les MAJ au demarrage" (reglage GLOBAL, persiste seul,
-    // independamment du modele "Enregistrer" des parametres) a gauche + version a droite.
+    // Bas du dock : version a droite. La case "verifier les MAJ au demarrage" a ete
+    // DEPLACEE dans l'onglet "Parametres generaux" des parametres avances (avec le
+    // reglage de scene hors regie) -> le dock reste epure.
     auto* bottomBar = new QHBoxLayout();
     bottomBar->setSpacing(8);
-    auto* updateCheckBox = new QCheckBox(i18n("Update.CheckOnStartup"));
-    updateCheckBox->setChecked(updateCheckEnabled());
-    updateCheckBox->setCursor(Qt::PointingHandCursor);
-    updateCheckBox->setStyleSheet(QString("QCheckBox { color:%1; font-size:%2px; }")
-                                      .arg(th::kTextTertiary)
-                                      .arg(th::kFontSmall));
-    connect(updateCheckBox, &QCheckBox::toggled, this,
-            [](bool on) { setUpdateCheckEnabled(on); });
     auto* versionLabel = new QLabel(QString("StreamDirector v%1").arg(PLUGIN_VERSION));
     versionLabel->setStyleSheet(
         QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
-    bottomBar->addWidget(updateCheckBox);
     bottomBar->addStretch();
     bottomBar->addWidget(versionLabel);
     root->addLayout(bottomBar);
@@ -513,88 +447,6 @@ void SdDock::styleSpeakerCard(Row& row, bool speaking) {
     }
 }
 
-void SdDock::rebuildDirectingGrid() {
-    while (QLayoutItem* item = directingLayout_->takeAt(0)) {
-        if (QWidget* w = item->widget()) {
-            delete w;
-        }
-        delete item;
-    }
-    wideButton_ = nullptr;
-    autoOnButton_ = nullptr;
-    autoOffButton_ = nullptr;
-
-    // Rangee 1 : un bouton "forcer" par intervenant (mode config seulement).
-    if (configMode_ && !displaySpeakers_.empty()) {
-        auto* rowFrame = new QWidget();
-        auto* rowLay = new QHBoxLayout(rowFrame);
-        rowLay->setContentsMargins(0, 0, 0, 0);
-        rowLay->setSpacing(8);
-        for (size_t i = 0; i < displaySpeakers_.size(); ++i) {
-            auto* btn = new QPushButton(QString::fromStdString(displaySpeakers_[i].name));
-            btn->setCursor(Qt::PointingHandCursor);
-            btn->setStyleSheet(neutralBtnQss());
-            const int index = static_cast<int>(i);
-            connect(btn, &QPushButton::clicked, this,
-                    [this, index]() { forceSpeakerByIndex(index); });
-            rowLay->addWidget(btn, 1);
-        }
-        directingLayout_->addWidget(rowFrame);
-    }
-
-    // Rangee 2 : Plan large (bleu) / Auto OFF (rouge) / Auto ON (vert).
-    auto* row2 = new QWidget();
-    auto* row2Lay = new QHBoxLayout(row2);
-    row2Lay->setContentsMargins(0, 0, 0, 0);
-    row2Lay->setSpacing(8);
-
-    wideButton_ = new QPushButton(i18n("Control.WideShot"));
-    wideButton_->setCursor(Qt::PointingHandCursor);
-    wideButton_->setStyleSheet(pillBtnQss(th::kAccent, 0.15, 0.5, true));
-    connect(wideButton_, &QPushButton::clicked, this, [this]() { forceWide(); });
-
-    autoOffButton_ = new QPushButton(i18n("Control.AutoOff"));
-    autoOffButton_->setCursor(Qt::PointingHandCursor);
-    connect(autoOffButton_, &QPushButton::clicked, this, [this]() { setAuto(false); });
-
-    autoOnButton_ = new QPushButton(i18n("Control.AutoOn"));
-    autoOnButton_->setCursor(Qt::PointingHandCursor);
-    connect(autoOnButton_, &QPushButton::clicked, this, [this]() { setAuto(true); });
-
-    row2Lay->addWidget(wideButton_, 1);
-    row2Lay->addWidget(autoOffButton_, 1);
-    row2Lay->addWidget(autoOnButton_, 1);
-    directingLayout_->addWidget(row2);
-
-    const bool hasWide = director_ && !director_->config().wideShotScene.empty();
-    wideButton_->setEnabled(configMode_ && hasWide);
-
-    updateAutoButtons();
-}
-
-void SdDock::updateAutoButtons() {
-    if (!autoOnButton_ || !autoOffButton_) {
-        return;
-    }
-    // En mode config, les DEUX boutons restent cliquables (cliquer celui de l'etat
-    // courant = no-op inoffensif) -> evite le texte grise illisible d'un bouton
-    // desactive sur fond colore. En lecture seule : desactives (pas de pilotage).
-    autoOnButton_->setEnabled(configMode_);
-    autoOffButton_->setEnabled(configMode_);
-
-    if (!configMode_) {
-        autoOnButton_->setStyleSheet(pillBtnQss(th::kSuccess, 0.08, 0.4, false));
-        autoOffButton_->setStyleSheet(pillBtnQss(th::kDanger, 0.08, 0.4, false));
-        return;
-    }
-    // L'etat courant est "plein" (fond marque + bordure nette + gras) ; l'autre
-    // reste en teinte douce mais lisible (texte couleur pleine).
-    autoOnButton_->setStyleSheet(
-        pillBtnQss(th::kSuccess, autoEnabled_ ? 0.22 : 0.10, autoEnabled_ ? 0.7 : 0.45, autoEnabled_));
-    autoOffButton_->setStyleSheet(
-        pillBtnQss(th::kDanger, !autoEnabled_ ? 0.20 : 0.10, !autoEnabled_ ? 0.7 : 0.45, !autoEnabled_));
-}
-
 void SdDock::rememberSpeakerThreshold(const std::string& speakerId, int db) {
     // Mode profil uniquement : en mode auto (sans config), il n'y a pas de profil
     // ou ecrire. Les ids affiches y sont des noms de sources, absents du profil.
@@ -620,7 +472,8 @@ void SdDock::saveActiveProfileNow() {
 }
 
 void SdDock::startUpdateCheck() {
-    if (!updateCheckEnabled()) return;  // opt-out : aucune requete reseau si l'utilisateur a decoche
+    // opt-out (onglet Parametres generaux) : aucune requete reseau si l'utilisateur a decoche.
+    if (!loadPrefs().checkUpdatesOnStartup) return;
     // Verifie en arriere-plan s'il existe une release plus recente que la version locale.
     // Aucune release / hors-ligne / erreur -> rien ne s'affiche (updateAvailable == false).
     checkForUpdate(this, PLUGIN_VERSION, [this](const UpdateInfo& info) {
@@ -680,7 +533,6 @@ void SdDock::reload() {
         delete row.card;
     }
     rows_.clear();
-    shownOnAir_ = "\x01";
 
     emptyLabel_->setVisible(displaySpeakers_.empty());
 
@@ -693,8 +545,17 @@ void SdDock::reload() {
         // (le contenu ne sera pas coupe ; le defilement prend le relais).
         card->setMinimumHeight(th::kAvatarSize + 20);
         auto* lay = new QHBoxLayout(card);
-        lay->setContentsMargins(10, 10, 10, 10);
+        lay->setContentsMargins(8, 10, 10, 10);  // marge gauche reduite : espace du tally
         lay->setSpacing(10);
+
+        // Temoin "tally" : pilule verticale (rouge quand cette scene est a l'antenne).
+        // Centree, plus courte que la carte, avec de l'espace de chaque cote (pas sur la
+        // bordure). Toujours presente (transparente) -> pas de saut de layout.
+        auto* tally = new QWidget();
+        tally->setObjectName(QStringLiteral("tally"));
+        tally->setFixedSize(4, 26);
+        tally->setStyleSheet(tallyQss(false));
+        lay->addWidget(tally, 0, Qt::AlignVCenter);
 
         // Avatar : icone user dans une pastille ronde.
         auto* avatar = new QLabel();
@@ -775,16 +636,61 @@ void SdDock::reload() {
         lay->addWidget(threshBlock);
 
         rowsLayout_->addWidget(card);
-        Row row{ds.id, ds.audioSource, card, avatar, nameLabel, meter, threshold, stateLabel};
+        Row row{ds.id, ds.audioSource, card, avatar, nameLabel, meter, threshold, stateLabel, tally};
         styleSpeakerCard(row, /*speaking=*/false);
         rows_.push_back(row);
     }
 
-    rebuildDirectingGrid();
+    // Carte "Plan large" (si configuree) : pas un intervenant -> pas de vumetre ni de
+    // seuil. Icone "groupe" (2 personnes) + tally qui s'allume quand le plan large est
+    // a l'antenne. Permet de VOIR dans le dock qu'on est passe sur le plan large (sinon
+    // angle mort : il fallait regarder le gestionnaire de scenes d'OBS).
+    if (configMode_ && director_ && !director_->config().wideShotScene.empty()) {
+        auto* card = new QWidget();
+        card->setObjectName(QStringLiteral("spkCard"));
+        card->setMinimumHeight(th::kAvatarSize + 20);
+        auto* lay = new QHBoxLayout(card);
+        lay->setContentsMargins(8, 10, 10, 10);
+        lay->setSpacing(10);
+
+        auto* tally = new QWidget();
+        tally->setObjectName(QStringLiteral("tally"));
+        tally->setFixedSize(4, 26);
+        tally->setStyleSheet(tallyQss(false));
+        lay->addWidget(tally, 0, Qt::AlignVCenter);
+
+        auto* avatar = new QLabel();
+        avatar->setFixedSize(th::kAvatarSize, th::kAvatarSize);
+        avatar->setAlignment(Qt::AlignCenter);
+
+        auto* nameLabel = new QLabel(i18n("Dock.WideShot"));
+        lay->addWidget(avatar);
+        lay->addWidget(nameLabel, 1);
+
+        rowsLayout_->addWidget(card);
+        Row wideRow;
+        wideRow.card = card;
+        wideRow.avatar = avatar;
+        wideRow.nameLabel = nameLabel;
+        wideRow.tally = tally;
+        wideRow.isWide = true;
+        // Style "au repos" reutilise (carte grise, nom secondaire), puis on remplace
+        // l'icone par "groupe" (2 personnes) : meter/threshold sont nuls -> styleSpeakerCard
+        // saute les parties vumetre/seuil (gardes internes).
+        styleSpeakerCard(wideRow, /*speaking=*/false);
+        wideRow.avatar->setPixmap(icon(Icon::Users, th::kTextTertiary, 18));
+        rows_.push_back(wideRow);
+    }
+
     updateModeLabel();
     shownStatus_ = -1;
     updateStatusBadge();
     updateProfileBar();
+
+    // Apres un rechargement, la scene actuellement a l'antenne est l'etat de REFERENCE :
+    // on ne la traitera pas comme un forcage manuel au prochain tick (le moteur vient
+    // d'etre recree, sa decision repart de zero).
+    lastRequestedScene_ = sceneSwitcher_.currentProgramScene();
 }
 
 void SdDock::updateStatusBadge() {
@@ -818,10 +724,10 @@ void SdDock::updateStatusBadge() {
                                         " border-radius:6px; }")
                                     .arg(fill)
                                     .arg(rgba(borderC, status == StatusReadOnly ? 1.0 : 0.5)));
-    statusDot_->setStyleSheet(QString("color:%1; font-size:%2px;").arg(color).arg(th::kFontSmall));
+    statusDot_->setStyleSheet(QString("color:%1; font-size:%2px;").arg(color).arg(th::kFontBody));
     statusText_->setText(text);
     statusText_->setStyleSheet(
-        QString("color:%1; font-size:%2px; font-weight:700;").arg(color).arg(th::kFontLabel));
+        QString("color:%1; font-size:%2px; font-weight:700;").arg(color).arg(th::kFontBody));
 }
 
 void SdDock::updateModeLabel() {
@@ -850,7 +756,14 @@ void SdDock::setAuto(bool on) {
     if (director_) {
         director_->setAutoEnabled(on);
     }
-    updateAutoButtons();
+    if (on) {
+        // On (re)prend la main DEPUIS la scene actuellement a l'antenne : on l'adopte
+        // comme reference pour ne pas la confondre avec un changement manuel au tick
+        // suivant. Sinon, reactiver l'auto depuis une scene hors regie la repauserait
+        // aussitot (cas "mettre la regie en pause"). Le moteur rebasculera ensuite
+        // normalement selon qui parle.
+        lastRequestedScene_ = sceneSwitcher_.currentProgramScene();
+    }
     updateModeLabel();
     updateStatusBadge();
 }
@@ -993,6 +906,11 @@ void SdDock::applyDecision(const sd::core::Decision& decision, const std::string
     if (!autoEnabled_ || decision.scene.empty()) {
         return;
     }
+    // Memorise la scene VOULUE par l'auto : tout passage du programme vers une AUTRE
+    // scene sera reconnu comme un changement MANUEL (handleManualSceneChange), pas comme
+    // l'echo de notre propre bascule. On la pose meme sans switchTo (deja a l'antenne)
+    // pour rester aligne avec l'etat reel.
+    lastRequestedScene_ = decision.scene;
     if (decision.scene != currentOnAir) {
         sceneSwitcher_.switchTo(decision.scene);
     }
@@ -1007,7 +925,9 @@ void SdDock::forceWide() {
         return;
     }
     const sd::core::Decision decision = director_->forceScene(nowSeconds(), wide, "");
-    sceneSwitcher_.switchTo(decision.scene.empty() ? wide : decision.scene);
+    const std::string scene = decision.scene.empty() ? wide : decision.scene;
+    lastRequestedScene_ = scene;  // bascule initiee par nous (cf. handleManualSceneChange)
+    sceneSwitcher_.switchTo(scene);
 }
 
 void SdDock::forceSpeakerByIndex(int index) {
@@ -1017,7 +937,34 @@ void SdDock::forceSpeakerByIndex(int index) {
     const sd::core::Decision decision =
         director_->forceSpeaker(nowSeconds(), displaySpeakers_[static_cast<size_t>(index)].id);
     if (!decision.scene.empty()) {
+        lastRequestedScene_ = decision.scene;  // bascule initiee par nous (cf. handleManualSceneChange)
         sceneSwitcher_.switchTo(decision.scene);
+    }
+}
+
+void SdDock::handleManualSceneChange(const std::string& onAir, double now) {
+    // On ne s'interesse au changement que si la realisation auto pilote reellement
+    // (mode config + auto ON). `onAir == lastRequestedScene_` => c'est NOTRE propre
+    // bascule (ou l'etat de reference) -> rien a faire. Vide => antenne indisponible.
+    if (!autoEnabled_ || !configMode_ || onAir.empty() || onAir == lastRequestedScene_) {
+        return;
+    }
+    // Changement initie par l'UTILISATEUR (clic dans le dock natif d'OBS, hotkey OBS...).
+    std::string owner;
+    if (director_->sceneInProgram(onAir, owner)) {
+        // Scene DE la regie -> toujours un forcage TEMPORAIRE (hold) : l'auto reprend
+        // apres le temps mini. La scene est deja a l'antenne -> pas de switchTo ; au
+        // reste du tick, decision == antenne -> aucun combat de bascule.
+        director_->forceScene(now, onAir, owner);
+        lastRequestedScene_ = onAir;
+    } else if (loadPrefs().offSceneBehavior == OffSceneBehavior::ForceAsShot) {
+        // Scene HORS regie, reglage "la compter comme un plan" : forcage temporaire.
+        director_->forceScene(now, onAir, "");
+        lastRequestedScene_ = onAir;
+    } else {
+        // Scene HORS regie, reglage "mettre la regie en pause" (defaut) : on coupe l'auto
+        // et on reste sur la scene choisie jusqu'a reactivation manuelle.
+        setAuto(false);
     }
 }
 
@@ -1027,6 +974,15 @@ void SdDock::tick() {
     }
 
     const double now = nowSeconds();
+
+    // 1) Detecter un changement de scene NON initie par nous (clic dans le dock natif
+    //    d'OBS) AVANT la decision auto. Sinon, le tick verrait l'antenne != sa decision
+    //    et rebasculerait dessus -> clignotement + clic "perdu". currentProgramScene()
+    //    est la verite terrain de l'antenne.
+    const std::string onAir = sceneSwitcher_.currentProgramScene();
+    handleManualSceneChange(onAir, now);
+
+    // 2) Audio -> decision auto -> bascule.
     const std::map<std::string, double> levelsBySource = monitor_.snapshot(now);
     std::map<std::string, double> levelsById;
     for (const auto& ds : displaySpeakers_) {
@@ -1036,39 +992,56 @@ void SdDock::tick() {
     }
 
     const sd::core::Decision decision = director_->update(now, levelsById);
-
-    const std::string onAir = sceneSwitcher_.currentProgramScene();
     applyDecision(decision, onAir);
 
     const std::vector<std::string> speaking = director_->speakingIds();
     const std::unordered_set<std::string> speakingSet(speaking.begin(), speaking.end());
 
+    // Scene a l'antenne (relue APRES la decision, qui a pu basculer ce tick) : on
+    // identifie son proprietaire pour le tally. sceneInProgram renvoie true + owner vide
+    // UNIQUEMENT pour le plan large -> wideOnAir. owner non vide -> carte d'un intervenant.
+    std::string onAirOwner;
+    const bool inProgram =
+        director_->sceneInProgram(sceneSwitcher_.currentProgramScene(), onAirOwner);
+    const bool wideOnAir = inProgram && onAirOwner.empty();
+
     for (auto& row : rows_) {
-        const auto it = levelsBySource.find(row.audioSource);
-        const double db = (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
+        // Bloc audio (vumetre + etat parle) : uniquement pour les cartes intervenant
+        // (la carte "Plan large" n'a ni source audio ni vumetre -> meter nul).
+        if (row.meter) {
+            const auto it = levelsBySource.find(row.audioSource);
+            const double db =
+                (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
 
-        const int dbInt = dbToInt(db);
-        if (dbInt != row.shownDb) {
-            row.shownDb = dbInt;
-            row.meter->setLevelDb(db);
+            const int dbInt = dbToInt(db);
+            if (dbInt != row.shownDb) {
+                row.shownDb = dbInt;
+                row.meter->setLevelDb(db);
+            }
+
+            const int speakingNow = speakingSet.count(row.id) ? 1 : 0;
+            if (speakingNow != row.shownSpeaking) {
+                row.shownSpeaking = speakingNow;
+                row.stateLabel->setText(speakingNow ? i18n("Speaker.State.Speaking")
+                                                    : i18n("Speaker.State.Silent"));
+                row.stateLabel->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;")
+                                                  .arg(speakingNow ? th::kSuccess : th::kTextTertiary)
+                                                  .arg(th::kFontSmall));
+                styleSpeakerCard(row, speakingNow != 0);
+            }
         }
 
-        const int speakingNow = speakingSet.count(row.id) ? 1 : 0;
-        if (speakingNow != row.shownSpeaking) {
-            row.shownSpeaking = speakingNow;
-            row.stateLabel->setText(speakingNow ? i18n("Speaker.State.Speaking")
-                                                : i18n("Speaker.State.Silent"));
-            row.stateLabel->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;")
-                                              .arg(speakingNow ? th::kSuccess : th::kTextTertiary)
-                                              .arg(th::kFontSmall));
-            styleSpeakerCard(row, speakingNow != 0);
+        // Tally : allume (rouge) si la scene a l'antenne est celle de cette carte
+        // (le plan large pour la carte "Plan large", sinon le pool d'un intervenant).
+        const int onAirNow = (row.isWide ? wideOnAir : (!onAirOwner.empty() && row.id == onAirOwner))
+                                 ? 1
+                                 : 0;
+        if (onAirNow != row.shownOnAir) {
+            row.shownOnAir = onAirNow;
+            if (row.tally) {
+                row.tally->setStyleSheet(tallyQss(onAirNow != 0));
+            }
         }
-    }
-
-    if (onAir != shownOnAir_) {
-        shownOnAir_ = onAir;
-        onAirLabel_->setText(onAir.empty() ? i18n("OnAir.Unavailable")
-                                           : QString::fromStdString(onAir));
     }
 }
 

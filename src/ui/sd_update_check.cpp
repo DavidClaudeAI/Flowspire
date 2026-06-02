@@ -9,11 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include <util/base.h>  // LOG_WARNING
-
 #include "core/version.hpp"
-#include "obs/obs_file_store.hpp"
-#include "plugin-support.h"  // obs_log
 
 namespace sd::ui {
 
@@ -27,9 +23,6 @@ constexpr const char* kReleasesApiUrl =
     "https://api.github.com/repos/DavidClaudeAI/StreamDirector/releases/latest";
 constexpr const char* kReleasesPageUrl =
     "https://github.com/DavidClaudeAI/StreamDirector/releases/latest";
-
-// Reglage "verifier au demarrage" : fichier dans le dossier de config du plugin.
-constexpr const char* kPrefsFile = "update.json";
 
 }  // namespace
 
@@ -76,29 +69,6 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion,
                          nam->deleteLater();
                          onResult(info);
                      });
-}
-
-bool updateCheckEnabled() {
-    sd::obsbridge::ObsFileStore store;
-    std::string text;
-    if (!store.read(kPrefsFile, text)) return true;  // absent -> actif par defaut
-    try {
-        return nlohmann::json::parse(text).value("checkOnStartup", true);
-    } catch (...) {
-        return true;  // illisible -> on garde le defaut (actif)
-    }
-}
-
-void setUpdateCheckEnabled(bool enabled) {
-    sd::obsbridge::ObsFileStore store;
-    nlohmann::json json;
-    json["checkOnStartup"] = enabled;
-    const auto res = store.write(kPrefsFile, json.dump(2));
-    // Reglage de vie privee : si l'ecriture rate, la case ne persistera pas -> on TRACE
-    // (sinon le choix utilisateur serait perdu silencieusement). Pas de pop-up (non bloquant).
-    if (!res.ok) {
-        obs_log(LOG_WARNING, "echec d'ecriture de %s : %s", kPrefsFile, res.error.c_str());
-    }
 }
 
 }  // namespace sd::ui

@@ -10,6 +10,8 @@
 // reglages d'edition n'ont pas ete enregistres.
 #include "ui/sd_settings.hpp"
 
+#include <QButtonGroup>
+#include <QCheckBox>
 #include <QColor>
 #include <QFrame>
 #include <QGraphicsDropShadowEffect>
@@ -20,6 +22,7 @@
 #include <QMessageBox>
 #include <QMouseEvent>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QScrollArea>
 #include <QShowEvent>
 #include <QString>
@@ -36,6 +39,7 @@
 #include "ui/sd_config_panels.hpp"
 #include "ui/sd_i18n.hpp"
 #include "ui/sd_icons.hpp"
+#include "ui/sd_prefs.hpp"
 #include "ui/sd_profiles_panel.hpp"
 #include "ui/sd_style.hpp"
 #include "ui/sd_support.hpp"
@@ -62,6 +66,10 @@ struct SdSettings::Impl {
     bool saved = false;          // le profil actif a change -> le dock recharge
     QString pendingAssistantName;  // "Nouveau > Avec l'assistant" -> nom a creer via l'assistant
 
+    // Preferences GLOBALES (onglet Parametres generaux) : chargees a l'ouverture,
+    // modifiees + persistees IMMEDIATEMENT a chaque changement (hors modele "Enregistrer").
+    GlobalPrefs generalPrefs;
+
     QWidget* root = nullptr;
     QWidget* header = nullptr;
     QVBoxLayout* navLay = nullptr;
@@ -86,6 +94,7 @@ struct SdSettings::Impl {
     void rebuildNav();
     void showPanel(int p);
     void resetToDefaults();
+    void mountGeneral(QVBoxLayout* host);  // panneau "Parametres generaux" (persistance immediate)
 
     // --- profils ---
     bool dirty() const;
@@ -107,6 +116,7 @@ QString SdSettings::Impl::panelTitle(int p) const {
     case SdSettings::TabRhythm: return i18n("Settings.Nav.Rhythm");
     case SdSettings::TabProfiles: return i18n("Settings.Nav.Profiles");
     case SdSettings::TabSupport: return i18n("Settings.Nav.Support");
+    case SdSettings::TabGeneral: return i18n("Settings.Nav.General");
     default: return QString();
     }
 }
@@ -146,11 +156,19 @@ void SdSettings::Impl::rebuildNav() {
             showPanel(p);
         }));
     }
-    // Separateur + "Soutenir le projet" : desormais un PANNEAU (plus de pop-up).
+    // Separateur, puis les reglages "meta" (hors config de realisation) : Parametres
+    // generaux (reglages d'app, persistance immediate) + Soutenir le projet. Tous deux
+    // sont de vrais PANNEAUX (plus de pop-up).
     auto* sep = new QFrame();
     sep->setFixedHeight(1);
     sep->setStyleSheet(QString("background:%1;").arg(th::kBorder));
     navLay->addWidget(sep);
+    navLay->addWidget(makeNavItem(Icon::SlidersHorizontal, i18n("Settings.Nav.General"),
+                                  selPanel == SdSettings::TabGeneral, [this]() {
+                                      selPanel = SdSettings::TabGeneral;
+                                      rebuildNav();
+                                      showPanel(SdSettings::TabGeneral);
+                                  }));
     navLay->addWidget(makeNavItem(Icon::Heart, i18n("Settings.Nav.Support"),
                                   selPanel == SdSettings::TabSupport,
                                   [this]() {
@@ -178,6 +196,7 @@ void SdSettings::Impl::showPanel(int p) {
     case SdSettings::TabRhythm: panels->mountRhythm(host); break;
     case SdSettings::TabProfiles: profilesPanel->mount(host); break;
     case SdSettings::TabSupport: mountSupport(host); break;
+    case SdSettings::TabGeneral: mountGeneral(host); break;
     default: break;
     }
     contentLay->addWidget(hostW);
@@ -202,6 +221,80 @@ void SdSettings::Impl::resetToDefaults() {
         return;
     }
     showPanel(selPanel);
+}
+
+void SdSettings::Impl::mountGeneral(QVBoxLayout* host) {
+    // Reglages d'APPLICATION (globaux, hors profil) appliques IMMEDIATEMENT (pas de
+    // modele "Enregistrer") : on lit/ecrit generalPrefs (prefs.json via sd_prefs) a
+    // chaque changement. Pas de bouton de validation propre a ce panneau.
+
+    // --- Section : Mises a jour ---
+    host->addWidget(makeSectionLabel(i18n("Settings.General.UpdatesSection")));
+    auto* updCard = makeCard(QStringLiteral("genUpdCard"));
+    auto* updLay = new QVBoxLayout(updCard);
+    updLay->setContentsMargins(14, 12, 14, 12);
+    updLay->setSpacing(6);
+    auto* updCheck = new QCheckBox(i18n("Update.CheckOnStartup"));
+    updCheck->setChecked(generalPrefs.checkUpdatesOnStartup);
+    updCheck->setCursor(Qt::PointingHandCursor);
+    updCheck->setStyleSheet(checkBoxQss());
+    QObject::connect(updCheck, &QCheckBox::toggled, q, [this](bool on) {
+        generalPrefs.checkUpdatesOnStartup = on;
+        savePrefs(generalPrefs);  // persistance immediate
+    });
+    updLay->addWidget(updCheck);
+    updLay->addWidget(makeHint(i18n("Settings.General.UpdatesHint")));
+    host->addWidget(updCard);
+
+    // --- Section : Realisation (scene hors regie) ---
+    host->addWidget(makeSectionLabel(i18n("Settings.General.DirectingSection")));
+    auto* offCard = makeCard(QStringLiteral("genOffCard"));
+    auto* offLay = new QVBoxLayout(offCard);
+    offLay->setContentsMargins(14, 12, 14, 12);
+    offLay->setSpacing(10);
+
+    // Intitule + aide contextuelle (immediat / tous profils / scenes concernees). Le
+    // libelle peut etre long -> wordWrap (pas de troncature) et ⓘ aligne en haut.
+    auto* head = new QWidget();
+    auto* headLay = new QHBoxLayout(head);
+    headLay->setContentsMargins(0, 0, 0, 0);
+    headLay->setSpacing(6);
+    auto* offHeader = makeGroupHeader(i18n("Settings.General.OffScene.Label"));
+    offHeader->setWordWrap(true);
+    headLay->addWidget(offHeader, 1);
+    headLay->addWidget(makeInfoIcon(i18n("Settings.General.OffScene.Info")), 0, Qt::AlignTop);
+    offLay->addWidget(head);
+
+    // Deux options exclusives (radios). Defaut produit = Pause (le plus sur). Le groupe
+    // est parente a offCard -> detruit avec le panneau au prochain remontage (pas
+    // d'accumulation de groupes vides au fil des navigations).
+    auto* group = new QButtonGroup(offCard);
+    auto* optShot = new QRadioButton(i18n("Settings.General.OffScene.AsShot"));
+    auto* optPause = new QRadioButton(i18n("Settings.General.OffScene.Pause"));
+    for (QRadioButton* r : {optShot, optPause}) {
+        r->setCursor(Qt::PointingHandCursor);
+        r->setStyleSheet(radioQss());
+        group->addButton(r);
+        offLay->addWidget(r);
+    }
+    optShot->setChecked(generalPrefs.offSceneBehavior == OffSceneBehavior::ForceAsShot);
+    optPause->setChecked(generalPrefs.offSceneBehavior == OffSceneBehavior::PauseAuto);
+    // On persiste sur la transition "devient coche" de chaque option (toggled(true)).
+    QObject::connect(optShot, &QRadioButton::toggled, q, [this](bool on) {
+        if (!on) {
+            return;
+        }
+        generalPrefs.offSceneBehavior = OffSceneBehavior::ForceAsShot;
+        savePrefs(generalPrefs);
+    });
+    QObject::connect(optPause, &QRadioButton::toggled, q, [this](bool on) {
+        if (!on) {
+            return;
+        }
+        generalPrefs.offSceneBehavior = OffSceneBehavior::PauseAuto;
+        savePrefs(generalPrefs);
+    });
+    host->addWidget(offCard);
 }
 
 bool SdSettings::Impl::dirty() const {
@@ -334,6 +427,7 @@ void SdSettings::Impl::finish() {
 SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(new Impl) {
     d_->q = this;
     d_->selPanel = initialTab;
+    d_->generalPrefs = loadPrefs();  // etat initial de l'onglet Parametres generaux
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setModal(true);

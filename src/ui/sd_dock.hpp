@@ -69,8 +69,11 @@ private:
         LevelMeter* meter = nullptr;  // vumetre custom (+ marqueur de seuil)
         QSlider* threshold = nullptr; // slider de seuil par intervenant
         QLabel* stateLabel = nullptr;
+        QWidget* tally = nullptr;  // temoin vertical "a l'antenne" (rouge), a gauche de la carte
+        bool isWide = false;       // carte "Plan large" (pas un intervenant : ni audio ni vumetre)
         int shownDb = 1;          // hors plage [-60,0] -> force la 1ere maj
         int shownSpeaking = -1;   // -1 inconnu, 0 silence, 1 parle
+        int shownOnAir = -1;      // -1 inconnu, 0 hors antenne, 1 a l'antenne (tally)
     };
 
     // Un intervenant tel qu'affiche/pilote : mode config = speaker du JSON ;
@@ -97,10 +100,14 @@ private:
     void showProfileMenu();   // menu du selecteur : liste des profils + "Gerer..."
     void switchProfile(int id);  // bascule le profil actif (1 clic) puis recharge
     void applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir);
-    void rebuildDirectingGrid();
+    // Detecte et traite un changement de la scene programme NON initie par nous (clic
+    // dans le dock natif d'OBS, hotkey OBS, transition externe). Appelee EN DEBUT de
+    // tick, avant la decision auto : sinon le tick rebasculerait sur l'ancienne decision
+    // et "ecraserait" le clic (clignotement). No-op si l'antenne est celle qu'on a
+    // demandee (lastRequestedScene_), ou hors mode auto.
+    void handleManualSceneChange(const std::string& onAir, double now);
     void updateStatusBadge();
     void updateModeLabel();
-    void updateAutoButtons();
     void startUpdateCheck();  // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
     void styleSpeakerCard(Row& row, bool speaking);
     static double nowSeconds();
@@ -117,19 +124,19 @@ private:
     bool configMode_ = false;
     bool autoEnabled_ = false;    // GARDE-FOU : pilotage auto OFF par defaut.
 
+    // Derniere scene que NOUS avons demandee a l'antenne (auto ou forcage). Le tick
+    // compare l'antenne reelle a ce repere : si elle differe, c'est un changement venu
+    // du dock natif d'OBS (clic manuel) et non l'echo de notre propre bascule.
+    std::string lastRequestedScene_;
+
     QVBoxLayout* rowsLayout_ = nullptr;
-    QVBoxLayout* directingLayout_ = nullptr;
     std::vector<Row> rows_;
     QPushButton* profileButton_ = nullptr;     // selecteur de profil (en-tete du dock)
     QLabel* profileNameLabel_ = nullptr;       // nom du profil actif (dans le selecteur)
-    QPushButton* wideButton_ = nullptr;
-    QPushButton* autoOnButton_ = nullptr;
-    QPushButton* autoOffButton_ = nullptr;
     QLabel* statusDot_ = nullptr;
     QLabel* statusText_ = nullptr;
     QWidget* statusBadge_ = nullptr;
     QLabel* modeLabel_ = nullptr;
-    QLabel* onAirLabel_ = nullptr;
     QLabel* emptyLabel_ = nullptr;
     QWidget* updateBanner_ = nullptr;          // bandeau "mise a jour dispo" (masque par defaut)
     QLabel* updateBannerLabel_ = nullptr;
@@ -139,7 +146,6 @@ private:
     // une rafale clavier/molette ne declenche qu'UNE ecriture disque, apres stabilisation.
     QTimer* thresholdSaveTimer_ = nullptr;
     int shownStatus_ = -1;
-    std::string shownOnAir_ = "\x01";
 };
 
 }  // namespace sd::ui

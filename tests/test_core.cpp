@@ -517,6 +517,35 @@ TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
     CHECK(dir.currentScene() == "A_close");
 }
 
+TEST_CASE("director : sceneInProgram reconnait pool, plan large et hors-regie") {
+    Director dir(twoSpeakerConfig());  // wide=Plateau ; A:{A_close,A_wide} ; B:{B_close}
+    std::string owner = "sentinelle";
+    // Scene d'un intervenant -> owner renseigne.
+    CHECK(dir.sceneInProgram("A_close", owner));
+    CHECK(owner == "A");
+    owner = "sentinelle";
+    CHECK(dir.sceneInProgram("B_close", owner));
+    CHECK(owner == "B");
+    // Plan large -> owner vide.
+    owner = "sentinelle";
+    CHECK(dir.sceneInProgram("Plateau", owner));
+    CHECK(owner.empty());
+    // Hors regie -> false.
+    owner = "sentinelle";
+    CHECK_FALSE(dir.sceneInProgram("Intro", owner));
+    // Scene vide -> false (jamais consideree dans la regie).
+    CHECK_FALSE(dir.sceneInProgram("", owner));
+}
+
+TEST_CASE("director : sceneInProgram — le plan large prime sur un pool homonyme") {
+    Config c = twoSpeakerConfig();
+    c.speakers[0].scenes = {{"Plateau", 50}, {"A_close", 50}};  // A a aussi le plan large
+    Director dir(c);
+    std::string owner = "sentinelle";
+    CHECK(dir.sceneInProgram("Plateau", owner));
+    CHECK(owner.empty());  // reconnu comme plan large, pas comme scene de A
+}
+
 // ===========================================================================
 // Catalogue de profils (modele pur)
 

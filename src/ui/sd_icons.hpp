@@ -36,6 +36,7 @@ enum class Icon {
     Coffee,      // lien Ko-fi
     CreditCard,  // lien PayPal
     RotateCcw,   // reinitialiser aux defauts
+    SlidersHorizontal,  // sidebar : parametres generaux (reglages d'app)
 };
 
 // Pixmap de l'icone `which`, trait de couleur `colorHex` (ex "#3FB950"), carre de

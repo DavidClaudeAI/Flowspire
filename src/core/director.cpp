@@ -378,4 +378,26 @@ Decision Director::forceSpeaker(double now, const std::string& speakerId) {
     return out;
 }
 
+bool Director::sceneInProgram(const std::string& scene, std::string& owner) const {
+    if (scene.empty()) {
+        return false;
+    }
+    // Le plan large est un concept de premier ordre -> teste EN PREMIER : une scene a
+    // la fois plan large ET presente dans un pool reste consideree comme le plan large
+    // (owner vide), pas comme la scene d'un intervenant.
+    if (!cfg_.wideShotScene.empty() && scene == cfg_.wideShotScene) {
+        owner.clear();
+        return true;
+    }
+    for (const auto& sp : cfg_.speakers) {
+        for (const auto& sw : sp.scenes) {
+            if (sw.scene == scene) {
+                owner = sp.id;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 }  // namespace sd::core

@@ -30,7 +30,9 @@ namespace sd::ui {
 class SdSettings : public QDialog {
 public:
     // Onglet d'ouverture (le dock ouvre p.ex. directement sur Profils).
-    enum Tab { TabSpeakers, TabCameras, TabWide, TabRhythm, TabProfiles, TabSupport };
+    // TabGeneral ajoute en fin -> aucune valeur existante ne change (le dock passe
+    // ces constantes en int via openSettings).
+    enum Tab { TabSpeakers, TabCameras, TabWide, TabRhythm, TabProfiles, TabSupport, TabGeneral };
 
     explicit SdSettings(QWidget* parent = nullptr, Tab initialTab = TabSpeakers);
     ~SdSettings() override;
