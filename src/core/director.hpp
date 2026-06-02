@@ -6,10 +6,12 @@
 //   C - personne ne parle       : { dernier locuteur / plan large }
 //
 // Garde-fous :
-//   - "hold" : un plan de LOCUTEUR (ou un plan FORCE) doit etre maintenu un
-//     minimum de temps (verrou temps-mini) pour eviter la nervosite. Un plan
-//     large issu d'un simple silence n'est PAS un hold : une prise de parole
-//     peut le remplacer immediatement.
+//   - "hold" : un plan affiche est maintenu un minimum de temps (verrou temps-mini,
+//     minShotSeconds) avant de pouvoir etre remplace. Concerne les plans de LOCUTEUR,
+//     les plans FORCES, et le PLAN LARGE des qu'il succede a un locuteur (evite le
+//     "flash" : on passe au plan large puis quelqu'un parle aussitot). Seule exception :
+//     le plan large de DEPART (tout debut, avant toute parole) n'est pas un hold -> la
+//     premiere prise de parole y est suivie sans delai.
 //   - rafraichissement au temps-max (variete des plans).
 //   - memoisation du tirage aleatoire par "situation" -> pas de scintillement.
 //   - une bascule bloquee par le verrou est re-evaluee a chaque tick et

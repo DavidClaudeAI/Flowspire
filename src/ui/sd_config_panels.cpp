@@ -509,6 +509,13 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     auto* thrR = new SliderRow(i18n("Rhythm.Threshold"), -60, 0, thr, fmtDb, false);
     thrR->setOnChange([this](int v) { cfg_.audio.voiceThresholdDb = v; });
     thrR->setInfo(i18n("Tip.Rhythm.Threshold"));
+    // Delai d'attaque (releaseFrames symetrique) : duree de voix continue avant de
+    // confirmer qu'une personne PARLE (anti faux declenchement sur un bruit bref).
+    // Clamp d'AFFICHAGE seulement (l'invariant attackFrames>=1 est garanti par fromJson).
+    int att = std::max(1, std::min(20, cfg_.audio.attackFrames));
+    auto* attR = new SliderRow(i18n("Rhythm.Attack"), 1, 20, att, fmtSilence, false);
+    attR->setOnChange([this](int v) { cfg_.audio.attackFrames = v; });
+    attR->setInfo(i18n("Tip.Rhythm.Attack"));
     // Clamp d'AFFICHAGE seulement (comme le seuil) : on ne mute pas cfg_ en ouvrant le
     // panneau. L'invariant releaseFrames>=1 est garanti au chargement par
     // sd::core::fromJson (normalisation), pas par un effet de bord d'affichage.
@@ -517,6 +524,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     silR->setOnChange([this](int v) { cfg_.audio.releaseFrames = v; });
     silR->setInfo(i18n("Tip.Rhythm.SilenceDelay"));
     alay->addWidget(thrR);
+    alay->addWidget(attR);
     alay->addWidget(silR);
     host->addWidget(audio);
 }

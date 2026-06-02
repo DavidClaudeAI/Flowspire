@@ -220,7 +220,10 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 | **Temps maxi de plan**       | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier.                                                 | 12 s          |
 | **Anti ping-pong (mémoire)** | Évite de recouper trop vite vers quelqu'un qui vient de parler. **0 = désactivé** ; n'agit qu'**au-dessus du temps mini**. | 0 (désactivé) |
 | **Seuil de voix**            | Niveau sonore au-dessus duquel une personne est considérée comme « parle ». Plus bas = plus sensible.                      | −35 dB        |
-| **Délai de silence**         | Durée de silence avant de considérer qu'une personne a fini de parler.                                                     | court         |
+| **Délai d'attaque**          | Durée de voix continue avant de confirmer qu'une personne **commence** à parler (ignore les bruits brefs : clic, choc). Plus court = plus réactif. | court         |
+| **Délai de silence**         | Durée de silence avant de considérer qu'une personne a **fini** de parler.                                                 | court         |
+
+> **À propos du plan large :** dès qu'on y bascule après quelqu'un, il **tient au moins le « temps mini »** comme n'importe quel plan — pas de « flash » si la parole reprend juste après. (Seule exception : tout au début, avant que quiconque ait parlé, la première prise de parole est suivie sans délai.)
 
 > **Tout est pris en compte à chaud.** Dès que vous enregistrez (ou que vous bougez un curseur de seuil dans le dock), le moteur applique le changement **immédiatement** — pas besoin de redémarrer le pilotage ni OBS.
 
