@@ -390,6 +390,10 @@ bool Director::sceneInProgram(const std::string& scene, std::string& owner) cons
         return true;
     }
     for (const auto& sp : cfg_.speakers) {
+        if (sp.id.empty()) {
+            continue;  // invariant : owner vide == plan large. Un intervenant a id vide
+                       // (config corrompue) ne doit jamais etre confondu avec le plan large.
+        }
         for (const auto& sw : sp.scenes) {
             if (sw.scene == scene) {
                 owner = sp.id;

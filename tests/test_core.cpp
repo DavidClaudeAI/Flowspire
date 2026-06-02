@@ -546,6 +546,21 @@ TEST_CASE("director : sceneInProgram — le plan large prime sur un pool homonym
     CHECK(owner.empty());  // reconnu comme plan large, pas comme scene de A
 }
 
+TEST_CASE("director : sceneInProgram — un intervenant a id vide n'est jamais proprietaire") {
+    // Invariant : owner vide <=> plan large. Un id vide (config corrompue) ne doit pas
+    // faire passer une scene d'intervenant pour le plan large.
+    Config c;
+    c.wideShotScene = "";  // pas de plan large -> isole le cas
+    Speaker bad;
+    bad.id = "";  // corrompu
+    bad.audioSource = "src";
+    bad.scenes = {{"X_close", 100}};
+    c.speakers = {bad};
+    Director dir(c);
+    std::string owner = "sentinelle";
+    CHECK_FALSE(dir.sceneInProgram("X_close", owner));  // pas reconnu comme dans la regie
+}
+
 // ===========================================================================
 // Catalogue de profils (modele pur)
 

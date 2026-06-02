@@ -636,7 +636,18 @@ void SdDock::reload() {
         lay->addWidget(threshBlock);
 
         rowsLayout_->addWidget(card);
-        Row row{ds.id, ds.audioSource, card, avatar, nameLabel, meter, threshold, stateLabel, tally};
+        // Init membre-a-membre (comme la carte plan large) : robuste a un reordonnancement
+        // futur des champs de Row, contrairement a une init positionnelle.
+        Row row;
+        row.id = ds.id;
+        row.audioSource = ds.audioSource;
+        row.card = card;
+        row.avatar = avatar;
+        row.nameLabel = nameLabel;
+        row.meter = meter;
+        row.threshold = threshold;
+        row.stateLabel = stateLabel;
+        row.tally = tally;
         styleSpeakerCard(row, /*speaking=*/false);
         rows_.push_back(row);
     }
