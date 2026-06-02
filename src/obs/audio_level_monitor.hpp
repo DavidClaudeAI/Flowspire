@@ -56,12 +56,11 @@ private:
         // sans la maintenir en vie (si l'utilisateur la supprime, lock() echoue).
         obs_weak_source_t* weakSource = nullptr;
         std::atomic<float> peakDb{-60.0f};
-        std::atomic<double> lastUpdate{0.0};  // horodatage monotone du dernier callback
+        std::atomic<double> lastUpdate{0.0}; // horodatage monotone du dernier callback
     };
 
     // Callback OBS (thread audio). `param` = le SourceMeter concerne.
-    static void volmeterCallback(void* param, const float magnitude[],
-                                 const float peak[], const float inputPeak[]);
+    static void volmeterCallback(void* param, const float magnitude[], const float peak[], const float inputPeak[]);
 
     // Horloge monotone partagee callback (thread audio) <-> snapshot (thread UI).
     static double monotonicNow();
@@ -74,4 +73,4 @@ private:
     std::vector<std::unique_ptr<SourceMeter>> meters_;
 };
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

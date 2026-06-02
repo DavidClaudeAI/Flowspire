@@ -137,27 +137,47 @@ Cliquez sur **Assistant** dans le dock. Il vous guide en 6 écrans :
 
 ```
 ┌────────────────────────────────────────┐
-│ StreamDirector              ● Actif     │  ← état : Actif / En pause / Lecture seule
-│ Profil : Mon émission         ▾         │  ← sélecteur de profil
+│ StreamDirector            ● Actif       │  ← badge = état ET interrupteur (clic = ON/OFF)
+│ Profil : Mon émission         ▾    ⚙    │  ← sélecteur de profil + réglages
 ├────────────────────────────────────────┤
-│ INTERVENANTS                            │
-│  👤 Marie     ▓▓▓▓▓▓▒▒░░  PARLE         │  ← icône (vert = parle), vu-mètre…
-│     Seuil  ───────●─────────            │  ← …et curseur de seuil (réglable en direct)
-│  👤 Léo       ▓▓▒░░░░░░░  silent        │
-│     Seuil  ──────●──────────            │
+│ SCÈNES                                  │
+│ ▌👤 Marie    ▓▓▓▓▓▓▒▒░░  PARLE          │  ← ▌ tally rouge : Marie est à l'antenne
+│    Seuil  ───────●─────────             │  ← vu-mètre + curseur de seuil (réglable en direct)
+│  👤 Léo      ▓▓▒░░░░░░░  silent         │
+│    Seuil  ──────●──────────             │
+│ 👥 Plan large                           │  ← scène de groupe (pas de vu-mètre)
 ├────────────────────────────────────────┤
-│ RÉALISATION                             │
-│  À l'antenne : Marie – gros plan        │  ← scène réellement diffusée
-│  [ Plan large ]   [ Auto ON / OFF ]     │  ← boutons de pilotage
+│ [ ⚙ Paramètres avancés ]  [ ✨ Assistant]│
 └────────────────────────────────────────┘
 ```
 
-- **Badge d'état** : *Actif* (le plugin réalise), *En pause* (figé), *Lecture seule*
-  (aucune config).
+- **Badge d'état = interrupteur** : *Actif* (le plugin réalise), *En pause* (figé),
+  *Lecture seule* (aucune config). **Un clic** active ou coupe la réalisation auto.
 - **Vu-mètre + curseur de seuil** par intervenant : le niveau bouge sous le curseur, vous calez le seuil visuellement. Ce réglage est **pris en compte immédiatement** et **mémorisé
   dans le profil** (il survit à la fermeture d'OBS).
-- **À l'antenne** : la scène réellement diffusée à cet instant.
-- **Boutons de pilotage** : plan large, marche/arrêt de l'auto. Doublés par les raccourcis.
+- **Témoin « à l'antenne » (tally)** : un trait **rouge** apparaît à gauche de la scène
+  réellement diffusée et **se déplace** quand la réalisation change de plan. Le **plan large**
+  figure dans la liste (sans vu-mètre) pour le voir s'allumer lui aussi.
+- **Le pilotage se fait via le gestionnaire de scènes natif d'OBS** (cliquez une scène pour
+  forcer un plan) **et les raccourcis** (clavier / Stream Deck / Companion) : le dock reste épuré.
+
+---
+
+## Forcer un plan à la main
+
+En **réalisation auto**, vous gardez la main : **cliquez n'importe quelle scène dans le
+gestionnaire de scènes natif d'OBS** (ou un bouton Stream Deck / Companion) et StreamDirector
+la passe à l'antenne.
+
+- Si la scène **fait partie de votre régie** (le plan d'un intervenant ou le plan large) :
+  c'est un **forçage temporaire** — le plan tient le temps minimum, puis l'auto reprend.
+- Si la scène est **en dehors de votre régie** (une intro, un écran de pause…), le comportement
+  est réglable dans **Paramètres avancés → Paramètres généraux** :
+  - **La compter comme un plan** : forçage temporaire, l'auto reprend ;
+  - **Mettre la régie en pause** *(par défaut)* : on reste sur la scène jusqu'à réactivation.
+
+L'onglet **Paramètres généraux** regroupe aussi l'option **« Vérifier les mises à jour au
+démarrage »** (réglage global, appliqué immédiatement).
 
 ---
 
@@ -234,7 +254,7 @@ de votre choix (par exemple **F13–F18**, idéales pour un Stream Deck).
 | **StreamDirector : forcer le plan large**                | Bascule immédiatement sur le plan large.                              |
 | **StreamDirector : forcer l'intervenant 1 … 8**          | Bascule immédiatement sur la personne choisie (jusqu'à 8 raccourcis). |
 
-> Sur un **Stream Deck**, ajoutez un bouton *Touche* / *Hotkey* qui envoie la même touche que celle assignée dans OBS : le bouton pilote alors StreamDirector. Au-delà de 8 personnes, utilisez les boutons du dock.
+> Sur un **Stream Deck**, ajoutez un bouton *Touche* / *Hotkey* qui envoie la même touche que celle assignée dans OBS : le bouton pilote alors StreamDirector. Au-delà de 8 personnes, **forcez le plan directement depuis le gestionnaire de scènes natif d'OBS** (un clic = un forçage temporaire).
 
 ---
 

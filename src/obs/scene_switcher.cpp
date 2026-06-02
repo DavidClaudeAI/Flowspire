@@ -51,4 +51,4 @@ bool SceneSwitcher::switchTo(const std::string& sceneName) {
     return switched;
 }
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

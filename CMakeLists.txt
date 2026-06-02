@@ -67,6 +67,7 @@ target_sources(
     src/ui/sd_dock.cpp
     src/ui/sd_icons.cpp
     src/ui/sd_level_meter.cpp
+    src/ui/sd_prefs.cpp
     src/ui/sd_profiles_panel.cpp
     src/ui/sd_settings.cpp
     src/ui/sd_support.cpp

@@ -33,7 +33,7 @@ namespace sd::profiles {
 struct StoreResult {
     bool ok = false;
     std::string error;
-    int id = 0;  // nouvel id pour create/duplicate (sinon non renseigne)
+    int id = 0; // nouvel id pour create/duplicate (sinon non renseigne)
 };
 
 // Catalogue charge depuis le disque.
@@ -99,8 +99,8 @@ private:
     // Index brut tel que lu (sans recuperation ni ecriture).
     struct RawIndex {
         sd::core::ProfileIndex index;
-        bool found = false;  // le fichier index.json existe-t-il ?
-        bool ok = false;     // a-t-il ete lu ET parse ?
+        bool found = false; // le fichier index.json existe-t-il ?
+        bool ok = false;    // a-t-il ete lu ET parse ?
         std::string error;
     };
     RawIndex loadIndexRaw() const;
@@ -144,4 +144,4 @@ StoreResult duplicateProfile(int id, const std::string& copySuffix);
 StoreResult renameProfile(int id, const std::string& name);
 StoreResult removeProfile(int id);
 
-}  // namespace sd::profiles
+} // namespace sd::profiles

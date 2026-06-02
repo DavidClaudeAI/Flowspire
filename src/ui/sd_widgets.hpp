@@ -33,10 +33,10 @@
 #include <functional>
 #include <utility>
 
-#include "ui/sd_icons.hpp"    // icon(), Icon
-#include "ui/sd_runtime.hpp"  // kFrameSeconds
-#include "ui/sd_style.hpp"    // rgba()
-#include "ui/sd_theme.hpp"    // theme::k*
+#include "ui/sd_icons.hpp"   // icon(), Icon
+#include "ui/sd_runtime.hpp" // kFrameSeconds
+#include "ui/sd_style.hpp"   // rgba()
+#include "ui/sd_theme.hpp"   // theme::k*
 
 namespace sd::ui::widgets {
 
@@ -56,12 +56,11 @@ inline QString menuQss() {
 }
 
 inline QString accentSliderQss() {
-    return QString(
-               "QSlider::groove:horizontal { height:6px; background:%1; border-radius:3px; }"
-               "QSlider::sub-page:horizontal { height:6px; background:%2; border-radius:3px; }"
-               "QSlider::add-page:horizontal { height:6px; background:%1; border-radius:3px; }"
-               "QSlider::handle:horizontal { width:14px; height:14px; margin:-4px 0;"
-               " border-radius:7px; background:%3; border:2px solid %2; }")
+    return QString("QSlider::groove:horizontal { height:6px; background:%1; border-radius:3px; }"
+                   "QSlider::sub-page:horizontal { height:6px; background:%2; border-radius:3px; }"
+                   "QSlider::add-page:horizontal { height:6px; background:%1; border-radius:3px; }"
+                   "QSlider::handle:horizontal { width:14px; height:14px; margin:-4px 0;"
+                   " border-radius:7px; background:%3; border:2px solid %2; }")
         .arg(theme::kSurface3)
         .arg(theme::kAccent)
         .arg(theme::kTextPrimary);
@@ -140,6 +139,17 @@ inline QString segQss(bool filled) {
         .arg(filled ? QString::fromUtf8(theme::kAccent) : QString::fromUtf8(theme::kSurface3));
 }
 
+// Case a cocher / bouton radio : on ne stylise QUE le texte et l'espacement, et on
+// laisse l'INDICATEUR natif de l'OS (coche / pastille) -> rendu standard, fiable sur
+// Windows/macOS/Linux et coherent avec les reglages d'OBS (eviter le piege Qt du
+// `::indicator` custom qui exige une image pour la coche).
+inline QString checkBoxQss() {
+    return QString("QCheckBox { color:%1; font-size:13px; spacing:8px; }").arg(theme::kTextPrimary);
+}
+inline QString radioQss() {
+    return QString("QRadioButton { color:%1; font-size:13px; spacing:8px; padding:2px 0; }").arg(theme::kTextPrimary);
+}
+
 // ===========================================================================
 // Aide contextuelle (tooltips) — petit ⓘ au survol.
 // ===========================================================================
@@ -187,7 +197,7 @@ class ClickButton : public QFrame {
 public:
     explicit ClickButton(QWidget* parent = nullptr) : QFrame(parent) {
         setObjectName(QStringLiteral("clickbtn"));
-        setAttribute(Qt::WA_StyledBackground, true);  // fond/bordure QSS reellement peints
+        setAttribute(Qt::WA_StyledBackground, true); // fond/bordure QSS reellement peints
         setCursor(Qt::PointingHandCursor);
         lay_ = new QHBoxLayout(this);
         lay_->setContentsMargins(12, 9, 12, 9);
@@ -202,12 +212,12 @@ public:
         setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
     }
     void setMargins(int h, int v) { lay_->setContentsMargins(h, v, h, v); }
-    void setExpanding() {  // contenu centre sur toute la largeur (boutons "Ajouter")
+    void setExpanding() { // contenu centre sur toute la largeur (boutons "Ajouter")
         lay_->insertStretch(0);
         lay_->addStretch();
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
-    void setFillLeft() {  // pleine largeur, contenu calé a GAUCHE (lignes de sidebar)
+    void setFillLeft() { // pleine largeur, contenu calé a GAUCHE (lignes de sidebar)
         lay_->addStretch();
         setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
     }
@@ -217,11 +227,10 @@ public:
     }
     void setLabel(const QString& t, const char* color, int size, int weight) {
         textLabel_->setText(t);
-        textLabel_->setStyleSheet(
-            QString("color:%1; font-size:%2px; font-weight:%3; background:transparent;")
-                .arg(QString::fromUtf8(color))
-                .arg(size)
-                .arg(weight));
+        textLabel_->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:%3; background:transparent;")
+                                      .arg(QString::fromUtf8(color))
+                                      .arg(size)
+                                      .arg(weight));
     }
     void setBox(const QString& normal, const QString& hover = QString()) {
         normalQss_ = normal;
@@ -312,8 +321,8 @@ private:
     void updateText() {
         const bool empty = value_.isEmpty();
         text_->setText(empty ? placeholder_ : value_);
-        text_->setStyleSheet(QString("color:%1; font-size:13px;")
-                                 .arg(empty ? theme::kTextTertiary : theme::kTextPrimary));
+        text_->setStyleSheet(
+            QString("color:%1; font-size:13px;").arg(empty ? theme::kTextTertiary : theme::kTextPrimary));
     }
     void openMenu() {
         QMenu menu;
@@ -356,11 +365,12 @@ private:
 // ===========================================================================
 class SliderRow : public QWidget {
 public:
-    SliderRow(const QString& label, int min, int max, int value,
-              std::function<QString(int)> fmt, bool withBadge, QWidget* parent = nullptr)
-        : QWidget(parent), fmt_(std::move(fmt)) {
+    SliderRow(const QString& label, int min, int max, int value, std::function<QString(int)> fmt, bool withBadge,
+              QWidget* parent = nullptr)
+        : QWidget(parent),
+          fmt_(std::move(fmt)) {
         auto* lay = new QHBoxLayout(this);
-        rowLay_ = lay;  // memorise pour pouvoir appendre un ⓘ via setInfo()
+        rowLay_ = lay; // memorise pour pouvoir appendre un ⓘ via setInfo()
         lay->setContentsMargins(0, 0, 0, 0);
         lay->setSpacing(12);
         label_ = new QLabel(label, this);
@@ -374,8 +384,7 @@ public:
         valueLabel_ = new QLabel(this);
         valueLabel_->setMinimumWidth(42);
         valueLabel_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-        valueLabel_->setStyleSheet(
-            QString("color:%1; font-size:13px; font-weight:600;").arg(theme::kTextPrimary));
+        valueLabel_->setStyleSheet(QString("color:%1; font-size:13px; font-weight:600;").arg(theme::kTextPrimary));
         lay->addWidget(label_);
         lay->addWidget(slider_, 1);
         lay->addWidget(valueLabel_);
@@ -415,15 +424,13 @@ public:
     }
 
 private:
-    void updateValueText() {
-        valueLabel_->setText(fmt_ ? fmt_(slider_->value()) : QString::number(slider_->value()));
-    }
-    QHBoxLayout* rowLay_ = nullptr;  // layout de la ligne (pour appendre le ⓘ)
+    void updateValueText() { valueLabel_->setText(fmt_ ? fmt_(slider_->value()) : QString::number(slider_->value())); }
+    QHBoxLayout* rowLay_ = nullptr; // layout de la ligne (pour appendre le ⓘ)
     QLabel* label_ = nullptr;
     QSlider* slider_ = nullptr;
     QLabel* valueLabel_ = nullptr;
     QLabel* badge_ = nullptr;
-    QLabel* info_ = nullptr;  // ⓘ optionnel (setInfo), nullptr si absent
+    QLabel* info_ = nullptr; // ⓘ optionnel (setInfo), nullptr si absent
     std::function<QString(int)> fmt_;
     std::function<void(int)> cb_;
 };
@@ -447,8 +454,8 @@ inline QLabel* makeSub(const QString& t) {
 
 inline QLabel* makeSectionLabel(const QString& t) {
     auto* l = new QLabel(t);
-    l->setStyleSheet(QString("color:%1; font-size:10px; font-weight:700; letter-spacing:1px;")
-                         .arg(theme::kTextTertiary));
+    l->setStyleSheet(
+        QString("color:%1; font-size:10px; font-weight:700; letter-spacing:1px;").arg(theme::kTextTertiary));
     return l;
 }
 
@@ -473,8 +480,7 @@ inline ClickButton* makeAddButton(const QString& text, std::function<void()> onC
     b->setMargins(12, 11);
     b->setIconPix(icon(Icon::Plus, theme::kAccent, 15));
     b->setLabel(text, theme::kAccent, 13, 600);
-    const QString base =
-        QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
+    const QString base = QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
     b->setBox(base.arg(theme::kSurface2).arg(theme::kBorder),
               base.arg(theme::kSurface2).arg(rgba(theme::kAccent, 0.6)));
     b->setOnClick(std::move(onClick));
@@ -523,10 +529,14 @@ inline int pctOf(int v, int sum) {
 // ===========================================================================
 // Formats de valeur (unites universelles, non traduites).
 // ===========================================================================
-inline QString fmtSeconds(int v) { return QString::number(v) + QStringLiteral(" s"); }
-inline QString fmtDb(int v) { return QString::number(v) + QStringLiteral(" dB"); }
+inline QString fmtSeconds(int v) {
+    return QString::number(v) + QStringLiteral(" s");
+}
+inline QString fmtDb(int v) {
+    return QString::number(v) + QStringLiteral(" dB");
+}
 inline QString fmtSilence(int frames) {
     return QString::number(frames * sd::ui::kFrameSeconds, 'f', 1) + QStringLiteral(" s");
 }
 
-}  // namespace sd::ui::widgets
+} // namespace sd::ui::widgets

@@ -28,7 +28,7 @@ std::vector<std::string> audioSourceNames() {
                     }
                 }
             }
-            return true;  // continuer l'enumeration
+            return true; // continuer l'enumeration
         },
         &ctx);
     return ctx.names;
@@ -53,4 +53,4 @@ std::vector<std::string> sceneNames() {
     return names;
 }
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

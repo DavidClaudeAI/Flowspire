@@ -6,7 +6,7 @@
 
 #include <algorithm>
 
-#include "core/audio_util.hpp"  // kDbFloor : bas de l'echelle (source de verite)
+#include "core/audio_util.hpp" // kDbFloor : bas de l'echelle (source de verite)
 #include "ui/sd_theme.hpp"
 
 namespace sd::ui {
@@ -14,7 +14,7 @@ namespace sd::ui {
 namespace th = sd::ui::theme;
 
 namespace {
-constexpr double kFloor = sd::core::kDbFloor;  // ex -60 dB
+constexpr double kFloor = sd::core::kDbFloor; // ex -60 dB
 
 // dB -> fraction [0,1] sur l'echelle [kFloor, 0].
 double dbToFrac(double db) {
@@ -25,10 +25,9 @@ double dbToFrac(double db) {
     }
     return (db - kFloor) / (0.0 - kFloor);
 }
-}  // namespace
+} // namespace
 
-LevelMeter::LevelMeter(QWidget* parent)
-    : QWidget(parent), levelDb_(kFloor), thresholdDb_(-35.0) {
+LevelMeter::LevelMeter(QWidget* parent) : QWidget(parent), levelDb_(kFloor), thresholdDb_(-35.0) {
     setFixedHeight(th::kMeterHeight);
     setMinimumWidth(40);
 }
@@ -96,4 +95,4 @@ void LevelMeter::paintEvent(QPaintEvent*) {
     p.drawLine(QPointF(tx, 0.0), QPointF(tx, h));
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

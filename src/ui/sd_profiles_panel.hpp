@@ -30,10 +30,10 @@ class ProfilesPanel {
 public:
     // Callbacks remontants vers la fenetre (toutes peuvent etre nulles).
     struct Callbacks {
-        std::function<void(int id)> onLoad;        // basculer le profil actif
-        std::function<void(int id)> onEdit;        // charger + aller a l'onglet edition
-        std::function<void()> onNewWithAssistant;  // creer un profil via l'assistant
-        std::function<void()> onNewBlank;          // creer un profil vierge
+        std::function<void(int id)> onLoad;       // basculer le profil actif
+        std::function<void(int id)> onEdit;       // charger + aller a l'onglet edition
+        std::function<void()> onNewWithAssistant; // creer un profil via l'assistant
+        std::function<void()> onNewBlank;         // creer un profil vierge
     };
 
     ProfilesPanel(QWidget* dialogParent, Callbacks callbacks);
@@ -59,4 +59,4 @@ private:
     QPointer<QVBoxLayout> host_;
 };
 
-}  // namespace sd::ui
+} // namespace sd::ui

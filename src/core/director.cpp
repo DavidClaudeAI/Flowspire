@@ -14,28 +14,28 @@ namespace {
 Director::Rng makeDefaultRng() {
     auto engine = std::make_shared<std::mt19937_64>(std::random_device{}());
     auto dist = std::make_shared<std::uniform_real_distribution<double>>(0.0, 1.0);
-    return [engine, dist]() { return (*dist)(*engine); };
+    return [engine, dist]() {
+        return (*dist)(*engine);
+    };
 }
-}  // namespace
+} // namespace
 
-Director::Director(Config cfg, Rng rng)
-    : cfg_(std::move(cfg)), rng_(rng ? std::move(rng) : makeDefaultRng()) {
+Director::Director(Config cfg, Rng rng) : cfg_(std::move(cfg)), rng_(rng ? std::move(rng) : makeDefaultRng()) {
     setConfig(cfg_);
 }
 
 void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
-    ownerLeftAt_.clear();  // memoire anti ping-pong : repart de zero a chaque (re)config
+    ownerLeftAt_.clear(); // memoire anti ping-pong : repart de zero a chaque (re)config
     // On repart de zero puis on SEME les overrides depuis la config : le seuil
     // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
     // donc la config/JSON reste la source de verite au chargement. Un intervenant
     // sans seuil propre retombe sur le seuil global (pas d'entree d'override).
     thresholdOverride_.clear();
     for (const auto& sp : cfg_.speakers) {
-        detectors_.emplace(
-            sp.id, SpeakerDetector(cfg_.audio.voiceThresholdDb, cfg_.audio.attackFrames,
-                                   cfg_.audio.releaseFrames));
+        detectors_.emplace(sp.id, SpeakerDetector(cfg_.audio.voiceThresholdDb, cfg_.audio.attackFrames,
+                                                  cfg_.audio.releaseFrames));
         if (sp.thresholdDb.has_value()) {
             thresholdOverride_[sp.id] = *sp.thresholdDb;
         }
@@ -44,7 +44,7 @@ void Director::setConfig(const Config& cfg) {
 
 void Director::setSpeakerThreshold(const std::string& speakerId, double db) {
     if (detectors_.find(speakerId) == detectors_.end()) {
-        return;  // intervenant inconnu : on n'enregistre pas d'override orphelin.
+        return; // intervenant inconnu : on n'enregistre pas d'override orphelin.
     }
     thresholdOverride_[speakerId] = db;
 }
@@ -86,11 +86,11 @@ std::string Director::drawSceneFromPool(const std::vector<SceneWeight>& pool) {
 
 bool Director::isPingPongBounce(double now, const std::string& owner) const {
     if (owner.empty() || cfg_.timing.pingPongWindowSeconds <= 0.0) {
-        return false;  // fenetre a 0 (ou pas de cible) -> anti ping-pong desactive
+        return false; // fenetre a 0 (ou pas de cible) -> anti ping-pong desactive
     }
     const auto it = ownerLeftAt_.find(owner);
     if (it == ownerLeftAt_.end()) {
-        return false;  // on n'a jamais quitte ce plan -> pas une navette
+        return false; // on n'a jamais quitte ce plan -> pas une navette
     }
     return (now - it->second) < cfg_.timing.pingPongWindowSeconds;
 }
@@ -105,14 +105,12 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         const double db = (it != levelsDb.end()) ? it->second : kDbFloor;
         // Seuil par intervenant : override en direct s'il existe, sinon global.
         const auto ov = thresholdOverride_.find(id);
-        det.setThresholdDb(ov != thresholdOverride_.end() ? ov->second
-                                                          : cfg_.audio.voiceThresholdDb);
+        det.setThresholdDb(ov != thresholdOverride_.end() ? ov->second : cfg_.audio.voiceThresholdDb);
         if (det.update(db)) {
             speaking.emplace_back(id, det.lastDb());
         }
     }
-    std::sort(speaking.begin(), speaking.end(),
-              [](const auto& a, const auto& b) { return a.second > b.second; });
+    std::sort(speaking.begin(), speaking.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
 
     speakingSorted_.clear();
     for (const auto& s : speaking) {
@@ -124,9 +122,8 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         lastSpeaker_ = activeId;
     }
 
-    const Context ctx = speaking.empty()
-                            ? Context::Silence
-                            : (speaking.size() == 1 ? Context::Single : Context::Multiple);
+    const Context ctx = speaking.empty() ? Context::Silence
+                                         : (speaking.size() == 1 ? Context::Single : Context::Multiple);
     lastContext_ = ctx;
 
     Decision out;
@@ -185,10 +182,10 @@ Decision Director::update(double now, const std::map<std::string, double>& level
                 // qu'un owner OU le plan large : on mappe selon ce qu'est vraiment
                 // le plan courant.
                 if (!currentOwner_.empty()) {
-                    cachedOwner_ = currentOwner_;  // plan d'un locuteur : on le garde
+                    cachedOwner_ = currentOwner_; // plan d'un locuteur : on le garde
                     cachedWide_ = false;
                 } else if (!currentScene_.empty() && currentScene_ == cfg_.wideShotScene) {
-                    cachedOwner_.clear();          // le plan courant EST le plan large
+                    cachedOwner_.clear(); // le plan courant EST le plan large
                     cachedWide_ = true;
                 } else {
                     // Plan courant non representable (scene forcee sans owner, non
@@ -240,19 +237,18 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     //   vient de quitter (navette < pingPongWindowSeconds) et qu'on a un plan de
     //   locuteur a tenir, on RESTE dessus. On vise directement currentOwner_ (pas via
     //   "current") -> jamais de repli accidentel sur le plus fort.
-    if (ctx == Context::Multiple && !desiredWide && !currentOwner_.empty() &&
-        !speakingSorted_.empty() && desiredOwner == speakingSorted_.front() &&
-        desiredOwner != currentOwner_ && isPingPongBounce(now, desiredOwner)) {
+    if (ctx == Context::Multiple && !desiredWide && !currentOwner_.empty() && !speakingSorted_.empty() &&
+        desiredOwner == speakingSorted_.front() && desiredOwner != currentOwner_ &&
+        isPingPongBounce(now, desiredOwner)) {
         desiredOwner = currentOwner_;
     }
 
     // 3) Comparer la cible a l'etat courant et decider de basculer (ou non).
     const bool init = currentScene_.empty();
 
-    const bool sameTarget =
-        desiredWide ? (currentOwner_.empty() && currentScene_ == cfg_.wideShotScene)
-                    : (!desiredOwner.empty() && !currentOwner_.empty() &&
-                       currentOwner_ == desiredOwner);
+    const bool sameTarget = desiredWide
+                                ? (currentOwner_.empty() && currentScene_ == cfg_.wideShotScene)
+                                : (!desiredOwner.empty() && !currentOwner_.empty() && currentOwner_ == desiredOwner);
 
     if (!init && sameTarget) {
         // Rafraichissement (variete) une fois le temps-max ecoule : on re-tire
@@ -271,7 +267,7 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     // plan large issu d'un simple silence.
     const bool locked = hold_ && !init && (now - lastSwitch_) < cfg_.timing.minShotSeconds;
     if (locked) {
-        return out;  // re-evalue au prochain tick : la bascule partira des que le verrou tombe.
+        return out; // re-evalue au prochain tick : la bascule partira des que le verrou tombe.
     }
 
     // Un plan issu d'un contexte avec locuteurs (Single/Multiple) est un "hold".
@@ -289,8 +285,7 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     return out;
 }
 
-bool Director::resolvePlayable(const std::string& owner, bool wide, std::string& outScene,
-                              std::string& outOwner) {
+bool Director::resolvePlayable(const std::string& owner, bool wide, std::string& outScene, std::string& outOwner) {
     // 1) Cible demandee.
     if (wide) {
         if (!cfg_.wideShotScene.empty()) {
@@ -312,7 +307,7 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
     // 2) Fallback : si quelqu'un parle, montrer le plus fort plutot que du vide.
     if (!speakingSorted_.empty()) {
         const std::string& loud = speakingSorted_.front();
-        if (loud != owner) {  // deja tente ci-dessus
+        if (loud != owner) { // deja tente ci-dessus
             if (const Speaker* sp = findSpeaker(loud)) {
                 const std::string scene = drawSceneFromPool(sp->scenes);
                 if (!scene.empty()) {
@@ -334,8 +329,8 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
     return false;
 }
 
-void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold,
-                      Decision& out, bool recordLeave) {
+void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold, Decision& out,
+                      bool recordLeave) {
     // Anti ping-pong : on note l'instant ou l'on QUITTE le proprietaire courant (pour
     // detecter ensuite un retour trop rapide vers lui = navette). PAS sur un forcage
     // (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto suivant.
@@ -346,7 +341,7 @@ void Director::commit(double now, const std::string& scene, const std::string& o
     currentScene_ = scene;
     currentOwner_ = owner;
     hold_ = hold;
-    lastSwitch_ = now;  // reinitialise verrou + temps-max (meme si meme scene)
+    lastSwitch_ = now; // reinitialise verrou + temps-max (meme si meme scene)
     out.scene = scene;
     out.owner = owner;
 }
@@ -355,7 +350,7 @@ Decision Director::forceScene(double now, const std::string& scene, const std::s
     Decision out;
     out.context = lastContext_;
     commit(now, scene, owner, /*hold=*/true, out, /*recordLeave=*/false);
-    decisionKey_.clear();  // un forçage reinitialise la situation memorisee
+    decisionKey_.clear(); // un forçage reinitialise la situation memorisee
     return out;
 }
 
@@ -367,15 +362,41 @@ Decision Director::forceSpeaker(double now, const std::string& speakerId) {
 
     const Speaker* sp = findSpeaker(speakerId);
     if (!sp) {
-        return out;  // intervenant inconnu : on ne touche a rien.
+        return out; // intervenant inconnu : on ne touche a rien.
     }
     const std::string scene = drawSceneFromPool(sp->scenes);
     if (scene.empty()) {
-        return out;  // pas de scene jouable pour cet intervenant.
+        return out; // pas de scene jouable pour cet intervenant.
     }
     commit(now, scene, speakerId, /*hold=*/true, out, /*recordLeave=*/false);
-    decisionKey_.clear();  // un forçage reinitialise la situation memorisee
+    decisionKey_.clear(); // un forçage reinitialise la situation memorisee
     return out;
 }
 
-}  // namespace sd::core
+bool Director::sceneInProgram(const std::string& scene, std::string& owner) const {
+    if (scene.empty()) {
+        return false;
+    }
+    // Le plan large est un concept de premier ordre -> teste EN PREMIER : une scene a
+    // la fois plan large ET presente dans un pool reste consideree comme le plan large
+    // (owner vide), pas comme la scene d'un intervenant.
+    if (!cfg_.wideShotScene.empty() && scene == cfg_.wideShotScene) {
+        owner.clear();
+        return true;
+    }
+    for (const auto& sp : cfg_.speakers) {
+        if (sp.id.empty()) {
+            continue; // invariant : owner vide == plan large. Un intervenant a id vide
+                      // (config corrompue) ne doit jamais etre confondu avec le plan large.
+        }
+        for (const auto& sw : sp.scenes) {
+            if (sw.scene == scene) {
+                owner = sp.id;
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
+} // namespace sd::core

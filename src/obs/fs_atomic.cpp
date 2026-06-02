@@ -10,7 +10,7 @@ namespace sd::obsbridge {
 bool ensureParentDir(const std::string& path) {
     const size_t sep = path.find_last_of("/\\");
     if (sep == std::string::npos) {
-        return true;  // pas de composante dossier -> rien a creer
+        return true; // pas de composante dossier -> rien a creer
     }
     const std::string dir = path.substr(0, sep);
     if (dir.empty()) {
@@ -40,7 +40,7 @@ FsResult writeUtf8Atomic(const std::string& path, const std::string& text) {
     // sauvegarder) : os_safe_replace bascule simplement le .tmp en place.
     const std::string bak = backupPath(path);
     if (os_safe_replace(path.c_str(), tmp.c_str(), bak.c_str()) != 0) {
-        os_unlink(tmp.c_str());  // pas de .tmp orphelin si la bascule echoue
+        os_unlink(tmp.c_str()); // pas de .tmp orphelin si la bascule echoue
         result.error = "remplacement atomique du fichier impossible";
         return result;
     }
@@ -48,4 +48,4 @@ FsResult writeUtf8Atomic(const std::string& path, const std::string& text) {
     return result;
 }
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

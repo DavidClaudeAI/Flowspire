@@ -9,11 +9,7 @@
 
 #include <nlohmann/json.hpp>
 
-#include <util/base.h>  // LOG_WARNING
-
 #include "core/version.hpp"
-#include "obs/obs_file_store.hpp"
-#include "plugin-support.h"  // obs_log
 
 namespace sd::ui {
 
@@ -23,18 +19,12 @@ namespace {
 // l'app), changer ces deux lignes ici (et nulle part ailleurs). NB : GitHub redirige
 // automatiquement les anciennes URLs apres un renommage, donc rien ne casse dans
 // l'intervalle.
-constexpr const char* kReleasesApiUrl =
-    "https://api.github.com/repos/DavidClaudeAI/StreamDirector/releases/latest";
-constexpr const char* kReleasesPageUrl =
-    "https://github.com/DavidClaudeAI/StreamDirector/releases/latest";
+constexpr const char* kReleasesApiUrl = "https://api.github.com/repos/DavidClaudeAI/StreamDirector/releases/latest";
+constexpr const char* kReleasesPageUrl = "https://github.com/DavidClaudeAI/StreamDirector/releases/latest";
 
-// Reglage "verifier au demarrage" : fichier dans le dossier de config du plugin.
-constexpr const char* kPrefsFile = "update.json";
+} // namespace
 
-}  // namespace
-
-void checkForUpdate(QObject* ctx, const std::string& currentVersion,
-                    std::function<void(const UpdateInfo&)> onResult) {
+void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::function<void(const UpdateInfo&)> onResult) {
     auto* nam = new QNetworkAccessManager(ctx);
 
     QNetworkRequest request{QUrl(QString::fromUtf8(kReleasesApiUrl))};
@@ -45,60 +35,34 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion,
     // Suivre les redirections 301 : indispensable apres un renommage du depot (l'API
     // GitHub redirige l'ancienne URL). C'est le defaut en Qt 6, explicite ici pour
     // verrouiller l'intention "robuste au renommage" et survivre a un changement de defaut.
-    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute,
-                         QNetworkRequest::NoLessSafeRedirectPolicy);
+    request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy);
 
     QNetworkReply* reply = nam->get(request);
-    QObject::connect(reply, &QNetworkReply::finished, ctx,
-                     [reply, nam, currentVersion, onResult = std::move(onResult)]() {
-                         UpdateInfo info;
-                         if (reply->error() == QNetworkReply::NoError) {
-                             const std::string body = reply->readAll().toStdString();
-                             try {
-                                 const auto json = nlohmann::json::parse(body);
-                                 const std::string tag = json.value("tag_name", std::string{});
-                                 const auto parsed = sd::core::parseSemVer(tag);
-                                 if (parsed && sd::core::isNewerVersion(tag, currentVersion)) {
-                                     info.updateAvailable = true;
-                                     // Version normalisee "M.m.p" (sans prefixe 'v' eventuel) ->
-                                     // affichage coherent avec le label "StreamDirector v%1".
-                                     info.latestVersion = std::to_string(parsed->major) + "." +
-                                                          std::to_string(parsed->minor) + "." +
-                                                          std::to_string(parsed->patch);
-                                     info.releaseUrl =
-                                         json.value("html_url", std::string{kReleasesPageUrl});
-                                 }
-                             } catch (...) {
-                                 // JSON inattendu -> on ne notifie pas (silencieux).
-                             }
-                         }
-                         reply->deleteLater();
-                         nam->deleteLater();
-                         onResult(info);
-                     });
+    QObject::connect(
+        reply, &QNetworkReply::finished, ctx, [reply, nam, currentVersion, onResult = std::move(onResult)]() {
+            UpdateInfo info;
+            if (reply->error() == QNetworkReply::NoError) {
+                const std::string body = reply->readAll().toStdString();
+                try {
+                    const auto json = nlohmann::json::parse(body);
+                    const std::string tag = json.value("tag_name", std::string{});
+                    const auto parsed = sd::core::parseSemVer(tag);
+                    if (parsed && sd::core::isNewerVersion(tag, currentVersion)) {
+                        info.updateAvailable = true;
+                        // Version normalisee "M.m.p" (sans prefixe 'v' eventuel) ->
+                        // affichage coherent avec le label "StreamDirector v%1".
+                        info.latestVersion = std::to_string(parsed->major) + "." + std::to_string(parsed->minor) + "." +
+                                             std::to_string(parsed->patch);
+                        info.releaseUrl = json.value("html_url", std::string{kReleasesPageUrl});
+                    }
+                } catch (...) {
+                    // JSON inattendu -> on ne notifie pas (silencieux).
+                }
+            }
+            reply->deleteLater();
+            nam->deleteLater();
+            onResult(info);
+        });
 }
 
-bool updateCheckEnabled() {
-    sd::obsbridge::ObsFileStore store;
-    std::string text;
-    if (!store.read(kPrefsFile, text)) return true;  // absent -> actif par defaut
-    try {
-        return nlohmann::json::parse(text).value("checkOnStartup", true);
-    } catch (...) {
-        return true;  // illisible -> on garde le defaut (actif)
-    }
-}
-
-void setUpdateCheckEnabled(bool enabled) {
-    sd::obsbridge::ObsFileStore store;
-    nlohmann::json json;
-    json["checkOnStartup"] = enabled;
-    const auto res = store.write(kPrefsFile, json.dump(2));
-    // Reglage de vie privee : si l'ecriture rate, la case ne persistera pas -> on TRACE
-    // (sinon le choix utilisateur serait perdu silencieusement). Pas de pop-up (non bloquant).
-    if (!res.ok) {
-        obs_log(LOG_WARNING, "echec d'ecriture de %s : %s", kPrefsFile, res.error.c_str());
-    }
-}
-
-}  // namespace sd::ui
+} // namespace sd::ui

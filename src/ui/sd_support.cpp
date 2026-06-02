@@ -27,7 +27,7 @@ namespace {
 // le gros bouton rouge ci-dessous y mene. Les anciens liens Sponsors/Ko-fi ont ete
 // retires.
 constexpr const char* kUrlDonate = "https://paypal.me/DavidZouari";
-}  // namespace
+} // namespace
 
 void mountSupport(QVBoxLayout* host) {
     clearLayout(host);
@@ -51,8 +51,7 @@ void mountSupport(QVBoxLayout* host) {
     auto* headline = new QLabel(i18n("Support.Headline"));
     headline->setWordWrap(true);
     headline->setAlignment(Qt::AlignCenter);
-    headline->setStyleSheet(
-        QString("color:%1; font-size:17px; font-weight:700;").arg(th::kTextPrimary));
+    headline->setStyleSheet(QString("color:%1; font-size:17px; font-weight:700;").arg(th::kTextPrimary));
     host->addWidget(headline);
 
     auto* bodyTxt = new QLabel(i18n("Support.Body"));
@@ -81,4 +80,4 @@ void mountSupport(QVBoxLayout* host) {
     host->addWidget(donateWrap);
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

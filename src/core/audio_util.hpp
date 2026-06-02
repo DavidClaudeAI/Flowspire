@@ -42,4 +42,4 @@ inline double levelsToDb(const std::vector<std::vector<double>>& channels) {
     return mulToDb(best);
 }
 
-}  // namespace sd::core
+} // namespace sd::core

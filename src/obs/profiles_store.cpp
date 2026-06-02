@@ -19,7 +19,7 @@ namespace {
 const std::string kProfilesDir = "profiles";
 const std::string kJsonExt = ".json";
 const std::string kIndexRel = kProfilesDir + "/index" + kJsonExt;
-const std::string kConfigRel = "config.json";  // ancien fichier (migration uniquement)
+const std::string kConfigRel = "config.json"; // ancien fichier (migration uniquement)
 
 std::string profileRel(int id) {
     return kProfilesDir + "/" + std::to_string(id) + kJsonExt;
@@ -35,18 +35,17 @@ int parseProfileFileId(const std::string& filename) {
         return -1;
     }
     const std::string stem = filename.substr(0, filename.size() - kJsonExt.size());
-    if (stem.empty() ||
-        !std::all_of(stem.begin(), stem.end(), [](char c) { return c >= '0' && c <= '9'; })) {
+    if (stem.empty() || !std::all_of(stem.begin(), stem.end(), [](char c) { return c >= '0' && c <= '9'; })) {
         return -1;
     }
     int id = 0;
     try {
         id = std::stoi(stem);
     } catch (const std::exception&) {
-        return -1;  // hors plage int
+        return -1; // hors plage int
     }
     if (std::to_string(id) != stem) {
-        return -1;  // nom non canonique (zeros de tete) -> profileRel ne le retrouverait pas
+        return -1; // nom non canonique (zeros de tete) -> profileRel ne le retrouverait pas
     }
     return id;
 }
@@ -54,9 +53,8 @@ int parseProfileFileId(const std::string& filename) {
 // Lit `rel` via `store` et le parse avec `parse`. Renvoie false si le fichier est
 // absent/illisible OU si le JSON est invalide (l'appelant a un repli). Mutualise le
 // schema lecture + try/parse pour la Config et le ProfileIndex.
-template <class T, class Parse>
-bool readParsed(const sd::obsbridge::FileStore& store, const std::string& rel, Parse parse,
-                T& out) {
+template<class T, class Parse>
+bool readParsed(const sd::obsbridge::FileStore& store, const std::string& rel, Parse parse, T& out) {
     std::string text;
     if (!store.read(rel, text)) {
         return false;
@@ -68,7 +66,7 @@ bool readParsed(const sd::obsbridge::FileStore& store, const std::string& rel, P
         return false;
     }
 }
-}  // namespace
+} // namespace
 
 bool ProfileStore::readConfig(const std::string& rel, sd::core::Config& out) const {
     return readParsed(store_, rel, sd::core::fromJson, out);
@@ -89,7 +87,7 @@ sd::obsbridge::FsResult ProfileStore::writeProfile(int id, const sd::core::Confi
 ProfileStore::RawIndex ProfileStore::loadIndexRaw() const {
     RawIndex r;
     if (!store_.exists(kIndexRel)) {
-        return r;  // absent : found=false, ok=false (-> recuperation/migration)
+        return r; // absent : found=false, ok=false (-> recuperation/migration)
     }
     r.found = true;
     if (readIndex(kIndexRel, r.index)) {
@@ -110,11 +108,10 @@ bool ProfileStore::loadIndexForWrite(sd::core::ProfileIndex& idx, StoreResult& r
     return true;
 }
 
-bool ProfileStore::reconstructFromScan(const std::string& defaultName,
-                                       sd::core::ProfileIndex& out) const {
+bool ProfileStore::reconstructFromScan(const std::string& defaultName, sd::core::ProfileIndex& out) const {
     std::vector<int> ids;
     for (const auto& f : store_.list(kProfilesDir, kJsonExt)) {
-        const int id = parseProfileFileId(f);  // ecarte index.json + noms non canoniques
+        const int id = parseProfileFileId(f); // ecarte index.json + noms non canoniques
         if (id >= 0) {
             ids.push_back(id);
         }
@@ -154,10 +151,10 @@ ListResult ProfileStore::migrate(const std::string& defaultName) {
 
     // Config de depart = ancien config.json s'il est lisible, sinon defauts codes.
     sd::core::Config base;
-    readConfig(kConfigRel, base);  // ignore l'echec : base garde les defauts
+    readConfig(kConfigRel, base); // ignore l'echec : base garde les defauts
 
     sd::core::ProfileIndex idx;
-    const int id = sd::core::addProfile(idx, defaultName);  // id = 1
+    const int id = sd::core::addProfile(idx, defaultName); // id = 1
     idx.activeId = id;
 
     const sd::obsbridge::FsResult wp = writeProfile(id, base);
@@ -192,7 +189,7 @@ ListResult ProfileStore::loadList(const std::string& defaultName) {
         // au-dessus des fichiers reellement presents pour ne pas reattribuer (donc
         // ecraser) l'id d'un profil orphelin encore sur disque.
         reconcileNextIdWithFiles(recovered);
-        writeIndex(recovered);  // best-effort : remet un index.json sain
+        writeIndex(recovered); // best-effort : remet un index.json sain
         ListResult res;
         res.index = recovered;
         res.ok = true;
@@ -288,8 +285,7 @@ StoreResult ProfileStore::saveActive(const sd::core::Config& cfg) {
     return res;
 }
 
-StoreResult ProfileStore::createProfile(const std::string& name, const sd::core::Config& cfg,
-                                        bool makeActive) {
+StoreResult ProfileStore::createProfile(const std::string& name, const sd::core::Config& cfg, bool makeActive) {
     StoreResult res;
     sd::core::ProfileIndex idx;
     if (!loadIndexForWrite(idx, res)) {
@@ -333,7 +329,7 @@ StoreResult ProfileStore::duplicateProfile(int id, const std::string& copySuffix
         res.error = pc.error;
         return res;
     }
-    const int newId = sd::core::addProfile(idx, desired);  // unicite geree par core
+    const int newId = sd::core::addProfile(idx, desired); // unicite geree par core
     const sd::obsbridge::FsResult wp = writeProfile(newId, pc.config);
     if (!wp.ok) {
         res.error = wp.error;
@@ -389,4 +385,4 @@ StoreResult ProfileStore::removeProfile(int id) {
     return res;
 }
 
-}  // namespace sd::profiles
+} // namespace sd::profiles

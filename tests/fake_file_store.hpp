@@ -23,9 +23,7 @@ public:
         return true;
     }
 
-    bool exists(const std::string& relPath) const override {
-        return files_.find(relPath) != files_.end();
-    }
+    bool exists(const std::string& relPath) const override { return files_.find(relPath) != files_.end(); }
 
     sd::obsbridge::FsResult write(const std::string& relPath, const std::string& text) override {
         ++writeCalls;
@@ -49,8 +47,7 @@ public:
         return files_.find(relPath) == files_.end();
     }
 
-    std::vector<std::string> list(const std::string& relDir,
-                                  const std::string& ext) const override {
+    std::vector<std::string> list(const std::string& relDir, const std::string& ext) const override {
         std::vector<std::string> names;
         const std::string prefix = relDir + "/";
         for (const auto& kv : files_) {
@@ -60,10 +57,9 @@ public:
             }
             const std::string name = p.substr(prefix.size());
             if (name.find('/') != std::string::npos) {
-                continue;  // pas de descente dans les sous-dossiers
+                continue; // pas de descente dans les sous-dossiers
             }
-            if (name.size() >= ext.size() &&
-                name.compare(name.size() - ext.size(), ext.size(), ext) == 0) {
+            if (name.size() >= ext.size() && name.compare(name.size() - ext.size(), ext.size(), ext) == 0) {
                 names.push_back(name);
             }
         }
@@ -78,11 +74,11 @@ public:
         return it == files_.end() ? std::string{} : it->second;
     }
 
-    std::string failPathContains;  // ecritures dont le chemin contient ceci -> echec
+    std::string failPathContains; // ecritures dont le chemin contient ceci -> echec
     int writeCalls = 0;
 
 private:
     std::map<std::string, std::string> files_;
 };
 
-}  // namespace sdtest
+} // namespace sdtest

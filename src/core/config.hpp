@@ -10,16 +10,16 @@ namespace sd::core {
 
 // Une scene du pool d'un intervenant, avec son poids relatif (pas un %).
 struct SceneWeight {
-    std::string scene;   // nom de la scene OBS
-    int weight = 1;      // poids relatif (>= 0) ; le % est calcule a l'affichage
+    std::string scene; // nom de la scene OBS
+    int weight = 1;    // poids relatif (>= 0) ; le % est calcule a l'affichage
 };
 
 // Un intervenant = un nom + une source audio OBS + un pool de scenes.
 struct Speaker {
-    std::string id;                     // identifiant stable
-    std::string name;                   // nom affiche
-    std::string audioSource;            // nom de la source audio OBS
-    std::vector<SceneWeight> scenes;    // Contexte A : quand cette personne parle
+    std::string id;                  // identifiant stable
+    std::string name;                // nom affiche
+    std::string audioSource;         // nom de la source audio OBS
+    std::vector<SceneWeight> scenes; // Contexte A : quand cette personne parle
     // Seuil de voix PROPRE a cet intervenant (dB). Absent => on utilise le seuil
     // global (audio.voiceThresholdDb). Regle au slider du dock et persiste dans le
     // profil -> survit a la fermeture d'OBS. Le Director s'en sert pour positionner
@@ -29,19 +29,19 @@ struct Speaker {
 
 // Reglages de detection audio.
 struct AudioSettings {
-    double voiceThresholdDb = -35.0;  // seuil de voix (sensibilite)
+    double voiceThresholdDb = -35.0; // seuil de voix (sensibilite)
     // Reserve : le plancher d'affichage actif est la constante kDbFloor
     // (audio_util.hpp). Ce champ existe pour le rendre configurable plus tard ;
     // il n'est pas encore lu par le coeur.
     double volumeFloorDb = -60.0;
-    int attackFrames = 2;        // frames au-dessus du seuil -> "parle"
-    int releaseFrames = 8;       // frames sous le seuil -> "ne parle plus"
+    int attackFrames = 2;  // frames au-dessus du seuil -> "parle"
+    int releaseFrames = 8; // frames sous le seuil -> "ne parle plus"
 };
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
-    double minShotSeconds = 5.0;   // verrou anti-nervosite
-    double maxShotSeconds = 12.0;  // rafraichissement du plan
+    double minShotSeconds = 5.0;  // verrou anti-nervosite
+    double maxShotSeconds = 12.0; // rafraichissement du plan
     // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
     // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
@@ -64,7 +64,7 @@ struct SilenceWeights {
 struct Config {
     int version = 1;
     std::vector<Speaker> speakers;
-    std::string wideShotScene;   // vide => pas de plan large
+    std::string wideShotScene; // vide => pas de plan large
     AudioSettings audio;
     TimingSettings timing;
     MultiWeights whenMultiple;
@@ -78,4 +78,4 @@ std::string toJson(const Config& cfg);
 // valeur par defaut. Leve std::exception en cas de JSON invalide.
 Config fromJson(const std::string& text);
 
-}  // namespace sd::core
+} // namespace sd::core

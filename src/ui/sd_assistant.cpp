@@ -90,8 +90,7 @@ struct SdAssistant::Impl {
     // Libelle d'un intervenant (nom, ou "Intervenant N" si vide) — pour le resume.
     QString speakerLabel(std::size_t i) const {
         const std::string& n = working.speakers[i].name;
-        return n.empty() ? i18n("Speakers.DefaultName").arg(static_cast<int>(i) + 1)
-                         : QString::fromStdString(n);
+        return n.empty() ? i18n("Speakers.DefaultName").arg(static_cast<int>(i) + 1) : QString::fromStdString(n);
     }
 
     // Cree un hote (QVBoxLayout sans marges) dans la page pour y monter un panneau
@@ -130,12 +129,18 @@ QVBoxLayout* SdAssistant::Impl::addPanelHost(QVBoxLayout* page, int spacing) {
 
 QString SdAssistant::Impl::stepName(int step) const {
     switch (step) {
-    case 1: return i18n("Assistant.Step.Speakers");
-    case 2: return i18n("Assistant.Step.Cameras");
-    case 3: return i18n("Assistant.Step.Wide");
-    case 4: return i18n("Assistant.Step.Rhythm");
-    case 5: return i18n("Assistant.Step.Summary");
-    default: return QString();
+    case 1:
+        return i18n("Assistant.Step.Speakers");
+    case 2:
+        return i18n("Assistant.Step.Cameras");
+    case 3:
+        return i18n("Assistant.Step.Wide");
+    case 4:
+        return i18n("Assistant.Step.Rhythm");
+    case 5:
+        return i18n("Assistant.Step.Summary");
+    default:
+        return QString();
     }
 }
 
@@ -161,13 +166,26 @@ void SdAssistant::Impl::goTo(int i) {
 
 void SdAssistant::Impl::populate(int i) {
     switch (i) {
-    case 0: populatePrereq(); break;
-    case 1: populateSpeakers(); break;
-    case 2: populateCameras(); break;
-    case 3: populateWide(); break;
-    case 4: populateRhythm(); break;
-    case 5: populateSummary(); break;
-    default: break;
+    case 0:
+        populatePrereq();
+        break;
+    case 1:
+        populateSpeakers();
+        break;
+    case 2:
+        populateCameras();
+        break;
+    case 3:
+        populateWide();
+        break;
+    case 4:
+        populateRhythm();
+        break;
+    case 5:
+        populateSummary();
+        break;
+    default:
+        break;
     }
 }
 
@@ -175,14 +193,12 @@ void SdAssistant::Impl::updateHeader() {
     if (current == 0) {
         headerIcon->setVisible(true);
         headerTitle->setText(i18n("Assistant.Title"));
-        headerTitle->setStyleSheet(
-            QString("color:%1; font-size:13px; font-weight:600;").arg(th::kTextPrimary));
+        headerTitle->setStyleSheet(QString("color:%1; font-size:13px; font-weight:600;").arg(th::kTextPrimary));
         progressRow->setVisible(false);
     } else {
         headerIcon->setVisible(false);
         headerTitle->setText(i18n("Assistant.StepCounter").arg(current).arg(stepName(current)));
-        headerTitle->setStyleSheet(
-            QString("color:%1; font-size:13px; font-weight:600;").arg(th::kTextSecondary));
+        headerTitle->setStyleSheet(QString("color:%1; font-size:13px; font-weight:600;").arg(th::kTextSecondary));
         progressRow->setVisible(true);
         for (int s = 0; s < static_cast<int>(segments.size()); ++s) {
             segments[s]->setStyleSheet(segQss(s < current));
@@ -297,8 +313,7 @@ void SdAssistant::Impl::populateRhythm() {
     // Banniere d'info accent (specifique a l'assistant ; voir maquette etape Rythme).
     auto* banner = new QWidget();
     banner->setObjectName(QStringLiteral("infoBanner"));
-    banner->setStyleSheet(QString("#infoBanner { background:%1; border-radius:6px; }")
-                              .arg(rgba(th::kAccent, 0.10)));
+    banner->setStyleSheet(QString("#infoBanner { background:%1; border-radius:6px; }").arg(rgba(th::kAccent, 0.10)));
     auto* bl = new QHBoxLayout(banner);
     bl->setContentsMargins(12, 10, 12, 10);
     bl->setSpacing(8);
@@ -315,8 +330,7 @@ void SdAssistant::Impl::populateRhythm() {
 }
 
 // --- Etape 5 : resume --------------------------------------------------------
-QWidget* SdAssistant::Impl::recapCard(Icon ic, const QString& title, int page,
-                                      const QStringList& lines) {
+QWidget* SdAssistant::Impl::recapCard(Icon ic, const QString& title, int page, const QStringList& lines) {
     auto* card = makeCard(QStringLiteral("recapCard"));
     auto* lay = new QVBoxLayout(card);
     lay->setContentsMargins(14, 12, 14, 12);
@@ -360,8 +374,7 @@ void SdAssistant::Impl::populateSummary() {
     QStringList spLines;
     for (std::size_t i = 0; i < working.speakers.size(); ++i) {
         const auto& s = working.speakers[i];
-        const QString src = s.audioSource.empty() ? i18n("Summary.NoSource")
-                                                   : QString::fromStdString(s.audioSource);
+        const QString src = s.audioSource.empty() ? i18n("Summary.NoSource") : QString::fromStdString(s.audioSource);
         spLines << speakerLabel(i) + QStringLiteral(" · ") + src;
     }
     if (spLines.isEmpty()) {
@@ -380,12 +393,11 @@ void SdAssistant::Impl::populateSummary() {
         QStringList parts;
         for (const auto& w : s.scenes) {
             if (!w.scene.empty()) {
-                parts << QString::fromStdString(w.scene) + QStringLiteral(" ") +
-                             QString::number(pctOf(w.weight, sum)) + QStringLiteral("%");
+                parts << QString::fromStdString(w.scene) + QStringLiteral(" ") + QString::number(pctOf(w.weight, sum)) +
+                             QStringLiteral("%");
             }
         }
-        const QString detail =
-            parts.isEmpty() ? i18n("Summary.NoCamera") : parts.join(QStringLiteral(" · "));
+        const QString detail = parts.isEmpty() ? i18n("Summary.NoCamera") : parts.join(QStringLiteral(" · "));
         camLines << speakerLabel(i) + QStringLiteral(" : ") + detail;
     }
     if (camLines.isEmpty()) {
@@ -398,21 +410,18 @@ void SdAssistant::Impl::populateSummary() {
     wideLines << i18n("Summary.WideScene") + QStringLiteral(" : ") +
                      (working.wideShotScene.empty() ? i18n("Summary.WideSceneNone")
                                                     : QString::fromStdString(working.wideShotScene));
-    const int mSum = working.whenMultiple.loudestSpeaker + working.whenMultiple.currentSpeaker +
-                     working.whenMultiple.wideShot;
-    wideLines << i18n("Summary.Multiple") + QStringLiteral(" : ") + i18n("Wide.Loudest") +
-                     QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenMultiple.loudestSpeaker, mSum)) +
-                     QStringLiteral("% · ") + i18n("Wide.Current") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenMultiple.currentSpeaker, mSum)) +
-                     QStringLiteral("% · ") + i18n("Wide.WideShot") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenMultiple.wideShot, mSum)) +
-                     QStringLiteral("%");
+    const int mSum =
+        working.whenMultiple.loudestSpeaker + working.whenMultiple.currentSpeaker + working.whenMultiple.wideShot;
+    wideLines << i18n("Summary.Multiple") + QStringLiteral(" : ") + i18n("Wide.Loudest") + QStringLiteral(" ") +
+                     QString::number(pctOf(working.whenMultiple.loudestSpeaker, mSum)) + QStringLiteral("% · ") +
+                     i18n("Wide.Current") + QStringLiteral(" ") +
+                     QString::number(pctOf(working.whenMultiple.currentSpeaker, mSum)) + QStringLiteral("% · ") +
+                     i18n("Wide.WideShot") + QStringLiteral(" ") +
+                     QString::number(pctOf(working.whenMultiple.wideShot, mSum)) + QStringLiteral("%");
     const int sSum = working.whenSilence.lastSpeaker + working.whenSilence.wideShot;
-    wideLines << i18n("Summary.Silence") + QStringLiteral(" : ") + i18n("Wide.LastSpeaker") +
-                     QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenSilence.lastSpeaker, sSum)) +
-                     QStringLiteral("% · ") + i18n("Wide.WideShot") + QStringLiteral(" ") +
+    wideLines << i18n("Summary.Silence") + QStringLiteral(" : ") + i18n("Wide.LastSpeaker") + QStringLiteral(" ") +
+                     QString::number(pctOf(working.whenSilence.lastSpeaker, sSum)) + QStringLiteral("% · ") +
+                     i18n("Wide.WideShot") + QStringLiteral(" ") +
                      QString::number(pctOf(working.whenSilence.wideShot, sSum)) + QStringLiteral("%");
     contentLay[5]->addWidget(recapCard(Icon::LayoutGrid, i18n("Summary.Wide"), 3, wideLines));
 
@@ -427,8 +436,7 @@ void SdAssistant::Impl::populateSummary() {
 
     summaryError = new QLabel();
     summaryError->setWordWrap(true);
-    summaryError->setStyleSheet(
-        QString("color:%1; font-size:12px; font-weight:600;").arg(th::kDanger));
+    summaryError->setStyleSheet(QString("color:%1; font-size:12px; font-weight:600;").arg(th::kDanger));
     summaryError->setVisible(false);
     contentLay[5]->addWidget(summaryError);
     contentLay[5]->addStretch();
@@ -477,8 +485,7 @@ void SdAssistant::Impl::finish() {
 // ===========================================================================
 // SdAssistant — coquille (fenetre, drag, cycle de vie).
 // ===========================================================================
-SdAssistant::SdAssistant(QWidget* parent, const QString& newProfileName)
-    : QDialog(parent), d_(new Impl) {
+SdAssistant::SdAssistant(QWidget* parent, const QString& newProfileName) : QDialog(parent), d_(new Impl) {
     d_->q = this;
     d_->newProfileName = newProfileName;
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
@@ -508,7 +515,7 @@ SdAssistant::SdAssistant(QWidget* parent, const QString& newProfileName)
     d_->panels = std::make_unique<ConfigPanels>(d_->working, d_->audioSources, d_->scenes);
 
     auto* outer = new QVBoxLayout(this);
-    outer->setContentsMargins(24, 18, 24, 30);  // marge pour l'ombre portee
+    outer->setContentsMargins(24, 18, 24, 30); // marge pour l'ombre portee
 
     d_->root = new QWidget(this);
     d_->root->setObjectName(QStringLiteral("assistantRoot"));
@@ -675,4 +682,4 @@ void SdAssistant::showEvent(QShowEvent* event) {
     }
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

@@ -25,4 +25,4 @@ bool SpeakerDetector::update(double db) {
     return speaking_;
 }
 
-}  // namespace sd::core
+} // namespace sd::core

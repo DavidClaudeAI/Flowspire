@@ -17,19 +17,17 @@ namespace sd::ui {
 
 struct UpdateInfo {
     bool updateAvailable = false;
-    std::string latestVersion;  // ex. "0.2.0" (sans prefixe)
-    std::string releaseUrl;     // page a ouvrir pour telecharger
+    std::string latestVersion; // ex. "0.2.0" (sans prefixe)
+    std::string releaseUrl;    // page a ouvrir pour telecharger
 };
 
 // Lance la verification. `ctx` = parent Qt (gestion de vie : passer le dock). `onResult`
 // est appele une fois, sur le thread UI. No-op cote appelant si le reseau echoue
 // (onResult est alors appele avec updateAvailable == false).
-void checkForUpdate(QObject* ctx, const std::string& currentVersion,
-                    std::function<void(const UpdateInfo&)> onResult);
+//
+// L'opt-out "verifier au demarrage" vit desormais dans les preferences globales
+// (sd_prefs : GlobalPrefs::checkUpdatesOnStartup) ; l'appelant garde cette requete
+// sous condition.
+void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::function<void(const UpdateInfo&)> onResult);
 
-// Reglage GLOBAL (pas par profil) : verifier les MAJ au demarrage. Persiste dans
-// update.json (dossier de config du plugin). Defaut true (absent/illisible -> true).
-bool updateCheckEnabled();
-void setUpdateCheckEnabled(bool enabled);
-
-}  // namespace sd::ui
+} // namespace sd::ui

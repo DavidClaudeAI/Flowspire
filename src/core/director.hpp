@@ -37,9 +37,9 @@ namespace sd::core {
 enum class Context { Silence, Single, Multiple };
 
 struct Decision {
-    std::string scene;      // scene a afficher
-    std::string owner;      // id de l'intervenant proprietaire ("" = plan large/aucun)
-    bool switched = false;  // true si on a change de scene a ce tick
+    std::string scene;     // scene a afficher
+    std::string owner;     // id de l'intervenant proprietaire ("" = plan large/aucun)
+    bool switched = false; // true si on a change de scene a ce tick
     Context context = Context::Silence;
 };
 
@@ -80,6 +80,13 @@ public:
     // est inconnu ou n'a aucune scene jouable.
     Decision forceSpeaker(double now, const std::string& speakerId);
 
+    // Une scene fait-elle partie de la REGIE ? -> true si c'est le plan large OU une
+    // scene du pool d'un intervenant. Renseigne alors `owner` : id de l'intervenant
+    // proprietaire, ou "" pour le plan large. Sert au forcage par clic dans le dock
+    // natif d'OBS : distinguer une scene DE la regie (toujours forcage temporaire)
+    // d'une scene HORS regie (comportement configurable). Pur, sans effet de bord.
+    bool sceneInProgram(const std::string& scene, std::string& owner) const;
+
     const std::string& currentScene() const { return currentScene_; }
     Context lastContext() const { return lastContext_; }
 
@@ -88,7 +95,7 @@ public:
 
 private:
     const Speaker* findSpeaker(const std::string& id) const;
-    double rngValue();  // borne le RNG injecte dans [0, 1)
+    double rngValue(); // borne le RNG injecte dans [0, 1)
     std::string drawSceneFromPool(const std::vector<SceneWeight>& pool);
     // Resout une scene REELLEMENT jouable pour la cible demandee, avec fallback :
     //   1) la cible (owner -> une de ses scenes ; wide -> plan large)
@@ -97,13 +104,12 @@ private:
     // Garantit qu'on ne reste jamais sur du vide quand quelqu'un parle et qu'une
     // scene est disponible. Renvoie false si rien n'est jouable (aucun pool,
     // aucun plan large). Renseigne outScene/outOwner en cas de succes.
-    bool resolvePlayable(const std::string& owner, bool wide, std::string& outScene,
-                         std::string& outOwner);
+    bool resolvePlayable(const std::string& owner, bool wide, std::string& outScene, std::string& outOwner);
     // `recordLeave` (defaut true) : memorise l'instant ou l'on quitte le proprietaire
     // courant (anti ping-pong). Les FORCAGES (Stream Deck/clavier) passent false : un
     // choix manuel ne doit pas faire croire a une navette sur le retour auto suivant.
-    void commit(double now, const std::string& scene, const std::string& owner, bool hold,
-                Decision& out, bool recordLeave = true);
+    void commit(double now, const std::string& scene, const std::string& owner, bool hold, Decision& out,
+                bool recordLeave = true);
     // Vrai si basculer vers `owner` serait une NAVETTE : on a quitte ce plan il y a
     // moins de pingPongWindowSeconds. Toujours faux si la fenetre vaut 0 (anti
     // ping-pong desactive) ou si owner est vide.
@@ -114,14 +120,14 @@ private:
     bool autoEnabled_ = true;
 
     std::map<std::string, SpeakerDetector> detectors_;
-    std::map<std::string, double> thresholdOverride_;  // seuil regle en direct par intervenant
-    std::vector<std::string> speakingSorted_;  // ids parlants, plus fort -> plus faible
+    std::map<std::string, double> thresholdOverride_; // seuil regle en direct par intervenant
+    std::vector<std::string> speakingSorted_;         // ids parlants, plus fort -> plus faible
 
     std::string currentScene_;
-    std::string currentOwner_;  // "" = plan large / aucun proprietaire
-    bool hold_ = false;         // le plan courant doit-il etre maintenu (verrou) ?
-    std::string lastSpeaker_;   // dernier intervenant a avoir parle
-    double lastSwitch_ = -1e9;  // instant du dernier changement de scene
+    std::string currentOwner_; // "" = plan large / aucun proprietaire
+    bool hold_ = false;        // le plan courant doit-il etre maintenu (verrou) ?
+    std::string lastSpeaker_;  // dernier intervenant a avoir parle
+    double lastSwitch_ = -1e9; // instant du dernier changement de scene
     Context lastContext_ = Context::Silence;
 
     // Memoise la decision aleatoire par "situation" (evite le scintillement :
@@ -135,4 +141,4 @@ private:
     std::map<std::string, double> ownerLeftAt_;
 };
 
-}  // namespace sd::core
+} // namespace sd::core

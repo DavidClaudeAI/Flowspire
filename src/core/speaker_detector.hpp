@@ -24,8 +24,8 @@ public:
 
 private:
     double thresholdDb_ = -35.0;
-    int attackFrames_ = 2;   // frames consecutives au-dessus du seuil -> "parle"
-    int releaseFrames_ = 8;  // frames consecutives sous le seuil -> "ne parle plus"
+    int attackFrames_ = 2;  // frames consecutives au-dessus du seuil -> "parle"
+    int releaseFrames_ = 8; // frames consecutives sous le seuil -> "ne parle plus"
 
     bool speaking_ = false;
     double lastDb_ = kDbFloor;
@@ -33,4 +33,4 @@ private:
     int below_ = 0;
 };
 
-}  // namespace sd::core
+} // namespace sd::core

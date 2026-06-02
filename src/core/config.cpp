@@ -47,9 +47,7 @@ std::string toJson(const Config& cfg) {
          {{"loudestSpeaker", cfg.whenMultiple.loudestSpeaker},
           {"currentSpeaker", cfg.whenMultiple.currentSpeaker},
           {"wideShot", cfg.whenMultiple.wideShot}}},
-        {"whenSilence",
-         {{"lastSpeaker", cfg.whenSilence.lastSpeaker},
-          {"wideShot", cfg.whenSilence.wideShot}}},
+        {"whenSilence", {{"lastSpeaker", cfg.whenSilence.lastSpeaker}, {"wideShot", cfg.whenSilence.wideShot}}},
     };
     return j.dump(2);
 }
@@ -100,8 +98,7 @@ Config fromJson(const std::string& text) {
         const auto& t = j.at("timing");
         cfg.timing.minShotSeconds = t.value("minShotSeconds", cfg.timing.minShotSeconds);
         cfg.timing.maxShotSeconds = t.value("maxShotSeconds", cfg.timing.maxShotSeconds);
-        cfg.timing.pingPongWindowSeconds =
-            t.value("pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds);
+        cfg.timing.pingPongWindowSeconds = t.value("pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds);
     }
 
     if (j.contains("whenMultiple")) {
@@ -136,4 +133,4 @@ Config fromJson(const std::string& text) {
     return cfg;
 }
 
-}  // namespace sd::core
+} // namespace sd::core

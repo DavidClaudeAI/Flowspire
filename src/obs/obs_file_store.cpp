@@ -23,7 +23,7 @@ std::string resolve(const std::string& rel) {
     }
     return out;
 }
-}  // namespace
+} // namespace
 
 bool ObsFileStore::read(const std::string& relPath, std::string& out) const {
     const std::string path = resolve(relPath);
@@ -61,8 +61,7 @@ bool ObsFileStore::remove(const std::string& relPath) {
     return !os_file_exists(path.c_str());
 }
 
-std::vector<std::string> ObsFileStore::list(const std::string& relDir,
-                                            const std::string& ext) const {
+std::vector<std::string> ObsFileStore::list(const std::string& relDir, const std::string& ext) const {
     std::vector<std::string> names;
     const std::string dir = resolve(relDir);
     if (dir.empty()) {
@@ -70,15 +69,14 @@ std::vector<std::string> ObsFileStore::list(const std::string& relDir,
     }
     os_dir_t* d = os_opendir(dir.c_str());
     if (!d) {
-        return names;  // dossier absent : liste vide (pas une erreur)
+        return names; // dossier absent : liste vide (pas une erreur)
     }
     for (struct os_dirent* ent = os_readdir(d); ent != nullptr; ent = os_readdir(d)) {
         if (ent->directory) {
             continue;
         }
         const std::string name = ent->d_name;
-        if (name.size() >= ext.size() &&
-            name.compare(name.size() - ext.size(), ext.size(), ext) == 0) {
+        if (name.size() >= ext.size() && name.compare(name.size() - ext.size(), ext.size(), ext) == 0) {
             names.push_back(name);
         }
     }
@@ -86,4 +84,4 @@ std::vector<std::string> ObsFileStore::list(const std::string& relDir,
     return names;
 }
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge

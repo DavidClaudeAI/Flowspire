@@ -14,11 +14,7 @@ namespace sd::ui {
 
 inline QString rgba(const char* hex6, double alpha) {
     const QColor c(QString::fromUtf8(hex6));
-    return QString("rgba(%1,%2,%3,%4)")
-        .arg(c.red())
-        .arg(c.green())
-        .arg(c.blue())
-        .arg(alpha, 0, 'f', 3);
+    return QString("rgba(%1,%2,%3,%4)").arg(c.red()).arg(c.green()).arg(c.blue()).arg(alpha, 0, 'f', 3);
 }
 
-}  // namespace sd::ui
+} // namespace sd::ui

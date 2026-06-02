@@ -14,7 +14,7 @@
 #include <string>
 #include <vector>
 
-#include "obs/fs_atomic.hpp"  // FsResult (struct pur, header OBS-free)
+#include "obs/fs_atomic.hpp" // FsResult (struct pur, header OBS-free)
 
 namespace sd::obsbridge {
 
@@ -40,8 +40,7 @@ public:
     // Noms de fichiers (basenames, pas les chemins) du dossier `relDir` se terminant
     // par `ext` (ex : ".json"). Vide si le dossier est absent. Sert au scan de
     // reconstruction du catalogue quand l'index est perdu.
-    virtual std::vector<std::string> list(const std::string& relDir,
-                                          const std::string& ext) const = 0;
+    virtual std::vector<std::string> list(const std::string& relDir, const std::string& ext) const = 0;
 };
 
-}  // namespace sd::obsbridge
+} // namespace sd::obsbridge
