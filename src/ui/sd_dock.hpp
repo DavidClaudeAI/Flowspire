@@ -110,6 +110,9 @@ private:
     void updateModeLabel();
     void startUpdateCheck(); // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
     void styleSpeakerCard(Row& row, bool speaking);
+    // Construit la carte d'accueil (etat sans config) dans rowsLayout_ : titre, rappel
+    // des prerequis OBS, nombre d'entrees audio detectees, bouton "Lancer l'assistant".
+    void addWelcomeCard(size_t audioInputCount);
     static double nowSeconds();
 
     sd::obsbridge::AudioLevelMonitor monitor_;
@@ -131,13 +134,14 @@ private:
 
     QVBoxLayout* rowsLayout_ = nullptr;
     std::vector<Row> rows_;
+    QWidget* welcomeCard_ = nullptr;       // carte d'accueil (etat sans config), nullptr sinon
     QPushButton* profileButton_ = nullptr; // selecteur de profil (en-tete du dock)
     QLabel* profileNameLabel_ = nullptr;   // nom du profil actif (dans le selecteur)
+    QLabel* scenesSectionLabel_ = nullptr; // en-tete "SCENES" (masque en etat d'accueil)
     QLabel* statusDot_ = nullptr;
     QLabel* statusText_ = nullptr;
     QWidget* statusBadge_ = nullptr;
     QLabel* modeLabel_ = nullptr;
-    QLabel* emptyLabel_ = nullptr;
     QWidget* updateBanner_ = nullptr; // bandeau "mise a jour dispo" (masque par defaut)
     QLabel* updateBannerLabel_ = nullptr;
     QPushButton* updateBannerButton_ = nullptr;
