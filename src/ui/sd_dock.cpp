@@ -722,11 +722,9 @@ void SdDock::addWelcomeCard(size_t audioInputCount) {
     lay->addWidget(title);
 
     // Rappel des prerequis AVANT de lancer l'assistant (sinon l'utilisateur le lance,
-    // decouvre qu'il n'a rien prepare dans OBS, et perd du temps).
-    auto* body = new QLabel(i18n("Welcome.Prereq"));
-    body->setWordWrap(true);
-    body->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextSecondary).arg(th::kFontBody));
-    lay->addWidget(body);
+    // decouvre qu'il n'a rien prepare dans OBS, et perd du temps). makeSub = texte
+    // secondaire standard (kTextSecondary + 13px + word-wrap) -> pas de style duplique.
+    lay->addWidget(w::makeSub(i18n("Welcome.Prereq")));
 
     // Ligne d'etat : 2 cas distincts (demande David). Entrees audio presentes -> ligne
     // rassurante (vert) ; aucune entree -> on guide d'abord vers leur creation dans OBS.
