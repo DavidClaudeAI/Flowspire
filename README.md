@@ -132,8 +132,10 @@ The **decision core** (`src/core`) is **pure** (no OBS dependency) and **unit-te
 
 ```bash
 python scripts/bump-version.py minor      # or patch / major
-git commit -am "feat : v0.3.0" && git tag 0.3.0 && git push --follow-tags
-# tip: tag 0.3.0-rc1 for a pre-release dry-run of the whole flow
+git commit -am "feat : v0.3.0"
+git tag -a 0.3.0 -m "v0.3.0"              # annotated tag (pushed by --follow-tags)
+git push --follow-tags
+# tip: tag -a 0.3.0-rc1 for a pre-release dry-run of the whole flow
 ```
 
 The tag triggers the CI to build the 3 OSes, produce the installers — **Windows `.exe`** (Inno Setup, → `cmake/windows/resources/installer-Windows.iss`), **macOS `.pkg`**, **Linux `.deb`** — and create a **draft GitHub Release** with checksums, which you review before publishing. Installers are **unsigned** (one-time SmartScreen/Gatekeeper step, see the [user guide](docs/guide.md)).
