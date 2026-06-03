@@ -211,8 +211,8 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     badgeLay->addWidget(statusText_);
     // Badge cliquable : c'est le toggle du pilotage auto (ON/OFF). Les memes actions
     // restent accessibles par les hotkeys OBS (clavier / Stream Deck / Companion).
-    statusBadge_->setCursor(Qt::PointingHandCursor);
-    statusBadge_->setToolTip(i18n("Control.ToggleAuto"));
+    // Le curseur et l'infobulle sont poses par updateStatusBadge selon l'etat : en
+    // lecture seule (aucune config) le badge n'est PAS un interrupteur.
     statusBadge_->installEventFilter(this);
     header->addWidget(statusBadge_);
     root->addLayout(header);
@@ -785,6 +785,13 @@ void SdDock::updateStatusBadge() {
     statusDot_->setStyleSheet(QString("color:%1; font-size:%2px;").arg(color).arg(th::kFontBody));
     statusText_->setText(text);
     statusText_->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;").arg(color).arg(th::kFontBody));
+
+    // En lecture seule (aucune config), le badge n'est PAS un interrupteur (rien a
+    // piloter) : curseur neutre + infobulle d'aide -> on n'invite pas a un clic sans
+    // effet. Configure -> il redevient le toggle ON/OFF (curseur main + infobulle).
+    const bool interactive = (status != StatusReadOnly);
+    statusBadge_->setCursor(interactive ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    statusBadge_->setToolTip(interactive ? i18n("Control.ToggleAuto") : i18n("Control.ReadOnlyHint"));
 }
 
 void SdDock::updateModeLabel() {
