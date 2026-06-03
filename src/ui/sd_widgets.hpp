@@ -1,4 +1,4 @@
-// StreamDirector — briques d'UI partagees (couche UI).
+// Flowspire — briques d'UI partagees (couche UI).
 //
 // Source UNIQUE des petits widgets et helpers de style reutilises par l'assistant
 // (sd_assistant) ET les parametres avances (sd_settings) -> pas de copier-coller

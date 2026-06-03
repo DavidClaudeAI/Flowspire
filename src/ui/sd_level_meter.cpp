@@ -1,4 +1,4 @@
-// StreamDirector — vumetre custom avec marqueur de seuil (implementation).
+// Flowspire — vumetre custom avec marqueur de seuil (implementation).
 #include "ui/sd_level_meter.hpp"
 
 #include <QColor>

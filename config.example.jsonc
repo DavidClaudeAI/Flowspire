@@ -1,4 +1,4 @@
-// StreamDirector — EXEMPLE de structure d'un profil (référence de lecture).
+// Flowspire — EXEMPLE de structure d'un profil (référence de lecture).
 //
 // IMPORTANT : tu n'as normalement JAMAIS besoin d'éditer ce fichier à la main.
 // Toute la configuration se fait dans OBS via l'assistant et les paramètres
@@ -6,9 +6,9 @@
 // d'un profil (utile pour comprendre / inspecter tes fichiers).
 //
 // Où vivent les vrais profils (un fichier <id>.json par profil + index.json) :
-//   Windows : %APPDATA%\obs-studio\plugin_config\streamdirector\profiles\
-//   macOS   : ~/Library/Application Support/obs-studio/plugin_config/streamdirector/profiles/
-//   Linux   : ~/.config/obs-studio/plugin_config/streamdirector/profiles/
+//   Windows : %APPDATA%\obs-studio\plugin_config\flowspire\profiles\
+//   macOS   : ~/Library/Application Support/obs-studio/plugin_config/flowspire/profiles/
+//   Linux   : ~/.config/obs-studio/plugin_config/flowspire/profiles/
 // (Le vrai JSON n'autorise pas les commentaires // : ils sont ici pour l'explication.)
 //
 // Les noms doivent correspondre EXACTEMENT à OBS :

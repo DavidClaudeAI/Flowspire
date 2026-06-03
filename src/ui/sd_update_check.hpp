@@ -1,4 +1,4 @@
-// StreamDirector — verification de mise a jour (couche UI, Qt Network).
+// Flowspire — verification de mise a jour (couche UI, Qt Network).
 //
 // Demande a l'API GitHub Releases la derniere version publiee, la compare a la version
 // locale (PLUGIN_VERSION) via le coeur pur (core/version), et renvoie le verdict.

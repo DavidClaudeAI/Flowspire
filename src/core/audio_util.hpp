@@ -1,4 +1,4 @@
-// StreamDirector — utilitaires audio (purs, sans dependance OBS).
+// Flowspire — utilitaires audio (purs, sans dependance OBS).
 #pragma once
 
 #include <cmath>

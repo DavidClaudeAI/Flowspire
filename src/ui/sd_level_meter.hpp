@@ -1,4 +1,4 @@
-// StreamDirector — vumetre custom (couche UI) avec MARQUEUR DE SEUIL.
+// Flowspire — vumetre custom (couche UI) avec MARQUEUR DE SEUIL.
 // Remplace QProgressBar : dessine la piste, le remplissage (niveau audio en
 // direct) ET un trait vertical a la position du seuil de voix. Quand on bouge le
 // slider de seuil, le marqueur se deplace sur le vumetre en temps reel -> on voit

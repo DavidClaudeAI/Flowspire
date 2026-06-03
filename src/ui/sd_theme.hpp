@@ -1,4 +1,4 @@
-// StreamDirector — jetons de design (couche UI), source unique de verite visuelle.
+// Flowspire — jetons de design (couche UI), source unique de verite visuelle.
 // Traduit la maquette Pencil ("Design System" + "Dock Live") en constantes C++.
 // Theme sombre aligne sur OBS. Police Inter. Voir design-tokens.md a la racine.
 //

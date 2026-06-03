@@ -1,4 +1,4 @@
-// StreamDirector — panneau "Soutenir le projet" (implementation).
+// Flowspire — panneau "Soutenir le projet" (implementation).
 // Voir sd_support.hpp. Monte le corps dans un layout hote (plus de pop-up : Run 7).
 #include "ui/sd_support.hpp"
 

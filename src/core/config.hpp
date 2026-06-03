@@ -1,5 +1,5 @@
-// StreamDirector — modele de configuration (pur) + (de)serialisation JSON.
-// Reflete la "table de reglage" specs/streamdirector-defaults.json.
+// Flowspire — modele de configuration (pur) + (de)serialisation JSON.
+// Reflete la "table de reglage" specs/flowspire-defaults.json.
 #pragma once
 
 #include <optional>

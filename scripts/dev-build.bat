@@ -1,5 +1,5 @@
 @echo off
-REM StreamDirector — build RAPIDE du coeur + tests (sans OBS).
+REM Flowspire — build RAPIDE du coeur + tests (sans OBS).
 REM Initialise l'env C++ de VS (cl, cmake, ninja fournis avec VS) puis
 REM configure / compile / teste le dossier tests/ (boucle de test rapide).
 setlocal enabledelayedexpansion

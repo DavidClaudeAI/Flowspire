@@ -1,4 +1,4 @@
-// StreamDirector — panneaux d'edition de configuration partages (couche UI, Run 6).
+// Flowspire — panneaux d'edition de configuration partages (couche UI, Run 6).
 //
 // SOURCE UNIQUE des 4 panneaux qui editent une sd::core::Config :
 //   - Intervenants (nom + source audio + corbeille + "Ajouter")

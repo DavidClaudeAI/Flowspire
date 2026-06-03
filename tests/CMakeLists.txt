@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 # Build AUTONOME du coeur (core) + tests — SANS OBS ni Qt.
 # C'est la boucle de test rapide : `cmake -S tests -B build_tests -G Ninja`.
 # (Le plugin complet se build depuis la racine via l'obs-plugintemplate.)
-project(StreamDirectorTests LANGUAGES CXX)
+project(FlowspireTests LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -23,7 +23,9 @@ endif()
 
 set(SD_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/..")
 
-add_library(sd_core STATIC
+add_library(
+  sd_core
+  STATIC
   ${SD_ROOT}/src/core/speaker_detector.cpp
   ${SD_ROOT}/src/core/config.cpp
   ${SD_ROOT}/src/core/director.cpp
@@ -37,10 +39,7 @@ target_include_directories(sd_core PUBLIC ${SD_ROOT}/src)
 target_include_directories(sd_core SYSTEM PUBLIC ${SD_ROOT}/vendor)
 
 enable_testing()
-add_executable(sd_tests
-  ${SD_ROOT}/tests/test_core.cpp
-  ${SD_ROOT}/tests/test_profiles_store.cpp
-)
+add_executable(sd_tests ${SD_ROOT}/tests/test_core.cpp ${SD_ROOT}/tests/test_profiles_store.cpp)
 target_link_libraries(sd_tests PRIVATE sd_core)
 target_include_directories(sd_tests SYSTEM PRIVATE ${SD_ROOT}/vendor)
 add_test(NAME sd_tests COMMAND sd_tests)

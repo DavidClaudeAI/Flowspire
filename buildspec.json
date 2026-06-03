@@ -33,13 +33,13 @@
     },
     "platformConfig": {
         "macos": {
-            "bundleId": "tv.streamdirector.plugin"
+            "bundleId": "tv.flowspire.plugin"
         }
     },
-    "name": "streamdirector",
-    "displayName": "StreamDirector",
+    "name": "flowspire",
+    "displayName": "Flowspire",
     "version": "0.2.0",
     "author": "David",
-    "website": "https://github.com/DavidClaudeAI/StreamDirector",
+    "website": "https://github.com/DavidClaudeAI/Flowspire",
     "email": "zouarid@gmail.com"
 }

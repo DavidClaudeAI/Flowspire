@@ -1,4 +1,4 @@
-// StreamDirector — catalogue de profils (modele PUR + (de)serialisation JSON).
+// Flowspire — catalogue de profils (modele PUR + (de)serialisation JSON).
 // Un "profil" = une configuration nommee. Le CONTENU d'un profil est une
 // sd::core::Config classique (meme format que config.json) ; ce fichier ne gere
 // que le CATALOGUE : la liste ordonnee {id, nom}, le profil actif, et l'allocation

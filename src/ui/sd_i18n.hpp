@@ -1,4 +1,4 @@
-// StreamDirector — helper d'internationalisation (couche UI).
+// Flowspire — helper d'internationalisation (couche UI).
 // Centralise l'acces a l'i18n NATIVE d'OBS : obs_module_text(cle) lit la chaine
 // dans le fichier de langue actif (data/locale/<langue>.ini), avec fallback sur
 // la locale par defaut (en-US) declaree via OBS_MODULE_USE_DEFAULT_LOCALE.

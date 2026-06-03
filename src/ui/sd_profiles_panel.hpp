@@ -1,4 +1,4 @@
-// StreamDirector — panneau "Profils" (couche UI, Run 7).
+// Flowspire — panneau "Profils" (couche UI, Run 7).
 //
 // Liste les profils (configurations nommees) avec, par ligne : icone, nom, resume
 // auto (n sources · plan large), badge "Actif" ou bouton "Charger", et un menu "⋮"

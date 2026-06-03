@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : inventaire des ressources (scenes + sources audio).
+// Flowspire — pont OBS : inventaire des ressources (scenes + sources audio).
 // Couche "obs" : enumere ce qui existe dans OBS pour alimenter les listes
 // deroulantes de l'assistant de configuration. A n'appeler QUE depuis le thread
 // UI (l'API frontend d'OBS n'est pas concue pour un thread arbitraire).

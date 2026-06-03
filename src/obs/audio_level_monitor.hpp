@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : lecture des niveaux audio internes.
+// Flowspire — pont OBS : lecture des niveaux audio internes.
 // Couche "obs" : seul endroit qui parle a l'API OBS pour l'audio. Encapsule un
 // obs_volmeter par source audio. Le callback volmeter est invoque sur un THREAD
 // AUDIO ; on stocke le dernier pic (dB) + son horodatage dans des std::atomic

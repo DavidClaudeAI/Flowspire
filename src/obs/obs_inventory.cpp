@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : inventaire des ressources (implementation).
+// Flowspire — pont OBS : inventaire des ressources (implementation).
 #include "obs/obs_inventory.hpp"
 
 #include <obs.h>

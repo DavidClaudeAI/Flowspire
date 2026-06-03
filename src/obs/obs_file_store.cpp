@@ -1,4 +1,4 @@
-// StreamDirector — ObsFileStore (implementation OBS).
+// Flowspire — ObsFileStore (implementation OBS).
 #include "obs/obs_file_store.hpp"
 
 #include <obs-module.h>

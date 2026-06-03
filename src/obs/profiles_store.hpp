@@ -1,4 +1,4 @@
-// StreamDirector — magasin de profils (gestion + IO via FileStore injecte).
+// Flowspire — magasin de profils (gestion + IO via FileStore injecte).
 //
 // Modele de stockage (Run 8) — le MOTEUR LIT DIRECTEMENT LE PROFIL ACTIF :
 //   %config-plugin%/

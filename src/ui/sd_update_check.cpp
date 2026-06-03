@@ -19,8 +19,8 @@ namespace {
 // l'app), changer ces deux lignes ici (et nulle part ailleurs). NB : GitHub redirige
 // automatiquement les anciennes URLs apres un renommage, donc rien ne casse dans
 // l'intervalle.
-constexpr const char* kReleasesApiUrl = "https://api.github.com/repos/DavidClaudeAI/StreamDirector/releases/latest";
-constexpr const char* kReleasesPageUrl = "https://github.com/DavidClaudeAI/StreamDirector/releases/latest";
+constexpr const char* kReleasesApiUrl = "https://api.github.com/repos/DavidClaudeAI/Flowspire/releases/latest";
+constexpr const char* kReleasesPageUrl = "https://github.com/DavidClaudeAI/Flowspire/releases/latest";
 
 } // namespace
 
@@ -29,7 +29,7 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::functi
 
     QNetworkRequest request{QUrl(QString::fromUtf8(kReleasesApiUrl))};
     // GitHub exige un User-Agent, et on fige la version de l'API consommee.
-    request.setRawHeader("User-Agent", "StreamDirector");
+    request.setRawHeader("User-Agent", "Flowspire");
     request.setRawHeader("Accept", "application/vnd.github+json");
     request.setRawHeader("X-GitHub-Api-Version", "2022-11-28");
     // Suivre les redirections 301 : indispensable apres un renommage du depot (l'API
@@ -50,7 +50,7 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::functi
                     if (parsed && sd::core::isNewerVersion(tag, currentVersion)) {
                         info.updateAvailable = true;
                         // Version normalisee "M.m.p" (sans prefixe 'v' eventuel) ->
-                        // affichage coherent avec le label "StreamDirector v%1".
+                        // affichage coherent avec le label "Flowspire v%1".
                         info.latestVersion = std::to_string(parsed->major) + "." + std::to_string(parsed->minor) + "." +
                                              std::to_string(parsed->patch);
                         info.releaseUrl = json.value("html_url", std::string{kReleasesPageUrl});

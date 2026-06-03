@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : ecriture de fichiers ATOMIQUE (mutualisee).
+// Flowspire — pont OBS : ecriture de fichiers ATOMIQUE (mutualisee).
 // Primitive partagee par tous les fichiers du plugin (index + profils). Ecrit un
 // .tmp puis bascule via os_safe_replace (rename atomique sur le meme volume) ->
 // jamais de fichier tronque si une coupure survient en cours d'ecriture, et

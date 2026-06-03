@@ -1,4 +1,4 @@
-// StreamDirector — constantes runtime partagees (couche UI).
+// Flowspire — constantes runtime partagees (couche UI).
 // Source UNIQUE de verite pour la cadence du moteur : le dock appelle
 // Director::update() une fois par tick de timer, et le detecteur compte ses
 // frames attack/release en nombre d'appels a update(). Donc 1 frame = 1 tick.

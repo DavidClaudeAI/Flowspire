@@ -1,4 +1,4 @@
-// StreamDirector — icones (couche UI). Rend des icones lucide (https://lucide.dev,
+// Flowspire — icones (couche UI). Rend des icones lucide (https://lucide.dev,
 // licence ISC) en SVG TEINTE a la couleur demandee, via QSvgRenderer. Pas de
 // fichier externe : les chemins SVG sont embarques dans le .cpp -> l'icone est
 // toujours disponible (rien a installer dans data/). Rendu en HiDPI (net).
@@ -42,5 +42,10 @@ enum class Icon {
 // Pixmap de l'icone `which`, trait de couleur `colorHex` (ex "#3FB950"), carre de
 // `sizePx` (taille logique). Rendu a la resolution physique de l'ecran (net HiDPI).
 QPixmap icon(Icon which, const QString& colorHex, int sizePx);
+
+// Logo "Flowspire" (wordmark complet). Rendu a la HAUTEUR demandee (taille logique) ;
+// la largeur derive du ratio d'origine (646x169) -> aucune deformation. Net HiDPI.
+// Couleur figee = l'artwork (blanc), lisible sur le fond sombre du dock.
+QPixmap logoFlowspire(int heightPx);
 
 } // namespace sd::ui

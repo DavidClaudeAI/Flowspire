@@ -1,4 +1,4 @@
-# StreamDirector
+# Flowspire
 
 > **Le réalisateur automatique pour vos lives multicam dans OBS.**
 > Il met en grand la personne **qui parle**, de façon **organique** — sans aucun driver ni câble audio virtuel.
@@ -13,7 +13,7 @@ Quand vous animez une émission à plusieurs (un talk, un podcast filmé, une ta
 réalisateur·rice qui bascule la caméra sur celui qui parle. Sans ça, on se rabat sur une
 **grille fixe** où tout le monde est affiché en permanence : c'est plat et statique.
 
-**StreamDirector fait ce travail de réalisation à votre place, automatiquement.** Il
+**Flowspire fait ce travail de réalisation à votre place, automatiquement.** Il
 écoute le son de chaque participant *à l'intérieur d'OBS* et **bascule sur la bonne scène**
 dès que quelqu'un prend la parole, en douceur, jamais de façon mécanique ou nerveuse.
 
@@ -22,8 +22,8 @@ quoi que ce soit pendant l'émission.
 
 ### Fonctionne avec **toutes vos sources** — et toutes vos scènes
 
-StreamDirector raisonne uniquement en **sources audio** et en **scènes OBS**. La règle est
-simple : **dès qu'un vu-mètre bouge dans le mélangeur d'OBS, StreamDirector peut écouter
+Flowspire raisonne uniquement en **sources audio** et en **scènes OBS**. La règle est
+simple : **dès qu'un vu-mètre bouge dans le mélangeur d'OBS, Flowspire peut écouter
 cette source** et réaliser dessus. Côté audio, une source peut être :
 
 - votre **micro physique** local,
@@ -38,12 +38,12 @@ bon moment** : il ne crée, ne modifie et ne supprime jamais rien dans votre pro
 
 ### Sans aucun driver ni câble audio virtuel
 
-C'est un parti pris fondateur : StreamDirector lit le son **directement à l'intérieur d'OBS**
+C'est un parti pris fondateur : Flowspire lit le son **directement à l'intérieur d'OBS**
 (les niveaux audio natifs). **Aucun driver, aucun câble audio virtuel, aucun routage
 externe** — rien qui puisse alourdir ou déstabiliser votre machine. Vous installez le
 plugin, et c'est tout.
 
-> **En résumé : si ça produit du son dans OBS et que vous avez des scènes, StreamDirector
+> **En résumé : si ça produit du son dans OBS et que vous avez des scènes, Flowspire
 > sait réaliser avec — sans rien brancher de plus.**
 
 ---
@@ -69,7 +69,7 @@ plugin, et c'est tout.
 
 ## Comment ça marche : « organique, jamais mécanique »
 
-StreamDirector ne suit **jamais une règle rigide** du type « X parle → on montre X, point ».
+Flowspire ne suit **jamais une règle rigide** du type « X parle → on montre X, point ».
 À chaque décision, il fait un **tirage au sort pondéré** parmi plusieurs choix possibles.
 C'est ce qui donne le côté naturel : deux situations identiques ne produisent pas forcément le même plan, exactement comme le ferait un humain derrière la régie.
 
@@ -105,9 +105,9 @@ Par-dessus ces tirages, des **garde-fous** évitent la nervosité :
 
 ## Installation
 
-1. Récupérez `streamdirector.dll` (Windows) / `.so` (Linux) / `.plugin` (macOS) depuis une release, ou compilez-le (voir [Build & développement](#build--développement)).
+1. Récupérez `flowspire.dll` (Windows) / `.so` (Linux) / `.plugin` (macOS) depuis une release, ou compilez-le (voir [Build & développement](#build--développement)).
 2. Copiez-le dans le dossier des plugins d'OBS, puis **(re)lancez OBS**.
-3. Dans OBS : menu **Docks → StreamDirector** pour afficher le panneau.
+3. Dans OBS : menu **Docks → Flowspire** pour afficher le panneau.
 
 > OBS **28 ou supérieur** est requis.
 
@@ -116,7 +116,7 @@ Par-dessus ces tirages, des **garde-fous** évitent la nervosité :
 ## Démarrage rapide (l'assistant)
 
 Avant de lancer l'assistant, **préparez vos scènes et vos sources audio dans OBS** :
-StreamDirector ne les crée pas, il les pilote.
+Flowspire ne les crée pas, il les pilote.
 
 Cliquez sur **Assistant** dans le dock. Il vous guide en 6 écrans :
 
@@ -137,7 +137,7 @@ Cliquez sur **Assistant** dans le dock. Il vous guide en 6 écrans :
 
 ```
 ┌────────────────────────────────────────┐
-│ StreamDirector            ● Actif       │  ← badge = état ET interrupteur (clic = ON/OFF)
+│ ▰ Flowspire (logo)   ● Actif       │  ← en-tête = LOGO · badge = état/interrupteur (clic)
 │ Profil : Mon émission         ▾    ⚙    │  ← sélecteur de profil + réglages
 ├────────────────────────────────────────┤
 │ SCÈNES                                  │
@@ -151,6 +151,7 @@ Cliquez sur **Assistant** dans le dock. Il vous guide en 6 écrans :
 └────────────────────────────────────────┘
 ```
 
+- **En-tête = logo Flowspire** (le wordmark de la marque), en haut du dock.
 - **Badge d'état = interrupteur** : *Actif* (le plugin réalise), *En pause* (figé),
   *Lecture seule* (aucune config). **Un clic** active ou coupe la réalisation auto.
 - **Vu-mètre + curseur de seuil** par intervenant : le niveau bouge sous le curseur, vous calez le seuil visuellement. Ce réglage est **pris en compte immédiatement** et **mémorisé
@@ -166,7 +167,7 @@ Cliquez sur **Assistant** dans le dock. Il vous guide en 6 écrans :
 ## Forcer un plan à la main
 
 En **réalisation auto**, vous gardez la main : **cliquez n'importe quelle scène dans le
-gestionnaire de scènes natif d'OBS** (ou un bouton Stream Deck / Companion) et StreamDirector
+gestionnaire de scènes natif d'OBS** (ou un bouton Stream Deck / Companion) et Flowspire
 la passe à l'antenne.
 
 - Si la scène **fait partie de votre régie** (le plan d'un intervenant ou le plan large) :
@@ -247,17 +248,17 @@ Créez-en un par type d'émission (« 4 invités + moi », « Duo », « Table r
 
 ## Raccourcis (clavier & Stream Deck)
 
-StreamDirector expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pas de
+Flowspire expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pas de
 touche par défaut** : ouvrez **OBS → Paramètres → Raccourcis clavier** et assignez la touche
 de votre choix (par exemple **F13–F18**, idéales pour un Stream Deck).
 
 | Action (libellé dans OBS)                                | Effet                                                                 |
 | -------------------------------------------------------- | --------------------------------------------------------------------- |
-| **StreamDirector : activer/désactiver le pilotage auto** | Marche/arrêt de la réalisation automatique.                           |
-| **StreamDirector : forcer le plan large**                | Bascule immédiatement sur le plan large.                              |
-| **StreamDirector : forcer l'intervenant 1 … 8**          | Bascule immédiatement sur la personne choisie (jusqu'à 8 raccourcis). |
+| **Flowspire : activer/désactiver le pilotage auto** | Marche/arrêt de la réalisation automatique.                           |
+| **Flowspire : forcer le plan large**                | Bascule immédiatement sur le plan large.                              |
+| **Flowspire : forcer l'intervenant 1 … 8**          | Bascule immédiatement sur la personne choisie (jusqu'à 8 raccourcis). |
 
-> Sur un **Stream Deck**, ajoutez un bouton *Touche* / *Hotkey* qui envoie la même touche que celle assignée dans OBS : le bouton pilote alors StreamDirector. Au-delà de 8 personnes, **forcez le plan directement depuis le gestionnaire de scènes natif d'OBS** (un clic = un forçage temporaire).
+> Sur un **Stream Deck**, ajoutez un bouton *Touche* / *Hotkey* qui envoie la même touche que celle assignée dans OBS : le bouton pilote alors Flowspire. Au-delà de 8 personnes, **forcez le plan directement depuis le gestionnaire de scènes natif d'OBS** (un clic = un forçage temporaire).
 
 ---
 
@@ -280,9 +281,9 @@ Vous gardez le contrôle à tout moment, sans casser l'automatisme :
 Les profils vivent dans le dossier de config d'OBS :
 
 ```
-Windows : %APPDATA%\obs-studio\plugin_config\streamdirector\profiles\
-macOS   : ~/Library/Application Support/obs-studio/plugin_config/streamdirector/profiles\
-Linux   : ~/.config/obs-studio/plugin_config/streamdirector/profiles\
+Windows : %APPDATA%\obs-studio\plugin_config\flowspire\profiles\
+macOS   : ~/Library/Application Support/obs-studio/plugin_config/flowspire/profiles\
+Linux   : ~/.config/obs-studio/plugin_config/flowspire/profiles\
 ```
 
 - `index.json` = catalogue des profils + profil actif.
@@ -312,7 +313,7 @@ unitairement (doctest/CTest) — on peut faire évoluer la logique de réalisati
 
 ## Versions & mises à jour
 
-StreamDirector suit le **versionnage sémantique** (`MAJEUR.MINEUR.CORRECTIF`) :
+Flowspire suit le **versionnage sémantique** (`MAJEUR.MINEUR.CORRECTIF`) :
 
 - **CORRECTIF** — correction de bug, sans changement visible (`0.1.0` → `0.1.1`).
 - **MINEUR** — nouvelle fonctionnalité rétrocompatible (`0.1.0` → `0.2.0`).
@@ -334,10 +335,10 @@ Pour **publier** une version (le CI fabrique alors les installeurs des 3 OS et c
 
 ## Crédits & inspiration
 
-StreamDirector s'inspire de **[Gabin](https://github.com/one-click-studio/gabin)**, le
+Flowspire s'inspire de **[Gabin](https://github.com/one-click-studio/gabin)**, le
 réalisateur automatique open source de **[One Click Studio](https://oneclickstudio.fr)**
 (licence MIT). Gabin a posé l'idée d'une
-réalisation **organique** pilotée par le son ; StreamDirector en reprend l'esprit pour
+réalisation **organique** pilotée par le son ; Flowspire en reprend l'esprit pour
 l'amener **nativement dans OBS, sans driver ni câble audio virtuel**.
 
 ## Licence
@@ -346,6 +347,6 @@ l'amener **nativement dans OBS, sans driver ni câble audio virtuel**.
 
 ## Soutenir
 
-StreamDirector est **gratuit et open source — aucune fonction n'est jamais bloquée**. S'il
+Flowspire est **gratuit et open source — aucune fonction n'est jamais bloquée**. S'il
 vous fait gagner du temps sur vos lives, un petit coup de pouce aide à le maintenir :
 le bouton **♥ Soutenir** se trouve dans les paramètres du plugin.

@@ -1,4 +1,4 @@
-// StreamDirector — tirage au sort pondere (cle du "feel" organique).
+// Flowspire — tirage au sort pondere (cle du "feel" organique).
 // Pur, deterministe pour un meme r : permet des tests reproductibles.
 #pragma once
 
