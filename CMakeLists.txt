@@ -75,7 +75,8 @@ target_sources(
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE src)
 # Fichiers d'en-tete seuls (pas de .cpp) — inclus par les .cpp ci-dessus :
-# sd_i18n.hpp, sd_theme.hpp, sd_style.hpp, sd_runtime.hpp, sd_widgets.hpp.
+# sd_i18n.hpp, sd_theme.hpp, sd_style.hpp, sd_runtime.hpp, sd_widgets.hpp,
+# sd_logo_data.hpp (blob SVG du logo, genere depuis src/ui/sd_logo_flowspire.svg).
 target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM PRIVATE vendor)
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 

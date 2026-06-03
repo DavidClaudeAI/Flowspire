@@ -43,4 +43,9 @@ enum class Icon {
 // `sizePx` (taille logique). Rendu a la resolution physique de l'ecran (net HiDPI).
 QPixmap icon(Icon which, const QString& colorHex, int sizePx);
 
+// Logo "Flowspire" (wordmark complet). Rendu a la HAUTEUR demandee (taille logique) ;
+// la largeur derive du ratio d'origine (646x169) -> aucune deformation. Net HiDPI.
+// Couleur figee = l'artwork (blanc), lisible sur le fond sombre du dock.
+QPixmap logoFlowspire(int heightPx);
+
 } // namespace sd::ui

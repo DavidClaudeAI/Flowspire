@@ -1,6 +1,8 @@
 // StreamDirector — icones (implementation). SVG lucide teints via QSvgRenderer.
 #include "ui/sd_icons.hpp"
 
+#include "ui/sd_logo_data.hpp"
+
 #include <QByteArray>
 #include <QGuiApplication>
 #include <QPainter>
@@ -127,6 +129,31 @@ QPixmap icon(Icon which, const QString& colorHex, int sizePx) {
     const int px = static_cast<int>(std::lround(sizePx * dpr));
     QSvgRenderer renderer(QByteArray(svg.toUtf8()));
     QPixmap pm(px, px);
+    pm.fill(Qt::transparent);
+    QPainter painter(&pm);
+    renderer.render(&painter);
+    painter.end();
+    pm.setDevicePixelRatio(dpr);
+    return pm;
+}
+
+QPixmap logoFlowspire(int heightPx) {
+    // Meme principe que icon() : rendu a la resolution physique (net HiDPI). On
+    // deduit la largeur du ratio d'origine (646x169) pour ne pas deformer le mot.
+    qreal dpr = 1.0;
+    if (auto* app = qobject_cast<QGuiApplication*>(QCoreApplication::instance())) {
+        dpr = app->devicePixelRatio();
+    }
+    if (dpr < 1.0) {
+        dpr = 1.0;
+    }
+
+    constexpr double kAspect = 646.0 / 169.0; // largeur / hauteur du wordmark
+    const int h = static_cast<int>(std::lround(heightPx * dpr));
+    const int w = static_cast<int>(std::lround(heightPx * kAspect * dpr));
+    const QByteArray svg(kFlowspireLogoSvg); // variable nommee -> evite le "most vexing parse"
+    QSvgRenderer renderer(svg);
+    QPixmap pm(w, h);
     pm.fill(Qt::transparent);
     QPainter painter(&pm);
     renderer.render(&painter);

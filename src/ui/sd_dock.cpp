@@ -189,13 +189,12 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     // --- Header : icone clapperboard + marque + badge d'etat ---
     auto* header = new QHBoxLayout();
     header->setSpacing(8);
-    auto* brandIcon = new QLabel();
-    brandIcon->setPixmap(icon(Icon::Clapperboard, th::kAccent, 18));
-    auto* brand = new QLabel(i18n("Dock.Title"));
-    brand->setStyleSheet(
-        QString("color:%1; font-size:%2px; font-weight:700;").arg(th::kTextPrimary).arg(th::kFontTitle));
-    header->addWidget(brandIcon);
-    header->addWidget(brand);
+    // Marque : logo "Flowspire" (wordmark SVG) a la place de l'ancien clap + texte.
+    // Le SVG est cadre tres serre -> petite marge a gauche pour aerer (demande David).
+    auto* brandLogo = new QLabel();
+    brandLogo->setPixmap(logoFlowspire(20));
+    brandLogo->setContentsMargins(6, 0, 0, 0);
+    header->addWidget(brandLogo);
     header->addStretch();
 
     statusBadge_ = new QWidget();
