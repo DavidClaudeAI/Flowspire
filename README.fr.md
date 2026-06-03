@@ -124,7 +124,21 @@ scripts\install-local.bat  :: installe le plugin dans OBS (OBS doit être fermé
 
 Le **cœur de décision** (`src/core`) est **pur** (aucune dépendance OBS) et **testé** unitairement (doctest/CTest) — on peut faire évoluer la logique de réalisation sans OBS.
 
-**Versionnage sémantique** (`MAJEUR.MINEUR.CORRECTIF`), source unique dans `buildspec.json`, script `scripts\bump-version.py`. Publier une version = `git tag X.Y.Z` puis push → le CI fabrique les installeurs des 3 OS et crée la Release GitHub.
+**Versionnage sémantique** (`MAJEUR.MINEUR.CORRECTIF`), source unique dans `buildspec.json`, script `scripts\bump-version.py`.
+
+**Les builds tournent à la demande, pas à chaque merge.** Les pull requests sont buildées pour validation ; sinon, on déclenche un build soi-même depuis **Actions → Dispatch → Run workflow** (compile les 3 OS et téléverse les installeurs en artefacts téléchargeables).
+
+**Publier une version** — incrémenter la version, puis taguer et pousser :
+
+```bash
+python scripts/bump-version.py minor      # ou patch / major
+git commit -am "feat : v0.3.0"
+git tag -a 0.3.0 -m "v0.3.0"              # tag annoté (poussé par --follow-tags)
+git push --follow-tags
+# astuce : tag -a 0.3.0-rc1 pour un essai à blanc de tout le flux (pré-release)
+```
+
+Le tag déclenche le CI : build des 3 OS, fabrication des installeurs — **`.exe` Windows** (Inno Setup, → `cmake/windows/resources/installer-Windows.iss`), **`.pkg` macOS**, **`.deb` Linux** — et création d'une **Release GitHub en brouillon** avec checksums, que tu relis avant de publier. Installeurs **non signés** (étape SmartScreen/Gatekeeper une fois, voir le [guide](docs/guide.fr.md)).
 
 ---
 

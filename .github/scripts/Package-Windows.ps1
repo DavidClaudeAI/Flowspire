@@ -67,6 +67,33 @@ function Package {
     }
     Compress-Archive -Force @CompressArgs
     Log-Group
+
+    # Installeur .exe (Inno Setup), en plus du .zip. ISCC.exe est preinstalle sur les
+    # runners Windows de GitHub ; absent (machine sans Inno Setup 6) -> on saute proprement
+    # (le .zip reste produit). L'.iss remappe vers le layout "bundled" d'OBS et detecte le
+    # dossier OBS via le registre (cf. cmake/windows/resources/installer-Windows.iss).
+    $IsccCandidates = @(
+        "${Env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+        "${Env:ProgramFiles}\Inno Setup 6\ISCC.exe"
+    )
+    $Iscc = $IsccCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+    if ( $Iscc ) {
+        Log-Group "Building Windows installer ${ProductName}-${ProductVersion}-windows-${Target}.exe..."
+        $IssFile = "${ProjectRoot}/cmake/windows/resources/installer-Windows.iss"
+        $InstallerArgs = @(
+            '/Qp'
+            "/DMyAppVersion=${ProductVersion}"
+            "/DMyModuleName=${ProductName}"
+            "/DSourceDir=${ProjectRoot}/release/${Configuration}/${ProductName}"
+            "/DOutputDir=${ProjectRoot}/release"
+            "${IssFile}"
+        )
+        Invoke-External "$Iscc" @InstallerArgs
+        Log-Group
+    } else {
+        Write-Warning 'Inno Setup (ISCC.exe) introuvable - installeur .exe non genere (zip seul).'
+    }
 }
 
 Package
