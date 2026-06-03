@@ -138,4 +138,8 @@ Flowspire s'inspire de **[Gabin](https://github.com/one-click-studio/gabin)**, l
 
 ## Soutenir
 
-Flowspire est **gratuit et open source — aucune fonction n'est jamais bloquée**. S'il vous fait gagner du temps sur vos lives, un petit coup de pouce aide à le maintenir : le bouton **♥ Soutenir** se trouve dans les paramètres du plugin.
+Flowspire est **gratuit et open source — aucune fonction n'est jamais bloquée**. S'il vous fait gagner du temps sur vos lives, un petit coup de pouce aide à le maintenir :
+
+[![Soutenir sur PayPal](https://img.shields.io/badge/Soutenir-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/DavidZouari)
+
+*(Le bouton **Soutenir** est aussi accessible directement dans les paramètres du plugin.)*
