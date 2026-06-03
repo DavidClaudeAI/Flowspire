@@ -63,6 +63,8 @@ Pour un rendu vraiment **smooth et original**, vous pouvez installer le plugin t
 2. Lancez-le (il installe le plugin au bon endroit), puis **fermez et relancez OBS**.
 3. Dans OBS, ouvrez le menu **Docks → Flowspire** pour afficher le panneau.
 
+> ⚠️ **Ne sautez pas l'étape 3 — c'est LE piège.** Après l'installation, **OBS n'affiche pas le dock tout seul**. Tant que vous ne l'avez pas activé via **Docks → Flowspire** (barre de menu en haut), le plugin est bien chargé mais **rien n'apparaît à l'écran** — et on croit à tort que l'installation a échoué. Dès que vous l'affichez, la **carte d'accueil** vous accueille et vous guide.
+
 > Nécessite **OBS 28 ou supérieur**.
 
 ### Passer l'avertissement « éditeur inconnu »

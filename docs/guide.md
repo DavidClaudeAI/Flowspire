@@ -63,6 +63,8 @@ For a truly **smooth and original** look, you can install the third-party **Move
 2. Run it (it installs the plugin in the right place), then **close and restart OBS**.
 3. In OBS, open the **Docks → Flowspire** menu to show the panel.
 
+> ⚠️ **Don't skip step 3 — this is THE gotcha.** After installing, **OBS does not show the dock by itself**. Until you enable it via **Docks → Flowspire** (top menu bar), the plugin is loaded but **nothing appears on screen** — which makes it easy to think the install failed. The moment you show it, the **welcome card** greets you and guides you.
+
 > Requires **OBS 28 or higher**.
 
 ### Getting past the "unknown publisher" warning

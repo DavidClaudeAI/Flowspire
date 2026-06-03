@@ -100,7 +100,7 @@ Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan
    - **macOS** — `flowspire-*-macos-universal.pkg`
    - **Linux** — `flowspire-*-x86_64-linux-gnu.deb`
 2. Lancez-le, puis **(re)lancez OBS**.
-3. Menu **Docks → Flowspire** pour afficher le panneau.
+3. **Dans OBS, affichez le dock : menu Docks → Flowspire.** ⚠️ OBS ne l'affiche pas tout seul — tant que vous ne le faites pas, le plugin est chargé mais invisible (ce n'est pas un bug). Une fois affiché, la carte d'accueil vous guide.
 
 > Nécessite **OBS 28 ou supérieur**. Build non signé → au 1ᵉʳ lancement : **Windows** SmartScreen *Informations complémentaires → Exécuter quand même* ; **macOS** clic droit → *Ouvrir*.
 

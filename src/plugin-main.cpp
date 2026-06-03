@@ -22,8 +22,15 @@ the Free Software Foundation; either version 2 of the License, or
 
 #include "ui/sd_dock.hpp"
 
+// OBS fournit Qt6Network mais PAS de backend TLS sur Windows ET macOS (cf.
+// registerBundledTlsBackend) : il faut Qt + l'API systeme pour localiser notre binaire.
+#if defined(_WIN32) || defined(__APPLE__)
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QString>
+#endif
+
 #ifdef _WIN32
-// Pour embarquer le backend TLS Qt absent d'OBS (cf. registerWindowsTlsBackend).
 #ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
 #endif
@@ -31,10 +38,10 @@ the Free Software Foundation; either version 2 of the License, or
 #define NOMINMAX
 #endif
 #include <windows.h>
+#endif
 
-#include <QCoreApplication>
-#include <QFileInfo>
-#include <QString>
+#ifdef __APPLE__
+#include <dlfcn.h>
 #endif
 
 OBS_DECLARE_MODULE()
@@ -133,25 +140,46 @@ static void unregisterHotkeys(void) {
     }
 }
 
+#if defined(_WIN32) || defined(__APPLE__)
+// OBS fournit Qt6Network mais PAS de backend TLS sur Windows ET macOS -> les requetes
+// HTTPS de Qt (notre verification de mise a jour) echouent avec "No functional TLS
+// backend". On embarque le backend TLS de Qt (version alignee sur le Qt d'OBS) a cote du
+// plugin et on ajoute son dossier aux chemins de plugins de Qt pour qu'il l'y trouve :
+//   Windows : <plugin>/bin/64bit/tls/qschannelbackend.dll   (Schannel, natif)
+//   macOS   : <bundle>.plugin/Contents/PlugIns/tls/...       (SecureTransport/OpenSSL)
+// (Linux : OpenSSL systeme, rien a embarquer.)
+static void registerBundledTlsBackend(void) {
+    QString libDir;
 #ifdef _WIN32
-// OBS fournit Qt6Network mais PAS de backend TLS -> les requetes HTTPS de Qt (notre
-// verification de mise a jour) echouent avec "No functional TLS backend". On embarque
-// le backend Schannel de Qt (TLS natif Windows, version alignee sur le Qt d'OBS) dans
-// <plugin>/bin/64bit/tls, et on ajoute le dossier de NOTRE DLL aux chemins de plugins
-// de Qt pour qu'il l'y trouve. (macOS/Linux ont un backend TLS natif.)
-static void registerWindowsTlsBackend(void) {
     HMODULE self = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                            reinterpret_cast<LPCWSTR>(&registerWindowsTlsBackend), &self)) {
+                            reinterpret_cast<LPCWSTR>(&registerBundledTlsBackend), &self)) {
+        obs_log(LOG_WARNING, "Flowspire: module introuvable, backend TLS Qt non enregistre");
         return;
     }
     wchar_t path[MAX_PATH];
     const DWORD n = GetModuleFileNameW(self, path, MAX_PATH);
     if (n == 0 || n >= MAX_PATH) {
+        obs_log(LOG_WARNING, "Flowspire: chemin du module non resolu, backend TLS Qt non enregistre");
         return;
     }
-    const QString dir = QFileInfo(QString::fromWCharArray(path, static_cast<int>(n))).absolutePath();
-    QCoreApplication::addLibraryPath(dir);
+    // .../bin/64bit/flowspire.dll -> on ajoute .../bin/64bit (Qt cherchera ./tls/).
+    libDir = QFileInfo(QString::fromWCharArray(path, static_cast<int>(n))).absolutePath();
+#elif defined(__APPLE__)
+    Dl_info info;
+    if (dladdr(reinterpret_cast<const void*>(&registerBundledTlsBackend), &info) == 0 || info.dli_fname == nullptr) {
+        obs_log(LOG_WARNING, "Flowspire: plugin introuvable (dladdr), backend TLS Qt non enregistre");
+        return;
+    }
+    // .../flowspire.plugin/Contents/MacOS/flowspire -> on ajoute .../Contents/PlugIns
+    // (Qt cherchera ./tls/). On remonte de MacOS a Contents.
+    const QString bin = QString::fromUtf8(info.dli_fname);
+    libDir = QFileInfo(QFileInfo(bin).absolutePath()).absolutePath() + QStringLiteral("/PlugIns");
+#endif
+    QCoreApplication::addLibraryPath(libDir);
+    // Trace le chemin enregistre : si le backend TLS ne se charge pas un jour, le log indique
+    // immediatement si c'est ce chemin (vide/faux) ou le backend lui-meme qui est en cause.
+    obs_log(LOG_INFO, "Flowspire: chemin backend TLS Qt enregistre: %s", libDir.toUtf8().constData());
 }
 #endif
 
@@ -168,10 +196,10 @@ void obs_module_post_load(void) {
     // traverserait du code C d'OBS -> std::terminate (crash d'OBS au demarrage).
     // On isole donc toute la construction du dock derriere un try/catch.
     try {
-#ifdef _WIN32
+#if defined(_WIN32) || defined(__APPLE__)
         // Doit preceder toute requete HTTPS de Qt (la verif MAJ part a la creation du
         // dock juste apres) -> on enregistre le backend TLS embarque maintenant.
-        registerWindowsTlsBackend();
+        registerBundledTlsBackend();
 #endif
         // A ce stade, l'interface Qt d'OBS est prete : on peut creer le dock.
         auto* dock = new sd::ui::SdDock();
