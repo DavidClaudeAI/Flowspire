@@ -18,8 +18,8 @@
   #define OutputDir "..\..\..\release"
 #endif
 #ifndef MyModuleName
-  ; Nom du module OBS = nom EXACT de la DLL (minuscule). OBS cherche les donnees dans
-  ; data\obs-plugins\<MyModuleName>\ -> doit correspondre, sinon locales introuvables.
+  ; Nom du module OBS = nom EXACT de la DLL (minuscule). Sert au nom de la DLL et du
+  ; dossier d'install per-user (...\obs-studio\plugins\<MyModuleName>\).
   #define MyModuleName "flowspire"
 #endif
 
