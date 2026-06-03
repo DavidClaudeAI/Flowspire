@@ -95,14 +95,49 @@ if(WIN32 AND ENABLE_QT AND TARGET Qt6::QSchannelBackendPlugin)
   )
 endif()
 
-# macOS : backend(s) TLS de Qt ajoutes dans le bundle (Contents/PlugIns/tls) via install()
-# et NON POST_BUILD : un POST_BUILD modifie le bundle APRES qu'Xcode a calcule sa signature
-# -> "Signing ... script execution error". L'install() ajoute le fichier au bundle installe,
-# apres la signature du build.
+# macOS : OBS ne fournit pas de backend TLS Qt -> on embarque celui de Qt (SecureTransport,
+# natif macOS) DANS le bundle a Contents/PlugIns/tls. Subtilite : le backend livre par les
+# obs-deps est NON signe, et Xcode refuse de sceller un bundle dont un composant interne
+# (dossier PlugIns = emplacement de code) n'est pas signe. On le signe donc nous-memes en
+# ad-hoc (ordre "inside-out" recommande par Apple) sur une copie locale, AVANT que
+# MACOSX_PACKAGE_LOCATION ne le place dans le bundle et qu'Xcode scelle l'ensemble ->
+# signature du bundle valide ET backend present dans le .pkg. (XCODE_EMBED_PLUGINS n'est pas
+# utilisable : il exige une cible construite, pas un dylib importe de Qt.) plugin-main ajoute
+# Contents/PlugIns aux chemins de plugins Qt au chargement.
 if(APPLE AND ENABLE_QT)
   foreach(_backend QSecureTransportBackendPlugin QOpenSSLBackendPlugin)
     if(TARGET Qt6::${_backend})
-      install(FILES "$<TARGET_FILE:Qt6::${_backend}>" DESTINATION "${CMAKE_PROJECT_NAME}.plugin/Contents/PlugIns/tls")
+      set(_bk_loc "")
+      foreach(_cfg RELEASE RELWITHDEBINFO MINSIZEREL DEBUG)
+        get_target_property(_loc Qt6::${_backend} IMPORTED_LOCATION_${_cfg})
+        if(_loc)
+          set(_bk_loc "${_loc}")
+          break()
+        endif()
+      endforeach()
+      if(NOT _bk_loc)
+        get_target_property(_bk_loc Qt6::${_backend} IMPORTED_LOCATION)
+      endif()
+      if(_bk_loc AND EXISTS "${_bk_loc}")
+        get_filename_component(_bk_name "${_bk_loc}" NAME)
+        file(COPY "${_bk_loc}" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/tls_backends")
+        set(_bk_signed "${CMAKE_CURRENT_BINARY_DIR}/tls_backends/${_bk_name}")
+        # Meme identite que le bundle (CODESIGN_IDENTITY, "-" ad-hoc par defaut) pour eviter
+        # toute incoherence de signature (fork avec un vrai certificat Apple).
+        set(_bk_sign_id "${CODESIGN_IDENTITY}")
+        if(NOT _bk_sign_id)
+          set(_bk_sign_id "-")
+        endif()
+        execute_process(
+          COMMAND codesign --force --sign "${_bk_sign_id}" "${_bk_signed}"
+          RESULT_VARIABLE _bk_sign_result
+        )
+        if(NOT _bk_sign_result EQUAL 0)
+          message(WARNING "Flowspire : echec de la signature du backend TLS ${_bk_name}")
+        endif()
+        target_sources(${CMAKE_PROJECT_NAME} PRIVATE "${_bk_signed}")
+        set_source_files_properties("${_bk_signed}" PROPERTIES MACOSX_PACKAGE_LOCATION "PlugIns/tls")
+      endif()
     endif()
   endforeach()
 endif()
