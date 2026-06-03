@@ -219,9 +219,12 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 
     // --- Bandeau "mise a jour disponible" (masque ; revele par startUpdateCheck) ---
     updateBanner_ = new QWidget();
+    updateBanner_->setObjectName(QStringLiteral("updateBanner"));
     // rgba() (helper QSS partage) : Qt lit un hex 8 chiffres comme #AARRGGBB -> il NE faut
     // PAS passer les jetons translucides (#RRGGBBAA) tels quels (cf. statusBadge_).
-    updateBanner_->setStyleSheet(QString("background:%1; border:1px solid %2; border-radius:%3px;")
+    // Selecteur #updateBanner : sinon la bordure CASCADE sur le label/bouton enfants
+    // (doubles lignes parasites) -> meme piege que #FlowspireDock / #spkCard.
+    updateBanner_->setStyleSheet(QString("#updateBanner { background:%1; border:1px solid %2; border-radius:%3px; }")
                                      .arg(rgba(th::kAccent, 0.15))
                                      .arg(rgba(th::kAccent, 0.5))
                                      .arg(th::kRadiusButton));

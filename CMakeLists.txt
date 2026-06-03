@@ -82,15 +82,37 @@ target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
 
-# Windows : OBS embarque Qt6Network mais PAS de backend TLS -> notre verification de mise
-# a jour en HTTPS echouerait ("No functional TLS backend"). On embarque le backend
-# Schannel de Qt (TLS natif Windows, version alignee sur le Qt d'OBS) sous bin/64bit/tls ;
-# plugin-main ajoute ce dossier aux chemins de plugins Qt au chargement. (macOS/Linux ont
-# un backend TLS natif fourni avec Qt.)
+# OBS embarque Qt6Network mais PAS de backend TLS (Windows ET macOS) -> notre verification
+# de mise a jour en HTTPS echouerait ("No functional TLS backend"). On embarque le backend
+# TLS de Qt (version alignee sur le Qt d'OBS) a cote du plugin ; plugin-main ajoute son
+# dossier aux chemins de plugins Qt au chargement. (Linux : OpenSSL systeme.)
+# Windows : backend Schannel (natif) sous bin/64bit/tls.
 if(WIN32 AND ENABLE_QT AND TARGET Qt6::QSchannelBackendPlugin)
   install(
     FILES "$<TARGET_FILE:Qt6::QSchannelBackendPlugin>"
     DESTINATION "${CMAKE_PROJECT_NAME}/bin/64bit/tls"
     COMPONENT Runtime
   )
+endif()
+
+# macOS : backend(s) TLS de Qt copies dans le bundle (Contents/PlugIns/tls) en POST_BUILD.
+if(APPLE AND ENABLE_QT)
+  set(_flowspire_tls_backends "")
+  foreach(_backend QSecureTransportBackendPlugin QOpenSSLBackendPlugin)
+    if(TARGET Qt6::${_backend})
+      list(APPEND _flowspire_tls_backends "$<TARGET_FILE:Qt6::${_backend}>")
+    endif()
+  endforeach()
+  if(_flowspire_tls_backends)
+    add_custom_command(
+      TARGET ${CMAKE_PROJECT_NAME}
+      POST_BUILD
+      COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:${CMAKE_PROJECT_NAME}>/Contents/PlugIns/tls"
+      COMMAND
+        ${CMAKE_COMMAND} -E copy ${_flowspire_tls_backends}
+        "$<TARGET_BUNDLE_DIR:${CMAKE_PROJECT_NAME}>/Contents/PlugIns/tls/"
+      COMMENT "Bundling Qt TLS backend(s) into the plugin bundle"
+      VERBATIM
+    )
+  endif()
 endif()
