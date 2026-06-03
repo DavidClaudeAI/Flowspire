@@ -1,8 +1,8 @@
 ; Flowspire - installeur Windows (Inno Setup).
 ;
-; Empaquete le plugin dans le dossier OBS Studio detecte, au layout "bundled" d'OBS :
-;   {OBS}\obs-plugins\64bit\flowspire.dll
-;   {OBS}\data\obs-plugins\flowspire\...   (locales, etc.)
+; Installe le plugin PAR UTILISATEUR dans le dossier plugins d'OBS (sans droits admin) :
+;   %AppData%\obs-studio\plugins\flowspire\bin\64bit\flowspire.dll
+;   %AppData%\obs-studio\plugins\flowspire\data\...   (locales, etc.)
 ;
 ; Version + dossiers source/sortie sont passes par Package-Windows.ps1 via iscc /D... .
 ; Les valeurs #ifndef ci-dessous ne servent qu'a un test local manuel.
@@ -36,18 +36,17 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 WizardStyle=modern
-; Dossier OBS : lu dans le registre (cle posee par l'installeur officiel OBS),
-; repli sur Program Files\obs-studio. La page de selection reste visible (Parcourir).
-DefaultDirName={reg:HKLM\SOFTWARE\OBS Studio,|{commonpf}\obs-studio}
+; Install PAR UTILISATEUR dans le dossier plugins d'OBS : pas de droits admin, et pas
+; d'avertissement "dossier existe deja" (flowspire est un sous-dossier dedie et neuf).
+DefaultDirName={userappdata}\obs-studio\plugins\{#MyModuleName}
 DisableProgramGroupPage=yes
-; Ecrit dans Program Files -> droits administrateur (demande une fois a l'UAC).
-PrivilegesRequired=admin
+PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 OutputDir={#OutputDir}
 OutputBaseFilename={#MyModuleName}-{#MyAppVersion}-windows-x64
 UninstallDisplayName={#MyAppName} (plugin OBS)
-UninstallDisplayIcon={app}\bin\64bit\obs64.exe
+UninstallDisplayIcon={app}\bin\64bit\{#MyModuleName}.dll
 Compression=lzma2
 SolidCompression=yes
 
@@ -56,21 +55,7 @@ Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; La DLL -> dossier des modules 64 bits d'OBS.
-Source: "{#SourceDir}\bin\64bit\{#MyModuleName}.dll"; DestDir: "{app}\obs-plugins\64bit"; Flags: ignoreversion
-; Les donnees (locales...) -> data\obs-plugins\<module> (nom EXACT de la DLL, minuscule).
-Source: "{#SourceDir}\data\*"; DestDir: "{app}\data\obs-plugins\{#MyModuleName}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
-[Code]
-{ Garde-fou : si le dossier choisi ne contient pas OBS (pas d'obs64.exe), on previent
-  l'utilisateur (mauvais dossier) plutot que d'installer dans le vide. }
-procedure CurStepChanged(CurStep: TSetupStep);
-begin
-  if (CurStep = ssInstall) and (not FileExists(ExpandConstant('{app}\bin\64bit\obs64.exe'))) then
-  begin
-    if MsgBox('OBS Studio ne semble pas installe dans :' + #13#10
-              + ExpandConstant('{app}') + #13#10 + #13#10
-              + 'Installer le plugin ici quand meme ?', mbConfirmation, MB_YESNO) = IDNO then
-      Abort;
-  end;
-end;
+; Layout "par utilisateur" : on depose le plugin tel quel ({app} = ...\plugins\flowspire),
+; donc OBS charge ...\plugins\flowspire\bin\64bit\flowspire.dll + ...\plugins\flowspire\data\ .
+Source: "{#SourceDir}\bin\64bit\{#MyModuleName}.dll"; DestDir: "{app}\bin\64bit"; Flags: ignoreversion
+Source: "{#SourceDir}\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs
