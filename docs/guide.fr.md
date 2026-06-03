@@ -56,11 +56,11 @@ Pour un rendu vraiment **smooth et original**, vous pouvez installer le plugin t
 
 ## 2. Installer Flowspire
 
-1. Récupérez le plugin pour votre système depuis une **release** :
-   - **Windows** : `flowspire.dll`
-   - **Linux** : `flowspire.so`
-   - **macOS** : `flowspire.plugin`
-2. Placez-le dans le dossier des plugins d'OBS (l'installeur s'en charge si vous en utilisez un), puis **fermez et relancez OBS**.
+1. Téléchargez l'installeur de votre système depuis la [**dernière release**](https://github.com/DavidClaudeAI/Flowspire/releases/latest) :
+   - **Windows** : `flowspire-*-windows-x64.exe` (double-clic)
+   - **macOS** : `flowspire-*-macos-universal.pkg`
+   - **Linux** : `flowspire-*-x86_64-linux-gnu.deb`
+2. Lancez-le (il installe le plugin au bon endroit), puis **fermez et relancez OBS**.
 3. Dans OBS, ouvrez le menu **Docks → Flowspire** pour afficher le panneau.
 
 > Nécessite **OBS 28 ou supérieur**.

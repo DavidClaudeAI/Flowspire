@@ -95,11 +95,14 @@ On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on 
 
 ## Quick install
 
-1. Grab `flowspire.dll` (Windows) / `.so` (Linux) / `.plugin` (macOS) from a **release**, or build it yourself.
-2. Copy it into the OBS plugins folder, then **(re)start OBS**.
+1. Download the installer for your system from the [**latest release**](../../releases/latest):
+   - **Windows** — `flowspire-*-windows-x64.exe` (double-click)
+   - **macOS** — `flowspire-*-macos-universal.pkg`
+   - **Linux** — `flowspire-*-x86_64-linux-gnu.deb`
+2. Run it, then **(re)start OBS**.
 3. Menu **Docks → Flowspire** to show the panel.
 
-> Requires **OBS 28 or higher**.
+> Requires **OBS 28 or higher**. Unsigned build → on first launch: **Windows** SmartScreen *More info → Run anyway*; **macOS** right-click → *Open*.
 
 **First time?** The [**full user guide**](docs/guide.md) walks you through everything from A to Z: preparing your scenes, the wizard screen by screen, and every setting explained — with screenshots.
 

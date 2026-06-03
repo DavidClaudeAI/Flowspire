@@ -56,11 +56,11 @@ For a truly **smooth and original** look, you can install the third-party **Move
 
 ## 2. Install Flowspire
 
-1. Grab the plugin for your system from a **release**:
-   - **Windows**: `flowspire.dll`
-   - **Linux**: `flowspire.so`
-   - **macOS**: `flowspire.plugin`
-2. Place it in the OBS plugins folder (the installer handles that if you use one), then **close and restart OBS**.
+1. Download the installer for your system from the [**latest release**](https://github.com/DavidClaudeAI/Flowspire/releases/latest):
+   - **Windows**: `flowspire-*-windows-x64.exe` (double-click)
+   - **macOS**: `flowspire-*-macos-universal.pkg`
+   - **Linux**: `flowspire-*-x86_64-linux-gnu.deb`
+2. Run it (it installs the plugin in the right place), then **close and restart OBS**.
 3. In OBS, open the **Docks → Flowspire** menu to show the panel.
 
 > Requires **OBS 28 or higher**.

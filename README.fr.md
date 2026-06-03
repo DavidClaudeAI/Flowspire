@@ -95,11 +95,14 @@ Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan
 
 ## Installation express
 
-1. Récupérez `flowspire.dll` (Windows) / `.so` (Linux) / `.plugin` (macOS) depuis une **release**, ou compilez-le.
-2. Copiez-le dans le dossier des plugins d'OBS, puis **(re)lancez OBS**.
+1. Téléchargez l'installeur de votre système depuis la [**dernière release**](../../releases/latest) :
+   - **Windows** — `flowspire-*-windows-x64.exe` (double-clic)
+   - **macOS** — `flowspire-*-macos-universal.pkg`
+   - **Linux** — `flowspire-*-x86_64-linux-gnu.deb`
+2. Lancez-le, puis **(re)lancez OBS**.
 3. Menu **Docks → Flowspire** pour afficher le panneau.
 
-> Nécessite **OBS 28 ou supérieur**.
+> Nécessite **OBS 28 ou supérieur**. Build non signé → au 1ᵉʳ lancement : **Windows** SmartScreen *Informations complémentaires → Exécuter quand même* ; **macOS** clic droit → *Ouvrir*.
 
 **Première utilisation ?** Le [**Guide utilisateur complet**](docs/guide.fr.md) vous accompagne de A à Z : préparer vos scènes, l'assistant écran par écran, et chaque réglage expliqué — avec captures.
 
