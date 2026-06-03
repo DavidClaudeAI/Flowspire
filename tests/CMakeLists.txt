@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.20)
 # Build AUTONOME du coeur (core) + tests — SANS OBS ni Qt.
 # C'est la boucle de test rapide : `cmake -S tests -B build_tests -G Ninja`.
 # (Le plugin complet se build depuis la racine via l'obs-plugintemplate.)
-project(StreamDirectorTests LANGUAGES CXX)
+project(FlowspireTests LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

@@ -1,4 +1,4 @@
-// StreamDirector — helpers de style QSS partages (dock + assistant).
+// Flowspire — helpers de style QSS partages (dock + assistant).
 //
 // rgba() : Qt interprete un hex a 8 chiffres dans une feuille QSS comme
 // #AARRGGBB (alpha en PREMIER), alors que nos jetons (issus de la maquette

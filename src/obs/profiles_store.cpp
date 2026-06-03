@@ -1,4 +1,4 @@
-// StreamDirector — magasin de profils (implementation : gestion + IO via FileStore).
+// Flowspire — magasin de profils (implementation : gestion + IO via FileStore).
 // OBS-free : n'inclut aucun entete OBS, parle uniquement au FileStore injecte.
 #include "obs/profiles_store.hpp"
 

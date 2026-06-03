@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28...3.30)
 
-# StreamDirector — plugin OBS natif.
+# Flowspire — plugin OBS natif.
 # Build base sur l'obs-plugintemplate officiel (telecharge libobs + Qt6 via
 # buildspec.json, multi-OS). Le COEUR pur (src/core) est teste a part, sans OBS,
 # via tests/CMakeLists.txt (boucle de test rapide). Voir specs/build-plan.

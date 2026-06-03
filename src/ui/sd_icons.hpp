@@ -1,4 +1,4 @@
-// StreamDirector — icones (couche UI). Rend des icones lucide (https://lucide.dev,
+// Flowspire — icones (couche UI). Rend des icones lucide (https://lucide.dev,
 // licence ISC) en SVG TEINTE a la couleur demandee, via QSvgRenderer. Pas de
 // fichier externe : les chemins SVG sont embarques dans le .cpp -> l'icone est
 // toujours disponible (rien a installer dans data/). Rendu en HiDPI (net).

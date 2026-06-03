@@ -1,4 +1,4 @@
-// StreamDirector — panneau "Soutenir le projet" (couche UI).
+// Flowspire — panneau "Soutenir le projet" (couche UI).
 //
 // Run 6 : c'etait une pop-up modale autonome. Run 7 : David a tranche "plus de
 // pop-up sauf l'assistant" -> Soutenir devient un PANNEAU de la sidebar des

@@ -1,4 +1,4 @@
-// StreamDirector — moteur de decision "quelle scene montrer ?".
+// Flowspire — moteur de decision "quelle scene montrer ?".
 // Pur (aucune dependance OBS). Implemente le modele unifie a 3 contextes,
 // chacun resolu par un TIRAGE AU SORT PONDERE (jamais une regle rigide) :
 //   A - une personne parle      : tirage parmi les scenes de cette personne

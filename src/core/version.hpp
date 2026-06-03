@@ -1,4 +1,4 @@
-// StreamDirector — comparaison de versions semantiques (PUR : aucune dependance
+// Flowspire — comparaison de versions semantiques (PUR : aucune dependance
 // OBS/Qt/reseau, donc testable hors OBS comme le reste de src/core).
 //
 // Sert au systeme de mise a jour : comparer la version locale (PLUGIN_VERSION) a la

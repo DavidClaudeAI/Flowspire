@@ -1,4 +1,4 @@
-// StreamDirector — FileStore en memoire pour les tests (OBS-free).
+// Flowspire — FileStore en memoire pour les tests (OBS-free).
 // Mime la semantique d'os_safe_replace : a chaque reecriture, l'ancien contenu
 // part en "<chemin>.bak". Permet de simuler une COUPURE (failPathContains) et
 // d'inspecter/poser l'etat disque (setRaw/getRaw) pour rejouer corruptions et pannes.

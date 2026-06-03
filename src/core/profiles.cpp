@@ -1,4 +1,4 @@
-// StreamDirector — catalogue de profils (implementation pure).
+// Flowspire — catalogue de profils (implementation pure).
 #include "core/profiles.hpp"
 
 #include <nlohmann/json.hpp>

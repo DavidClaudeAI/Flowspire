@@ -1,4 +1,4 @@
-// StreamDirector — fenetre Parametres avances (couche UI, Run 6 + Run 7).
+// Flowspire — fenetre Parametres avances (couche UI, Run 6 + Run 7).
 //
 // Fenetre modale (QDialog frameless) a SIDEBAR gauche (maquette Pencil `QbX5t`).
 // Edite une config EXISTANTE en direct, panneau par panneau (Intervenants /

@@ -1,4 +1,4 @@
-// StreamDirector — tests unitaires du coeur (sans OBS).
+// Flowspire — tests unitaires du coeur (sans OBS).
 // Lancer : ctest --output-on-failure  (ou directement l'executable sd_tests).
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>

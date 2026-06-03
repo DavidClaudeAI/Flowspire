@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : pilotage reel de la scene programme (implementation).
+// Flowspire — pont OBS : pilotage reel de la scene programme (implementation).
 #include "obs/scene_switcher.hpp"
 
 #include <obs.h>

@@ -1,6 +1,6 @@
-# StreamDirector — Design tokens (extraits de la maquette Pencil)
+# Flowspire — Design tokens (extraits de la maquette Pencil)
 
-> Source de vérité visuelle : `F:\Max\design\StreamDirector` (Pencil, frame "Design System" + "Dock Live").
+> Source de vérité visuelle : `F:\Max\design\Flowspire` (Pencil, frame "Design System" + "Dock Live").
 > Thème sombre aligné sur OBS Studio. Police **Inter**. Coins arrondis 6–10 px.
 > Ces tokens guident le code Qt du dock (Run 4).
 
@@ -39,7 +39,7 @@ danger `#E8555024` (fond), `#E8555080` (bordure) ; warning `#E0A23B14` (fond).
 ## Dock Live — structure (haut → bas)
 
 - Largeur maquette 380, padding 16, gap 14, radius 10, fond surface1, bordure border.
-- **Header** : icône `clapperboard` (accent) + "StreamDirector" (15/700) | badge état "● Actif" (success, fond `#3FB9502B`, bordure `#3FB95080`, radius 5, pad [5,14]).
+- **Header** : icône `clapperboard` (accent) + "Flowspire" (15/700) | badge état "● Actif" (success, fond `#3FB9502B`, bordure `#3FB95080`, radius 5, pad [5,14]).
 - **Section "INTERVENANTS"** (label tertiaire 10/700).
 - **Carte intervenant** (radius 8, fond surface2, pad 10, gap 10) :
   - Avatar rond 36 px : icône `user`. Actif = vert (fill `#3FB9502E`, bordure success 2px) ; inactif = gris (fill surface3, bordure border 2px).

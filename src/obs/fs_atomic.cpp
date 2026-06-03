@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : ecriture de fichiers atomique (implementation).
+// Flowspire — pont OBS : ecriture de fichiers atomique (implementation).
 #include "obs/fs_atomic.hpp"
 
 #include <util/platform.h>

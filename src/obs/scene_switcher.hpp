@@ -1,4 +1,4 @@
-// StreamDirector — pont OBS : pilotage reel de la scene programme.
+// Flowspire — pont OBS : pilotage reel de la scene programme.
 // Couche "obs" : seul endroit qui demande a OBS de changer la scene active.
 // A n'appeler QUE depuis le thread UI (la frontend-api d'OBS n'est pas concue
 // pour etre appelee depuis un thread arbitraire).

@@ -1,4 +1,4 @@
-// StreamDirector — FileStore concret adosse a OBS (plugin uniquement).
+// Flowspire — FileStore concret adosse a OBS (plugin uniquement).
 // Resout les chemins relatifs sous %config-plugin% (obs_module_config_path) et
 // fait l'IO via l'API fichier d'OBS (os_*), gere les chemins UTF-8 sous Windows.
 // Ecriture atomique + .bak deleguee a fs_atomic. NON inclus dans la boucle de

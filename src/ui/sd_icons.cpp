@@ -1,4 +1,4 @@
-// StreamDirector — icones (implementation). SVG lucide teints via QSvgRenderer.
+// Flowspire — icones (implementation). SVG lucide teints via QSvgRenderer.
 #include "ui/sd_icons.hpp"
 
 #include "ui/sd_logo_data.hpp"

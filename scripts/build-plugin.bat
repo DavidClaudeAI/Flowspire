@@ -1,5 +1,5 @@
 @echo off
-REM StreamDirector — build du PLUGIN OBS complet (lourd).
+REM Flowspire — build du PLUGIN OBS complet (lourd).
 REM 1ere execution : telecharge libobs + Qt6 (~1 Go) et compile libobs depuis
 REM les sources (long). Les fois suivantes sont rapides (deps en cache .deps/).
 REM Initialise l'env C++ de VS puis configure + build via les presets template.

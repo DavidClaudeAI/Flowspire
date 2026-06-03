@@ -1,4 +1,4 @@
-// StreamDirector — preferences GLOBALES de l'application (implementation).
+// Flowspire — preferences GLOBALES de l'application (implementation).
 // Voir sd_prefs.hpp. Persiste dans prefs.json (dossier de config du plugin) via
 // ObsFileStore (ecriture atomique + .bak). Lecture tolerante (defauts en cas de
 // fichier absent/corrompu). Aucune exception ne remonte a l'appelant.

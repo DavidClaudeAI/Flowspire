@@ -1,4 +1,4 @@
-// StreamDirector — fenetre Parametres avances (implementation, Run 6 + Run 7).
+// Flowspire — fenetre Parametres avances (implementation, Run 6 + Run 7).
 // Voir sd_settings.hpp. Fenetre modale frameless a sidebar gauche (maquette `QbX5t`).
 //
 // Run 7 : "plus de pop-up sauf l'assistant" (decision David). Profils et Soutenir
@@ -448,7 +448,7 @@ SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(ne
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setModal(true);
-    setWindowTitle(QStringLiteral("StreamDirector"));
+    setWindowTitle(QStringLiteral("Flowspire"));
 
     d_->audioSources = sd::obsbridge::audioSourceNames();
     d_->scenes = sd::obsbridge::sceneNames();

@@ -1,4 +1,4 @@
-// StreamDirector — panneau "Profils" (implementation, Run 7). Voir le .hpp.
+// Flowspire — panneau "Profils" (implementation, Run 7). Voir le .hpp.
 #include "ui/sd_profiles_panel.hpp"
 
 #include <QAction>

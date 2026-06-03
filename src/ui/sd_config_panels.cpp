@@ -1,4 +1,4 @@
-// StreamDirector — panneaux d'edition de configuration partages (implementation).
+// Flowspire — panneaux d'edition de configuration partages (implementation).
 // Voir sd_config_panels.hpp. La logique est celle, validee, de l'assistant Run 5,
 // rendue reutilisable (host fourni, Config par reference) pour servir aussi les
 // parametres avances (Run 6) sans duplication.

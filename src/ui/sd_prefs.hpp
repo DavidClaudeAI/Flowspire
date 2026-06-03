@@ -1,4 +1,4 @@
-// StreamDirector — preferences GLOBALES de l'application (couche UI).
+// Flowspire — preferences GLOBALES de l'application (couche UI).
 //
 // Reglages d'APP, distincts de la config de realisation (profils). GLOBAUX (pas par
 // profil), persistes dans prefs.json (dossier de config du plugin) via ObsFileStore,

@@ -1,4 +1,4 @@
-// StreamDirector — assistant de configuration visuel (implementation, Run 5/6).
+// Flowspire — assistant de configuration visuel (implementation, Run 5/6).
 // Voir sd_assistant.hpp pour le contrat. Fenetre modale frameless, 6 ecrans
 // (QStackedWidget), fidele a la maquette Pencil. Ecrit le profil (cree ou actif) a la fin.
 //
@@ -491,7 +491,7 @@ SdAssistant::SdAssistant(QWidget* parent, const QString& newProfileName) : QDial
     setWindowFlags(Qt::Dialog | Qt::FramelessWindowHint);
     setAttribute(Qt::WA_TranslucentBackground);
     setModal(true);
-    setWindowTitle(QStringLiteral("StreamDirector"));
+    setWindowTitle(QStringLiteral("Flowspire"));
 
     // Inventaire OBS (modale -> listes stables pendant toute la session).
     d_->audioSources = sd::obsbridge::audioSourceNames();

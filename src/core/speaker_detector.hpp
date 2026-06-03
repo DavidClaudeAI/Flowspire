@@ -1,4 +1,4 @@
-// StreamDirector — detecteur d'activite vocale pour UNE source audio.
+// Flowspire — detecteur d'activite vocale pour UNE source audio.
 // Pur (aucune dependance OBS). Port de la logique validee par le POC :
 // seuil de voix + hysteresis (attaque / relachement) pour eviter les faux
 // declenchements (pic isole) et les coupures sur une respiration.

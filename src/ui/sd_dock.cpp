@@ -115,9 +115,9 @@ QString sectionLabelQss() {
 }
 
 // Feuille de style globale du dock. Seuls les selecteurs cibles -> pas de cascade
-// de bordures sur les widgets enfants (#StreamDirectorDock matche le seul fond).
+// de bordures sur les widgets enfants (#FlowspireDock matche le seul fond).
 QString dockQss() {
-    return QString("QWidget#StreamDirectorDock { background:%1; }"
+    return QString("QWidget#FlowspireDock { background:%1; }"
                    "QToolTip { color:%2; background:%3; border:1px solid %4; padding:4px; }")
         .arg(th::kSurface1)
         .arg(th::kTextPrimary)
@@ -178,7 +178,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     scroll->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
     scroll->setStyleSheet(QStringLiteral("QScrollArea { background:transparent; border:none; }"));
     auto* content = new QWidget();
-    content->setObjectName(QStringLiteral("StreamDirectorDock")); // cible du fond (dockQss)
+    content->setObjectName(QStringLiteral("FlowspireDock")); // cible du fond (dockQss)
     scroll->setWidget(content);
     outer->addWidget(scroll);
 
@@ -368,7 +368,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     // reglage de scene hors regie) -> le dock reste epure.
     auto* bottomBar = new QHBoxLayout();
     bottomBar->setSpacing(8);
-    auto* versionLabel = new QLabel(QString("StreamDirector v%1").arg(PLUGIN_VERSION));
+    auto* versionLabel = new QLabel(QString("Flowspire v%1").arg(PLUGIN_VERSION));
     versionLabel->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
     bottomBar->addStretch();
     bottomBar->addWidget(versionLabel);

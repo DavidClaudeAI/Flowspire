@@ -1,4 +1,4 @@
-// StreamDirector — abstraction de stockage fichier (couche obs, OBS-free).
+// Flowspire — abstraction de stockage fichier (couche obs, OBS-free).
 //
 // But : decoupler la LOGIQUE de gestion des profils (ProfileStore) de l'IO disque
 // reelle, pour la rendre TESTABLE hors OBS. ProfileStore ne parle qu'a cette

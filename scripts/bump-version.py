@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bump de version de StreamDirector.
+"""Bump de version de Flowspire.
 
 La version vit a UN SEUL endroit : buildspec.json (cle racine "version").
 CMake la lit (cmake/common/bootstrap.cmake) et l'expose au code via PLUGIN_VERSION ;

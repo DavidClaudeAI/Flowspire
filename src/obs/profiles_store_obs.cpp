@@ -1,4 +1,4 @@
-// StreamDirector — API libre du magasin de profils (plugin uniquement).
+// Flowspire — API libre du magasin de profils (plugin uniquement).
 // Delegue a un ProfileStore par defaut adosse a un ObsFileStore (IO reelle OBS).
 // Ce TU depend d'OBS (ObsFileStore) -> hors boucle de test rapide. La LOGIQUE
 // testee vit dans profiles_store.cpp (OBS-free), exercee via FakeFileStore.

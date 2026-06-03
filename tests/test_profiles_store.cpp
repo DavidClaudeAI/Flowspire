@@ -1,4 +1,4 @@
-// StreamDirector — tests du magasin de profils (ProfileStore) hors OBS.
+// Flowspire — tests du magasin de profils (ProfileStore) hors OBS.
 // Exerce la LOGIQUE de persistance sur un FakeFileStore en memoire : migration,
 // atomicite des bascules, recuperation .bak, reconstruction par scan. Le main
 // doctest est fourni par test_core.cpp (meme executable sd_tests).

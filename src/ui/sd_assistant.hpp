@@ -1,4 +1,4 @@
-// StreamDirector — assistant de configuration visuel (couche UI, Run 5 + Run 7).
+// Flowspire — assistant de configuration visuel (couche UI, Run 5 + Run 7).
 //
 // Fenetre modale (QDialog frameless) : parcours guide en 6 ecrans (maquette Pencil :
 // 0 Prerequis -> 5 Resume).

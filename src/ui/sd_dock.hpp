@@ -1,4 +1,4 @@
-// StreamDirector — dock du plugin (couche UI).
+// Flowspire — dock du plugin (couche UI).
 // Run 4 (design + i18n) : pilotage reel du Run 3 habille selon la maquette (theme
 // sombre OBS, cf. sd_theme.hpp), icones lucide (sd_icons), vumetre custom a
 // marqueur de seuil (sd_level_meter), et toutes les chaines via l'i18n native OBS
