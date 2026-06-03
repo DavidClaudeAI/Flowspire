@@ -1,8 +1,10 @@
 ; Flowspire - installeur Windows (Inno Setup).
 ;
-; Installe le plugin PAR UTILISATEUR dans le dossier plugins d'OBS (sans droits admin) :
-;   %AppData%\obs-studio\plugins\flowspire\bin\64bit\flowspire.dll
-;   %AppData%\obs-studio\plugins\flowspire\data\...   (locales, etc.)
+; Installe le plugin dans le dossier plugins "tous utilisateurs" d'OBS (sans droits admin) :
+;   %ProgramData%\obs-studio\plugins\flowspire\bin\64bit\flowspire.dll
+;   %ProgramData%\obs-studio\plugins\flowspire\data\...   (locales, etc.)
+; C'est l'emplacement qu'OBS SCANNE reellement (valide en reel). NB : %AppData%\Roaming
+; n'est PAS scanne par OBS -> ne pas viser {userappdata}.
 ;
 ; Version + dossiers source/sortie sont passes par Package-Windows.ps1 via iscc /D... .
 ; Les valeurs #ifndef ci-dessous ne servent qu'a un test local manuel.
@@ -36,9 +38,10 @@ AppPublisher={#MyAppPublisher}
 AppPublisherURL={#MyAppURL}
 AppSupportURL={#MyAppURL}
 WizardStyle=modern
-; Install PAR UTILISATEUR dans le dossier plugins d'OBS : pas de droits admin, et pas
-; d'avertissement "dossier existe deja" (flowspire est un sous-dossier dedie et neuf).
-DefaultDirName={userappdata}\obs-studio\plugins\{#MyModuleName}
+; Dossier plugins "tous utilisateurs" d'OBS (%ProgramData%) = ce qu'OBS scanne. Pas de
+; droits admin (ProgramData autorise la creation de sous-dossiers par l'utilisateur) et
+; pas d'avertissement "dossier existe" (flowspire est un sous-dossier dedie et neuf).
+DefaultDirName={commonappdata}\obs-studio\plugins\{#MyModuleName}
 DisableProgramGroupPage=yes
 PrivilegesRequired=lowest
 ArchitecturesAllowed=x64compatible
