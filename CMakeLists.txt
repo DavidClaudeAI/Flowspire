@@ -105,6 +105,7 @@ endif()
 # utilisable : il exige une cible construite, pas un dylib importe de Qt.) plugin-main ajoute
 # Contents/PlugIns aux chemins de plugins Qt au chargement.
 if(APPLE AND ENABLE_QT)
+  set(_tls_bundled FALSE)
   foreach(_backend QSecureTransportBackendPlugin QOpenSSLBackendPlugin)
     if(TARGET Qt6::${_backend})
       set(_bk_loc "")
@@ -124,6 +125,10 @@ if(APPLE AND ENABLE_QT)
         set(_bk_signed "${CMAKE_CURRENT_BINARY_DIR}/tls_backends/${_bk_name}")
         # Meme identite que le bundle (CODESIGN_IDENTITY, "-" ad-hoc par defaut) pour eviter
         # toute incoherence de signature (fork avec un vrai certificat Apple).
+        # NOTE notarisation : cette signature n'ajoute ni timestamp securise ni hardened
+        # runtime. Pour une distribution Apple NOTARISEE (vrai Developer ID), il faudrait
+        # ajouter ici "--timestamp --options runtime". Non requis pour le flux actuel
+        # (ad-hoc, non notarise) ; valide end-to-end sur macOS 26.4.
         set(_bk_sign_id "${CODESIGN_IDENTITY}")
         if(NOT _bk_sign_id)
           set(_bk_sign_id "-")
@@ -132,12 +137,26 @@ if(APPLE AND ENABLE_QT)
           COMMAND codesign --force --sign "${_bk_sign_id}" "${_bk_signed}"
           RESULT_VARIABLE _bk_sign_result
         )
+        # Echec bloquant : un dylib non signe dans PlugIns ferait de toute facon echouer le
+        # scellement du bundle par Xcode -> on arrete tot et clair plutot que tard et opaque.
         if(NOT _bk_sign_result EQUAL 0)
-          message(WARNING "Flowspire : echec de la signature du backend TLS ${_bk_name}")
+          message(FATAL_ERROR "Flowspire : echec signature backend TLS ${_bk_name} (codesign --sign ${_bk_sign_id})")
         endif()
         target_sources(${CMAKE_PROJECT_NAME} PRIVATE "${_bk_signed}")
         set_source_files_properties("${_bk_signed}" PROPERTIES MACOSX_PACKAGE_LOCATION "PlugIns/tls")
+        set(_tls_bundled TRUE)
       endif()
     endif()
   endforeach()
+  # Garde-fou anti-regression silencieuse : si un futur changement d'obs-deps/Qt renomme ou
+  # retire la cible du backend, on le SIGNALE au lieu de livrer un .pkg sans TLS (= le bug
+  # d'origine) avec une CI verte.
+  if(NOT _tls_bundled)
+    message(
+      WARNING
+      "Flowspire : AUCUN backend TLS Qt embarque dans le bundle macOS -> la verification de "
+      "MAJ (HTTPS) sera inoperante. Qt6::QSecureTransportBackendPlugin introuvable ou dylib "
+      "absent (changement d'obs-deps / Qt ?)."
+    )
+  endif()
 endif()

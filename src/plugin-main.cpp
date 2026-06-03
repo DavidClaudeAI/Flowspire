@@ -149,31 +149,37 @@ static void unregisterHotkeys(void) {
 //   macOS   : <bundle>.plugin/Contents/PlugIns/tls/...       (SecureTransport/OpenSSL)
 // (Linux : OpenSSL systeme, rien a embarquer.)
 static void registerBundledTlsBackend(void) {
+    QString libDir;
 #ifdef _WIN32
     HMODULE self = nullptr;
     if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
                             reinterpret_cast<LPCWSTR>(&registerBundledTlsBackend), &self)) {
+        obs_log(LOG_WARNING, "Flowspire: module introuvable, backend TLS Qt non enregistre");
         return;
     }
     wchar_t path[MAX_PATH];
     const DWORD n = GetModuleFileNameW(self, path, MAX_PATH);
     if (n == 0 || n >= MAX_PATH) {
+        obs_log(LOG_WARNING, "Flowspire: chemin du module non resolu, backend TLS Qt non enregistre");
         return;
     }
     // .../bin/64bit/flowspire.dll -> on ajoute .../bin/64bit (Qt cherchera ./tls/).
-    const QString dir = QFileInfo(QString::fromWCharArray(path, static_cast<int>(n))).absolutePath();
-    QCoreApplication::addLibraryPath(dir);
+    libDir = QFileInfo(QString::fromWCharArray(path, static_cast<int>(n))).absolutePath();
 #elif defined(__APPLE__)
     Dl_info info;
     if (dladdr(reinterpret_cast<const void*>(&registerBundledTlsBackend), &info) == 0 || info.dli_fname == nullptr) {
+        obs_log(LOG_WARNING, "Flowspire: plugin introuvable (dladdr), backend TLS Qt non enregistre");
         return;
     }
     // .../flowspire.plugin/Contents/MacOS/flowspire -> on ajoute .../Contents/PlugIns
     // (Qt cherchera ./tls/). On remonte de MacOS a Contents.
     const QString bin = QString::fromUtf8(info.dli_fname);
-    const QString contents = QFileInfo(QFileInfo(bin).absolutePath()).absolutePath();
-    QCoreApplication::addLibraryPath(contents + QStringLiteral("/PlugIns"));
+    libDir = QFileInfo(QFileInfo(bin).absolutePath()).absolutePath() + QStringLiteral("/PlugIns");
 #endif
+    QCoreApplication::addLibraryPath(libDir);
+    // Trace le chemin enregistre : si le backend TLS ne se charge pas un jour, le log indique
+    // immediatement si c'est ce chemin (vide/faux) ou le backend lui-meme qui est en cause.
+    obs_log(LOG_INFO, "Flowspire: chemin backend TLS Qt enregistre: %s", libDir.toUtf8().constData());
 }
 #endif
 
