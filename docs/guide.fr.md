@@ -72,7 +72,7 @@ Pour un rendu vraiment **smooth et original**, vous pouvez installer le plugin t
 Le plugin est **open source mais non signé** (la signature de code est payante). À la première ouverture, votre système peut afficher un avertissement — c'est normal, il suffit de l'autoriser une fois :
 
 - **Windows (SmartScreen)** : cliquez sur **« Informations complémentaires »** puis **« Exécuter quand même »**.
-- **macOS (Gatekeeper)** : faites un **clic droit** sur le fichier → **« Ouvrir »**, puis confirmez **« Ouvrir »** dans la boîte de dialogue.
+- **macOS (Gatekeeper)** : double-cliquez le `.pkg` (l'avertissement s'affiche, fermez-le), puis allez dans **Réglages Système → Confidentialité et sécurité** → section **Sécurité** (tout en bas) → cliquez **« Ouvrir quand même »** → authentifiez-vous. *(Sur **macOS 15+ / 26**, Apple a retiré le « clic droit → Ouvrir » : ce bouton dans les Réglages est désormais le seul moyen.)*
 
 ---
 

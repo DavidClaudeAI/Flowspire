@@ -102,7 +102,7 @@ Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan
 2. Lancez-le, puis **(re)lancez OBS**.
 3. **Dans OBS, affichez le dock : menu Docks → Flowspire.** ⚠️ OBS ne l'affiche pas tout seul — tant que vous ne le faites pas, le plugin est chargé mais invisible (ce n'est pas un bug). Une fois affiché, la carte d'accueil vous guide.
 
-> Nécessite **OBS 28 ou supérieur**. Build non signé → au 1ᵉʳ lancement : **Windows** SmartScreen *Informations complémentaires → Exécuter quand même* ; **macOS** clic droit → *Ouvrir*.
+> Nécessite **OBS 28 ou supérieur**. Build non signé → au 1ᵉʳ lancement : **Windows** SmartScreen *Informations complémentaires → Exécuter quand même* ; **macOS** (15+) Réglages Système → Confidentialité et sécurité → *Ouvrir quand même*.
 
 **Première utilisation ?** Le [**Guide utilisateur complet**](docs/guide.fr.md) vous accompagne de A à Z : préparer vos scènes, l'assistant écran par écran, et chaque réglage expliqué — avec captures.
 

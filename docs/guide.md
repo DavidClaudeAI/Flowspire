@@ -72,7 +72,7 @@ For a truly **smooth and original** look, you can install the third-party **Move
 The plugin is **open source but unsigned** (code signing costs money). On first launch, your system may show a warning — that's normal, you just need to allow it once:
 
 - **Windows (SmartScreen)**: click **"More info"** then **"Run anyway"**.
-- **macOS (Gatekeeper)**: **right-click** the file → **"Open"**, then confirm **"Open"** in the dialog.
+- **macOS (Gatekeeper)**: double-click the `.pkg` (dismiss the warning), then go to **System Settings → Privacy & Security** → **Security** section (at the bottom) → click **"Open Anyway"** → authenticate. *(On **macOS 15+ / 26**, Apple removed the old right-click → Open bypass; this Settings button is now the only way.)*
 
 ---
 

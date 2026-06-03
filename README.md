@@ -102,7 +102,7 @@ On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on 
 2. Run it, then **(re)start OBS**.
 3. **In OBS, show the dock: menu Docks → Flowspire.** ⚠️ OBS won't show it automatically — until you do, the plugin is loaded but invisible (it's not broken). Once shown, the welcome card guides you.
 
-> Requires **OBS 28 or higher**. Unsigned build → on first launch: **Windows** SmartScreen *More info → Run anyway*; **macOS** right-click → *Open*.
+> Requires **OBS 28 or higher**. Unsigned build → on first launch: **Windows** SmartScreen *More info → Run anyway*; **macOS** (15+) System Settings → Privacy & Security → *Open Anyway*.
 
 **First time?** The [**full user guide**](docs/guide.md) walks you through everything from A to Z: preparing your scenes, the wizard screen by screen, and every setting explained — with screenshots.
 
