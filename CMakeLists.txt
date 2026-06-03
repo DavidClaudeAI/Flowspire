@@ -95,24 +95,14 @@ if(WIN32 AND ENABLE_QT AND TARGET Qt6::QSchannelBackendPlugin)
   )
 endif()
 
-# macOS : backend(s) TLS de Qt copies dans le bundle (Contents/PlugIns/tls) en POST_BUILD.
+# macOS : backend(s) TLS de Qt ajoutes dans le bundle (Contents/PlugIns/tls) via install()
+# et NON POST_BUILD : un POST_BUILD modifie le bundle APRES qu'Xcode a calcule sa signature
+# -> "Signing ... script execution error". L'install() ajoute le fichier au bundle installe,
+# apres la signature du build.
 if(APPLE AND ENABLE_QT)
-  set(_flowspire_tls_backends "")
   foreach(_backend QSecureTransportBackendPlugin QOpenSSLBackendPlugin)
     if(TARGET Qt6::${_backend})
-      list(APPEND _flowspire_tls_backends "$<TARGET_FILE:Qt6::${_backend}>")
+      install(FILES "$<TARGET_FILE:Qt6::${_backend}>" DESTINATION "${CMAKE_PROJECT_NAME}.plugin/Contents/PlugIns/tls")
     endif()
   endforeach()
-  if(_flowspire_tls_backends)
-    add_custom_command(
-      TARGET ${CMAKE_PROJECT_NAME}
-      POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E make_directory "$<TARGET_BUNDLE_DIR:${CMAKE_PROJECT_NAME}>/Contents/PlugIns/tls"
-      COMMAND
-        ${CMAKE_COMMAND} -E copy ${_flowspire_tls_backends}
-        "$<TARGET_BUNDLE_DIR:${CMAKE_PROJECT_NAME}>/Contents/PlugIns/tls/"
-      COMMENT "Bundling Qt TLS backend(s) into the plugin bundle"
-      VERBATIM
-    )
-  endif()
 endif()
