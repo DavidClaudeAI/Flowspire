@@ -1,0 +1,272 @@
+# Guide utilisateur — Flowspire
+
+> **Langues** : [English](guide.md) · **Français** *(cette page)*
+> [← Retour au README](../README.fr.md)
+
+Ce guide vous accompagne de A à Z : préparer vos scènes, installer le plugin, le configurer avec l'assistant, et comprendre chaque réglage. Pas besoin d'être technique — on parle en **scènes**, en **personnes** et en **comportements**.
+
+## Sommaire
+
+1. [Préparer ses scènes dans OBS](#1-préparer-ses-scènes-dans-obs)
+2. [Installer Flowspire](#2-installer-flowspire)
+3. [Configurer avec l'assistant](#3-configurer-avec-lassistant)
+4. [Le dock en direct](#4-le-dock-en-direct)
+5. [Forcer un plan à la main](#5-forcer-un-plan-à-la-main)
+6. [Tous les réglages en détail](#6-tous-les-réglages-en-détail)
+7. [Raccourcis (clavier & Stream Deck)](#7-raccourcis-clavier--stream-deck)
+8. [Profils](#8-profils)
+9. [Où sont stockés les réglages](#9-où-sont-stockés-les-réglages)
+
+---
+
+## 1. Préparer ses scènes dans OBS
+
+**À lire en premier.** Flowspire ne crée **jamais** de scènes : il **pilote celles que vous avez faites**. Avant de lancer l'assistant, préparez donc vos scènes dans OBS — sinon vous lanceriez la configuration sans rien à associer.
+
+### Quelles scènes créer ?
+
+La règle est simple :
+
+- **Une scène par intervenant** = cette personne **en grand** (le « focus »). Sur la scène *« Focus intervenant 1 »*, vous mettez l'intervenant 1 en grand ; sur *« Focus intervenant 2 »*, c'est l'intervenant 2 en grand ; etc.
+- **Une scène « plan large »** (optionnelle) = **tout le monde à l'écran** en même temps, en repli quand plusieurs parlent ou que personne ne parle. Elle n'est pas obligatoire, mais elle rend le résultat plus vivant.
+
+C'est exactement ce que montrent les trois captures de démo : le **plan large** (tout le monde), puis **Mia en focus**, puis **Ryan en focus** — chacune est une **scène OBS** distincte que vous avez composée à votre goût.
+
+| Plan large | Focus Mia | Focus Ryan |
+| :---: | :---: | :---: |
+| ![Plan large](img/C-wide.png) | ![Focus Mia](img/C-Mia.png) | ![Focus Ryan](img/C-Ryan.png) |
+
+### Composer le layout de chaque scène
+
+Dans **chaque** scène, faites votre mise en page comme vous le souhaitez : la personne au centre en grand, les autres en plus petit autour, votre fond, vos overlays, le titre de l'émission, le chat… Tout est libre — Flowspire se contente d'**afficher la bonne scène au bon moment**.
+
+> **Astuce variété :** vous pouvez donner **plusieurs scènes** à une même personne, et Flowspire **alterne** entre elles (la fréquence de chacune se règle avec un **poids** — voir [Caméras & poids](#caméras--poids)). Deux idées qui rendent le résultat plus naturel :
+> - un *gros plan* serré **et** un *plan d'écoute* (on la voit réagir, pas seulement parler) ;
+> - **le plan large lui-même**, ajouté à son pool avec un **poids très faible** : de temps en temps, même quand elle parle, on prend un plan d'ensemble — ça aère.
+>
+> **Exemple** pour l'intervenant 1 : *sa caméra **95** · plan large **5** · plan d'écoute **5***. La plupart du temps on le voit en gros plan, mais ça varie juste ce qu'il faut pour que ça respire — encore plus naturel.
+
+### Bonus (non obligatoire) : des transitions animées
+
+Pour un rendu vraiment **smooth et original**, vous pouvez installer le plugin tiers **Move transition** : il permet des **transitions animées** entre vos scènes (les vignettes glissent, grandissent, se réorganisent en douceur au lieu d'un simple fondu). L'effet est bluffant.
+
+> **Ce n'est absolument pas obligatoire.** Flowspire fonctionne parfaitement avec les transitions natives d'OBS (coupe ou fondu). « Move transition » est juste une cerise sur le gâteau pour ceux qui veulent pousser le côté production.
+
+---
+
+## 2. Installer Flowspire
+
+1. Récupérez le plugin pour votre système depuis une **release** :
+   - **Windows** : `flowspire.dll`
+   - **Linux** : `flowspire.so`
+   - **macOS** : `flowspire.plugin`
+2. Placez-le dans le dossier des plugins d'OBS (l'installeur s'en charge si vous en utilisez un), puis **fermez et relancez OBS**.
+3. Dans OBS, ouvrez le menu **Docks → Flowspire** pour afficher le panneau.
+
+> Nécessite **OBS 28 ou supérieur**.
+
+### Passer l'avertissement « éditeur inconnu »
+
+Le plugin est **open source mais non signé** (la signature de code est payante). À la première ouverture, votre système peut afficher un avertissement — c'est normal, il suffit de l'autoriser une fois :
+
+- **Windows (SmartScreen)** : cliquez sur **« Informations complémentaires »** puis **« Exécuter quand même »**.
+- **macOS (Gatekeeper)** : faites un **clic droit** sur le fichier → **« Ouvrir »**, puis confirmez **« Ouvrir »** dans la boîte de dialogue.
+
+---
+
+## 3. Configurer avec l'assistant
+
+Cliquez sur **Assistant** dans le dock. Il crée une **configuration complète**, appelée **profil**. Vous pouvez en avoir **plusieurs** — un par type d'émission (« Duo », « 4 invités + moi », « Table ronde »…) — et **basculer de l'un à l'autre en un clic** ; on les gère ensuite (charger, renommer, dupliquer, modifier, supprimer) dans la [section Profils](#8-profils).
+
+L'assistant vous guide en **6 écrans**. Tout y reste modifiable à tout moment, et vous pouvez le relancer quand vous voulez.
+
+> Par sécurité, le pilotage automatique démarre **désactivé**. Tant qu'aucun intervenant n'est configuré, le plugin reste en **lecture seule** et ne touche pas à vos scènes.
+
+### Écran 0 — Prérequis
+
+![Assistant — prérequis](img/assistant_1.png)
+
+Un rappel : créez d'abord vos **scènes** et vos **sources audio** dans OBS (voir l'étape 1). C'est le point de départ.
+
+### Écran 1 — Intervenants
+
+![Assistant — intervenants](img/assistant_2.png)
+
+Donnez un **nom** à chaque personne et reliez-la à sa **source audio** OBS (le micro ou le flux qu'on écoute pour savoir si elle parle). C'est le cœur du système.
+
+### Écran 2 — Caméras & poids
+
+![Assistant — caméras et poids](img/assistant_3.png)
+
+Pour chaque personne, choisissez **quelles scènes** montrer quand elle parle, et donnez un **poids** à chacune (sa chance d'apparaître par rapport aux autres scènes de la même personne). Le pourcentage est recalculé automatiquement.
+
+### Écran 3 — Plan large & priorités
+
+![Assistant — plan large et priorités](img/assistant_4.png)
+
+Désignez la **scène de plan large** (le plan de groupe) et réglez **quand y basculer** : la part du plan large quand **plusieurs** parlent, et quand **personne** ne parle.
+
+### Écran 4 — Rythme & sensibilité
+
+![Assistant — rythme et sensibilité](img/assistant_5.png)
+
+Ajustez le **tempo** (temps mini/maxi d'un plan, délais) et la **détection** (seuil de voix). **Les valeurs par défaut marchent très bien** — laissez-les pour démarrer ; vous les affinerez peut-être plus tard à l'usage, on verra à ce moment-là.
+
+Le **seuil de voix** réglé ici est **général** : c'est le **point de départ** commun à tout le monde. Ensuite, si un micro est plus fort qu'un autre, vous pourrez **ajuster le seuil personne par personne directement dans le dock** (le curseur sous chaque intervenant). *(Détail de chaque réglage : [section 6](#rythme--sensibilité).)*
+
+### Écran 5 — Résumé
+
+![Assistant — résumé](img/assistant_6.png)
+
+Tout est récapitulé et **reste modifiable**. Un bouton **active la réalisation auto** : à partir de là, Flowspire prend la main et suit qui parle.
+
+---
+
+## 4. Le dock en direct
+
+![Le dock Flowspire](img/dock.png)
+
+Le dock est votre tableau de bord en temps réel :
+
+- **L'en-tête** affiche le logo et un **badge interrupteur** : *Actif* (le plugin réalise), *En pause* (figé), *Lecture seule* (aucune config). **Un clic** active ou coupe la réalisation auto.
+- **Le sélecteur de profil** permet de basculer d'une configuration à l'autre.
+- **Chaque intervenant** a son **vu-mètre** et son **curseur de seuil** : le niveau bouge sous le curseur, vous calez la sensibilité **visuellement**. Ce réglage est pris en compte **immédiatement** et **mémorisé** dans le profil.
+- **Le témoin « à l'antenne » (tally)** : un **trait rouge** apparaît à gauche de la scène réellement diffusée et **se déplace** quand la réalisation change de plan.
+- **Le plan large** figure dans la liste (sans vu-mètre), pour le voir s'allumer lui aussi.
+
+Le reste du pilotage passe par vos **scènes OBS** et vos **raccourcis** : le dock reste volontairement épuré.
+
+---
+
+## 5. Forcer un plan à la main
+
+Même en réalisation auto, vous gardez la main. **Cliquez n'importe quelle scène dans le gestionnaire de scènes natif d'OBS** (ou un bouton Stream Deck) et Flowspire la passe à l'antenne :
+
+- Si la scène **fait partie de votre régie** (le plan d'un intervenant ou le plan large) → **forçage temporaire** : le plan tient le temps minimum, puis l'auto reprend.
+- Si la scène est **en dehors de votre régie** (une intro, un écran de pause…) → le comportement est **réglable** dans **Paramètres avancés → Paramètres généraux** :
+  - **La compter comme un plan** : forçage temporaire, l'auto reprend ;
+  - **Mettre la régie en pause** *(par défaut)* : on reste sur la scène jusqu'à réactivation.
+
+---
+
+## 6. Tous les réglages en détail
+
+Tout se règle depuis l'**Assistant** (création guidée) ou les **Paramètres avancés** (édition fine, via le bouton du dock). Voici chaque panneau.
+
+### Intervenants
+
+![Réglages — intervenants](img/setting-speakers.png)
+
+| Réglage | Effet |
+| --- | --- |
+| **Nom** | Le nom affiché de la personne (juste pour vous y retrouver). |
+| **Source audio** | La source OBS qu'on écoute pour savoir si cette personne parle. C'est le cœur du système. |
+
+### Caméras & poids
+
+![Réglages — caméras et poids](img/setting-camera.png)
+
+| Réglage | Effet |
+| --- | --- |
+| **Scène** | Une scène à montrer quand cette personne parle. |
+| **Poids** | Plus il est élevé, plus cette scène apparaît souvent **par rapport aux autres scènes de la même personne**. Le % est recalculé automatiquement. |
+
+Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. *gros plan 90* + *plan d'écoute 10*).
+
+### Plan large & priorités
+
+![Réglages — plan large](img/setting-wide.png)
+
+| Réglage | Effet |
+| --- | --- |
+| **Scène de plan large** | La scène de groupe, montrée quand plusieurs parlent ou qu'un plan d'ensemble s'impose. **Laissez vide pour ne jamais l'utiliser.** |
+| **Quand plusieurs parlent** | Poids du tirage entre *le plus fort* / *rester sur l'actuel* / *plan large*. *(défauts : 45 / 30 / 25)* |
+| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. *(défauts : 80 / 20)* |
+
+### Rythme & sensibilité
+
+![Réglages — rythme et sensibilité](img/setting-rythm.png)
+
+| Réglage | Effet | Défaut |
+| --- | --- | --- |
+| **Temps mini de plan** | Durée minimale d'affichage d'un plan avant qu'un changement soit permis (évite les coupes nerveuses). | 5 s |
+| **Temps maxi de plan** | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier. | 12 s |
+| **Anti ping-pong (mémoire)** | Évite de recouper trop vite vers quelqu'un qui vient de parler. **0 = désactivé** ; n'agit qu'**au-dessus du temps mini**. | 0 (désactivé) |
+| **Seuil de voix** | Niveau sonore au-dessus duquel une personne est considérée comme « parle ». Plus bas = plus sensible. | −35 dB |
+| **Délai d'attaque** | Durée de voix continue avant de confirmer qu'une personne **commence** à parler (ignore les bruits brefs : clic, choc). Plus court = plus réactif. | court |
+| **Délai de silence** | Durée de silence avant de considérer qu'une personne a **fini** de parler. | court |
+
+> **À propos du plan large :** dès qu'on y bascule après quelqu'un, il **tient au moins le « temps mini »** comme n'importe quel plan — pas de « flash » si la parole reprend juste après. *(Seule exception : tout au début, avant que quiconque ait parlé, la première prise de parole est suivie sans délai.)*
+
+> **Tout est pris en compte à chaud.** Dès que vous enregistrez (ou bougez un curseur de seuil dans le dock), le moteur applique le changement **immédiatement** — sans redémarrer le pilotage ni OBS.
+
+#### Seuil par intervenant (réglage en direct)
+
+Le curseur de seuil sous chaque intervenant, dans le dock, **surpasse le seuil global pour cette seule personne**. Pratique quand un micro est plus fort qu'un autre. Ce réglage est **sauvegardé dans le profil actif** et restauré au lancement suivant.
+
+### Paramètres généraux
+
+![Réglages — paramètres généraux](img/setting-general.png)
+
+Réglages **globaux** (valables pour tous les profils), appliqués immédiatement :
+
+| Réglage | Effet |
+| --- | --- |
+| **Scène hors-régie (clic manuel)** | Que faire quand vous passez à la main sur une scène **qui n'est pas dans votre régie** : *la compter comme un plan* (forçage temporaire) ou *mettre la régie en pause* *(par défaut)*. |
+| **Vérifier les mises à jour au démarrage** | Le plugin regarde s'il existe une version plus récente et affiche un bandeau le cas échéant. Aucune installation automatique — juste un lien. |
+
+---
+
+## 7. Raccourcis (clavier & Stream Deck)
+
+Flowspire expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pas de touche par défaut** : ouvrez **OBS → Paramètres → Raccourcis clavier** et assignez la touche de votre choix (par exemple **F13–F18**, idéales pour un Stream Deck).
+
+| Action (libellé dans OBS) | Effet |
+| --- | --- |
+| **Flowspire : activer/désactiver le pilotage auto** | Marche/arrêt de la réalisation automatique. |
+| **Flowspire : forcer le plan large** | Bascule immédiatement sur le plan large. |
+| **Flowspire : forcer l'intervenant 1 … 8** | Bascule immédiatement sur la personne choisie (jusqu'à 8 raccourcis). |
+
+> Sur un **Stream Deck**, ajoutez un bouton *Touche* / *Hotkey* qui envoie la même touche que celle assignée dans OBS : le bouton pilote alors Flowspire. Au-delà de 8 personnes, **forcez le plan directement depuis le gestionnaire de scènes natif d'OBS** (un clic = un forçage temporaire).
+
+> **Vos raccourcis de scènes habituels continuent de fonctionner.** Si vous aviez déjà des raccourcis OBS qui basculent directement sur une scène (clavier ou Stream Deck), les utiliser pendant la réalisation auto revient à **forcer ce plan** — exactement comme un clic sur la scène. Rien à réapprendre.
+
+### Reprendre la main pendant le live
+
+- **Forcer un plan** (une personne ou le plan large) : bascule immédiate, puis les règles normales reprennent.
+- **Mettre en pause** (Auto OFF) : le plugin **fige** la scène actuelle et arrête de switcher.
+- **Reprendre** (Auto ON) : il repart de qui parle à cet instant.
+- Changer une scène **manuellement** dans OBS rend aussi la main au plugin proprement.
+
+---
+
+## 8. Profils
+
+![Réglages — profils](img/setting-profile.png)
+
+Un **profil** = une configuration complète (intervenants, scènes, plan large, rythme). Créez-en un par type d'émission (« 4 invités + moi », « Duo », « Table ronde »…) et **basculez de l'un à l'autre en un clic** depuis le dock.
+
+- Création via l'**assistant** (guidée) ou **profil vierge** (à remplir dans les paramètres).
+- Actions par profil : **charger**, **renommer**, **dupliquer**, **éditer**, **supprimer**.
+- Le **profil actif** est la **source de vérité** lue par le moteur.
+
+---
+
+## 9. Où sont stockés les réglages
+
+Les profils vivent dans le dossier de config d'OBS :
+
+```
+Windows : %APPDATA%\obs-studio\plugin_config\flowspire\profiles\
+macOS   : ~/Library/Application Support/obs-studio/plugin_config/flowspire/profiles/
+Linux   : ~/.config/obs-studio/plugin_config/flowspire/profiles/
+```
+
+- `index.json` = catalogue des profils + profil actif.
+- `<id>.json` = le contenu d'un profil.
+
+Toute écriture est **atomique** avec sauvegarde `.bak` ; un fichier illisible est récupéré automatiquement. Vous n'avez **jamais besoin d'éditer ces fichiers à la main** — l'interface fait tout.
+
+---
+
+[← Retour au README](../README.fr.md)
