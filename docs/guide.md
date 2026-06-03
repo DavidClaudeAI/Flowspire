@@ -76,7 +76,7 @@ The plugin is **open source but unsigned** (code signing costs money). On first 
 
 ## 3. Set up with the wizard
 
-**The first time, the dock greets you with a welcome card** ("No directing set up yet"): it reminds you to first prepare your **scenes** and **audio inputs** in OBS, tells you how many audio inputs it detected, and offers a **Run the assistant** button. As soon as a profile exists, the dock switches to its live dashboard ([section 4](#4-the-live-dock)).
+**The first time, the dock greets you with a welcome card** ("No directing set up yet"): it reminds you to first prepare your **scenes** and **audio sources** in OBS, tells you how many audio sources it detected, and offers a **Run the assistant** button. As soon as a profile exists, the dock switches to its live dashboard ([section 4](#4-the-live-dock)).
 
 Click **Wizard** in the dock. It creates a **complete configuration**, called a **profile**. You can have **several** of them — one per show type ("Duo", "4 guests + me", "Panel"…) — and **switch from one to another with a single click**; you then manage them (load, rename, duplicate, edit, delete) in the [Profiles section](#8-profiles).
 
