@@ -1,0 +1,23 @@
+name: Feature request
+description: Suggest an idea for Flowspire
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: What are you trying to do that Flowspire doesn't let you do today?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: How do you imagine it working?
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+    validations:
+      required: false

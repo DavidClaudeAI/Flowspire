@@ -1,0 +1,59 @@
+name: Bug report
+description: Report a problem with Flowspire
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill in the details below so we can reproduce it.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the problem. What did you expect, and what happened instead?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - Windows
+        - macOS
+        - Linux
+    validations:
+      required: true
+  - type: input
+    id: obs-version
+    attributes:
+      label: OBS Studio version
+      placeholder: e.g. 30.1.2
+    validations:
+      required: true
+  - type: input
+    id: flowspire-version
+    attributes:
+      label: Flowspire version
+      description: Shown at the bottom of the Flowspire dock.
+      placeholder: e.g. 0.3.0
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: OBS log file (very helpful)
+      description: |
+        In OBS: **Help → Log Files → Upload Current Log File**, then paste the link here.
+      placeholder: https://obsproject.com/logs/...
+    validations:
+      required: false
