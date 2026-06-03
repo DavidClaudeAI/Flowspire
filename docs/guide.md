@@ -40,7 +40,11 @@ C'est exactement ce que montrent les trois captures de démo : le **plan large**
 
 Dans **chaque** scène, faites votre mise en page comme vous le souhaitez : la personne au centre en grand, les autres en plus petit autour, votre fond, vos overlays, le titre de l'émission, le chat… Tout est libre — Flowspire se contente d'**afficher la bonne scène au bon moment**.
 
-> **Astuce variété :** vous pouvez créer **plusieurs** scènes pour une même personne (par exemple un *gros plan* serré **et** un *plan d'écoute* où on la voit réagir). Flowspire **alterne** alors entre elles pour éviter la monotonie. On règle la fréquence de chacune avec un **poids** (voir [Caméras & poids](#caméras--poids)).
+> **Astuce variété :** vous pouvez donner **plusieurs scènes** à une même personne, et Flowspire **alterne** entre elles (la fréquence de chacune se règle avec un **poids** — voir [Caméras & poids](#caméras--poids)). Deux idées qui rendent le résultat plus naturel :
+> - un *gros plan* serré **et** un *plan d'écoute* (on la voit réagir, pas seulement parler) ;
+> - **le plan large lui-même**, ajouté à son pool avec un **poids très faible** : de temps en temps, même quand elle parle, on prend un plan d'ensemble — ça aère.
+>
+> **Exemple** pour l'intervenant 1 : *sa caméra **95** · plan large **5** · plan d'écoute **5***. La plupart du temps on le voit en gros plan, mais ça varie juste ce qu'il faut pour que ça respire — encore plus naturel.
 
 ### Bonus (non obligatoire) : des transitions animées
 
@@ -72,7 +76,9 @@ Le plugin est **open source mais non signé** (la signature de code est payante)
 
 ## 3. Configurer avec l'assistant
 
-Cliquez sur **Assistant** dans le dock. Il vous guide en **6 écrans**. Tout y est modifiable à tout moment — vous pouvez le relancer quand vous voulez.
+Cliquez sur **Assistant** dans le dock. Il crée une **configuration complète**, appelée **profil**. Vous pouvez en avoir **plusieurs** — un par type d'émission (« Duo », « 4 invités + moi », « Table ronde »…) — et **basculer de l'un à l'autre en un clic** ; on les gère ensuite (charger, renommer, dupliquer, modifier, supprimer) dans la [section Profils](#8-profils).
+
+L'assistant vous guide en **6 écrans**. Tout y reste modifiable à tout moment, et vous pouvez le relancer quand vous voulez.
 
 > Par sécurité, le pilotage automatique démarre **désactivé**. Tant qu'aucun intervenant n'est configuré, le plugin reste en **lecture seule** et ne touche pas à vos scènes.
 
@@ -104,7 +110,9 @@ Désignez la **scène de plan large** (le plan de groupe) et réglez **quand y b
 
 ![Assistant — rythme et sensibilité](img/assistant_5.png)
 
-Ajustez le **tempo** (temps mini/maxi d'un plan, délais) et la **détection** (seuil de voix). Les valeurs par défaut marchent bien : ne touchez que si besoin. *(Détail de chaque réglage : [section 6](#rythme--sensibilité).)*
+Ajustez le **tempo** (temps mini/maxi d'un plan, délais) et la **détection** (seuil de voix). **Les valeurs par défaut marchent très bien** — laissez-les pour démarrer ; vous les affinerez peut-être plus tard à l'usage, on verra à ce moment-là.
+
+Le **seuil de voix** réglé ici est **général** : c'est le **point de départ** commun à tout le monde. Ensuite, si un micro est plus fort qu'un autre, vous pourrez **ajuster le seuil personne par personne directement dans le dock** (le curseur sous chaque intervenant). *(Détail de chaque réglage : [section 6](#rythme--sensibilité).)*
 
 ### Écran 5 — Résumé
 
@@ -220,6 +228,8 @@ Flowspire expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pa
 | **Flowspire : forcer l'intervenant 1 … 8** | Bascule immédiatement sur la personne choisie (jusqu'à 8 raccourcis). |
 
 > Sur un **Stream Deck**, ajoutez un bouton *Touche* / *Hotkey* qui envoie la même touche que celle assignée dans OBS : le bouton pilote alors Flowspire. Au-delà de 8 personnes, **forcez le plan directement depuis le gestionnaire de scènes natif d'OBS** (un clic = un forçage temporaire).
+
+> **Vos raccourcis de scènes habituels continuent de fonctionner.** Si vous aviez déjà des raccourcis OBS qui basculent directement sur une scène (clavier ou Stream Deck), les utiliser pendant la réalisation auto revient à **forcer ce plan** — exactement comme un clic sur la scène. Rien à réapprendre.
 
 ### Reprendre la main pendant le live
 
