@@ -76,6 +76,8 @@ Le plugin est **open source mais non signé** (la signature de code est payante)
 
 ## 3. Configurer avec l'assistant
 
+**La première fois, le dock vous accueille avec une carte d'accueil** (« Aucune régie configurée ») : elle vous rappelle de préparer d'abord vos **scènes** et vos **entrées audio** dans OBS, indique le nombre d'entrées audio détectées, et propose un bouton **Lancer l'assistant**. Dès qu'un profil existe, le dock bascule sur son tableau de bord en direct ([section 4](#4-le-dock-en-direct)).
+
 Cliquez sur **Assistant** dans le dock. Il crée une **configuration complète**, appelée **profil**. Vous pouvez en avoir **plusieurs** — un par type d'émission (« Duo », « 4 invités + moi », « Table ronde »…) — et **basculer de l'un à l'autre en un clic** ; on les gère ensuite (charger, renommer, dupliquer, modifier, supprimer) dans la [section Profils](#8-profils).
 
 L'assistant vous guide en **6 écrans**. Tout y reste modifiable à tout moment, et vous pouvez le relancer quand vous voulez.
