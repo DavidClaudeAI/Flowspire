@@ -1,145 +1,145 @@
 # Flowspire
 
-> **Langues** : Français *(cette page)* · English *(traduction à venir)*
+> **Languages**: **English** *(this page)* · [Français](README.fr.md)
 
-### Le réalisateur **automatique et organique** pour vos lives multicam dans OBS.
+### The **automatic and organic** director for your multicam livestreams in OBS.
 
-Il met en grand la personne **qui parle**, de façon **organique** — sans aucun driver ni câble audio virtuel. Vous ne touchez plus à une caméra pendant l'émission.
-
----
-
-## Regardez-le suivre la conversation
-
-Plusieurs intervenants, une seule règle : **on montre qui parle.** Flowspire écoute le son à l'intérieur d'OBS et bascule tout seul, en douceur.
-
-![Plan large — tous les intervenants à l'écran](docs/img/C-wide.png)
-*Au repos, le **plan large** : tout le monde est là.*
-
-![Mia parle, elle passe en grand](docs/img/C-Mia.png)
-*Mia prend la parole → Flowspire la met **en grand**, automatiquement.*
-
-![Ryan parle, la caméra le suit](docs/img/C-Ryan.png)
-*Ryan enchaîne → la caméra le suit **instantanément**. Vous n'avez rien touché.*
-
-> Le rendu ressemble à une vraie production TV… sauf qu'il n'y a **personne** derrière la régie.
+It puts whoever is **speaking** front and center, in an **organic** way — with no driver and no virtual audio cable. You never touch a camera again during the show.
 
 ---
 
-## À quoi ça sert
+## Watch it follow the conversation
 
-Quand vous animez une émission à plusieurs — talk, podcast filmé, table ronde, invités à distance — garder une vidéo **vivante** demande normalement quelqu'un qui bascule la caméra sur celui qui parle. Sans ça, on se rabat sur une **grille fixe** où tout le monde est affiché en permanence : plat et statique.
+Several speakers, one rule: **show whoever is talking.** Flowspire listens to the audio inside OBS and switches on its own, smoothly.
 
-**Flowspire fait ce travail à votre place.** Il écoute le son de chaque participant *dans OBS* et **bascule sur la bonne scène** dès que quelqu'un prend la parole — en douceur, jamais de façon mécanique ou nerveuse.
+![Wide shot — all speakers on screen](docs/img/C-wide.png)
+*At rest, the **wide shot**: everyone is there.*
 
-### Marche avec **toutes vos sources** et **toutes vos scènes**
+![Mia speaks, she takes the spotlight](docs/img/C-Mia.png)
+*Mia starts talking → Flowspire puts her **center stage**, automatically.*
 
-Flowspire raisonne uniquement en **sources audio** et en **scènes OBS**. La règle est simple : **dès qu'un vu-mètre bouge dans le mélangeur d'OBS, Flowspire peut réaliser dessus.** Une source, c'est :
+![Ryan speaks, the camera follows him](docs/img/C-Ryan.png)
+*Ryan jumps in → the camera follows him **instantly**. You didn't touch a thing.*
 
-- votre **micro physique** local,
-- un invité connecté via **VDO.Ninja**,
-- une capture **NDI**, un navigateur, une carte d'acquisition,
-- … bref, **n'importe quelle entrée du mélangeur audio d'OBS**.
-
-Côté image, il pilote **les scènes que vous avez créées** (gros plan, plan d'écoute, plan large, avec vos overlays). Il se contente de les **afficher au bon moment** : il ne crée, ne modifie et ne supprime **jamais** rien dans votre projet OBS.
-
-### Sans aucun driver ni câble audio virtuel
-
-C'est le parti pris fondateur : Flowspire lit les niveaux audio **nativement dans OBS**. **Aucun driver, aucun câble virtuel, aucun routage externe** — rien qui puisse alourdir ou déstabiliser votre machine. Vous installez le plugin, et c'est tout.
-
-> **En résumé : si ça produit du son dans OBS et que vous avez des scènes, Flowspire sait réaliser avec — sans rien brancher de plus.**
+> The result looks like a real TV production… except there's **nobody** running the control room.
 
 ---
 
-## Le dock, en temps réel
+## What it's for
 
-![Le dock Flowspire](docs/img/dock.png)
+When you host a multi-person show — talk show, filmed podcast, panel, remote guests — keeping the video **alive** normally takes someone to switch the camera to whoever is talking. Without that, you fall back on a **fixed grid** where everyone is shown all the time: flat and static.
 
-Un panneau OBS clair : qui parle, la scène **à l'antenne** (le trait rouge), l'**interrupteur** marche/arrêt, et un **curseur de sensibilité** par personne — réglable **en plein direct**. Le reste du pilotage passe par vos scènes OBS et vos raccourcis : le dock reste épuré.
+**Flowspire does that job for you.** It listens to each participant's audio *inside OBS* and **switches to the right scene** the moment someone speaks up — smoothly, never in a mechanical or jittery way.
+
+### Works with **all your sources** and **all your scenes**
+
+Flowspire thinks only in terms of **audio sources** and **OBS scenes**. The rule is simple: **as soon as an audio meter moves in the OBS mixer, Flowspire can direct on it.** A source can be:
+
+- your local **physical microphone**,
+- a guest connected through **VDO.Ninja**,
+- an **NDI** capture, a browser, a capture card,
+- … in short, **any input in the OBS audio mixer**.
+
+On the visual side, it drives **the scenes you created** (close-up, reaction shot, wide shot, with your overlays). It simply **shows them at the right moment**: it **never** creates, modifies or deletes anything in your OBS project.
+
+### With no driver and no virtual audio cable
+
+That's the founding principle: Flowspire reads audio levels **natively inside OBS**. **No driver, no virtual cable, no external routing** — nothing that could weigh down or destabilize your machine. You install the plugin, and that's it.
+
+> **In short: if it makes sound in OBS and you have scenes, Flowspire can direct with it — without plugging in anything else.**
 
 ---
 
-## Ce que ça fait
+## The dock, in real time
 
-- **Détecte qui parle** via les niveaux audio internes d'OBS — sans driver ni câble virtuel.
-- **Bascule la scène automatiquement** sur la personne active, de façon organique.
-- **Mapping illimité** : autant de couples *source audio → scène(s)* que vous voulez.
-- **Variété des plans** : plusieurs scènes pour une même personne (gros plan, plan d'écoute…) → le plugin **alterne** pour éviter la monotonie.
-- **Plan large** de repli quand plusieurs parlent ou que personne ne parle.
-- **Raccourcis OBS natifs** (clavier **et Stream Deck**) : marche/arrêt, plan large, forcer une personne.
-- **Profils** : une config par type d'émission, bascule en un clic.
-- **Assistant** pas-à-pas — tout se règle sans toucher au moindre fichier.
-- **Multilingue** (français + anglais).
-- **Stable** : conçu pour ne jamais déstabiliser ni faire crasher OBS (priorité n°1).
+![The Flowspire dock](docs/img/dock.png)
+
+A clean OBS panel: who is speaking, the scene **on air** (the red bar), the on/off **switch**, and a **sensitivity slider** per person — adjustable **live on air**. The rest of the control happens through your OBS scenes and your hotkeys: the dock stays uncluttered.
 
 ---
 
-## « Organique, jamais mécanique »
+## What it does
 
-Flowspire ne suit **jamais une règle rigide** du type « X parle → on montre X, point ». À chaque décision, il fait un **tirage au sort pondéré** parmi plusieurs choix. C'est ce qui donne le naturel : deux situations identiques ne produisent pas forcément le même plan — exactement comme un humain derrière la régie.
+- **Detects who is speaking** through OBS's internal audio levels — no driver, no virtual cable.
+- **Switches the scene automatically** to the active person, in an organic way.
+- **Unlimited mapping**: as many *audio source → scene(s)* pairs as you want.
+- **Variety of shots**: several scenes for the same person (close-up, reaction shot…) → the plugin **alternates** to avoid monotony.
+- **Wide shot** as a fallback when several people speak or nobody speaks.
+- **Native OBS hotkeys** (keyboard **and Stream Deck**): on/off, wide shot, force a person.
+- **Profiles**: one config per show type, switch with a single click.
+- **Wizard** step by step — everything is set up without touching a single file.
+- **Multilingual** (French + English).
+- **Stable**: designed to never destabilize or crash OBS (priority #1).
 
-Il distingue **trois situations**, chacune avec son propre tirage :
+---
+
+## "Organic, never mechanical"
+
+Flowspire **never** follows a rigid rule like "X speaks → show X, period." For every decision, it makes a **weighted random pick** among several options. That's what gives it its natural feel: two identical situations won't necessarily produce the same shot — exactly like a human running the control room.
+
+It distinguishes **three situations**, each with its own pick:
 
 ```mermaid
 flowchart TD
-    Q{"Qui parle<br/>en ce moment ?"}
-    Q -->|Une personne| P1["Tirage parmi <b>ses</b> scènes<br/>gros plan · plan d'écoute · plan large"]
-    Q -->|Plusieurs| P2["Tirage entre<br/>le plus fort · rester sur l'actuel · plan large"]
-    Q -->|Personne| P3["Tirage entre<br/>dernier orateur · plan large"]
+    Q{"Who is speaking<br/>right now?"}
+    Q -->|One person| P1["Pick among <b>their</b> scenes<br/>close-up · reaction shot · wide shot"]
+    Q -->|Several| P2["Pick between<br/>the loudest · stay on the current one · wide shot"]
+    Q -->|Nobody| P3["Pick between<br/>last speaker · wide shot"]
 ```
 
-Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan (pas de coupe sur un rire), **délai de silence** (pas de coupe sur une respiration), **temps maxi** (on rafraîchit pour varier), **anti ping-pong** (pas d'aller-retour quand deux personnes s'interrompent).
+On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on a laugh), **silence delay** (no cut on a breath), **maximum shot time** (we refresh to vary), **anti ping-pong** (no back-and-forth when two people interrupt each other).
 
-> **Les poids sont des proportions, pas des pourcentages.** *Gros plan 90* + *plan large 10* → vous verrez le gros plan ~90 % du temps. Le plugin calcule le % tout seul.
-
----
-
-## Installation express
-
-1. Récupérez `flowspire.dll` (Windows) / `.so` (Linux) / `.plugin` (macOS) depuis une **release**, ou compilez-le.
-2. Copiez-le dans le dossier des plugins d'OBS, puis **(re)lancez OBS**.
-3. Menu **Docks → Flowspire** pour afficher le panneau.
-
-> Nécessite **OBS 28 ou supérieur**.
-
-**Première utilisation ?** Le [**Guide utilisateur complet**](docs/guide.md) vous accompagne de A à Z : préparer vos scènes, l'assistant écran par écran, et chaque réglage expliqué — avec captures.
+> **Weights are proportions, not percentages.** *Close-up 90* + *wide shot 10* → you'll see the close-up ~90% of the time. The plugin works out the % on its own.
 
 ---
 
-## Aller plus loin
+## Quick install
 
-- **[Guide utilisateur complet](docs/guide.md)** — préparer ses scènes, assistant, tous les réglages.
-- **[Build & développement](#build--développement)** — compiler le plugin soi-même.
+1. Grab `flowspire.dll` (Windows) / `.so` (Linux) / `.plugin` (macOS) from a **release**, or build it yourself.
+2. Copy it into the OBS plugins folder, then **(re)start OBS**.
+3. Menu **Docks → Flowspire** to show the panel.
+
+> Requires **OBS 28 or higher**.
+
+**First time?** The [**full user guide**](docs/guide.md) walks you through everything from A to Z: preparing your scenes, the wizard screen by screen, and every setting explained — with screenshots.
 
 ---
 
-## Build & développement
+## Going further
 
-Plugin natif **C++ / CMake** bâti sur l'`obs-plugintemplate` officiel, **multi-OS** (Windows · macOS · Linux). Licence **GPLv2+** (imposée par le lien à libobs).
+- **[Full user guide](docs/guide.md)** — prepare your scenes, wizard, all the settings.
+- **[Build & development](#build--development)** — build the plugin yourself.
+
+---
+
+## Build & development
+
+A native **C++ / CMake** plugin built on the official `obs-plugintemplate`, **cross-OS** (Windows · macOS · Linux). **GPLv2+** license (required by linking to libobs).
 
 ```bat
-scripts\dev-build.bat      :: cœur + tests (rapide, sans OBS)
-scripts\build-plugin.bat   :: plugin complet (1er run : télécharge libobs + Qt6)
-scripts\install-local.bat  :: installe le plugin dans OBS (OBS doit être fermé)
+scripts\dev-build.bat      :: core + tests (fast, no OBS)
+scripts\build-plugin.bat   :: full plugin (first run: downloads libobs + Qt6)
+scripts\install-local.bat  :: installs the plugin into OBS (OBS must be closed)
 ```
 
-Le **cœur de décision** (`src/core`) est **pur** (aucune dépendance OBS) et **testé** unitairement (doctest/CTest) — on peut faire évoluer la logique de réalisation sans OBS.
+The **decision core** (`src/core`) is **pure** (no OBS dependency) and **unit-tested** (doctest/CTest) — you can evolve the directing logic without OBS.
 
-**Versionnage sémantique** (`MAJEUR.MINEUR.CORRECTIF`), source unique dans `buildspec.json`, script `scripts\bump-version.py`. Publier une version = `git tag X.Y.Z` puis push → le CI fabrique les installeurs des 3 OS et crée la Release GitHub.
+**Semantic versioning** (`MAJOR.MINOR.PATCH`), single source in `buildspec.json`, script `scripts\bump-version.py`. Releasing a version = `git tag X.Y.Z` then push → the CI builds the installers for all 3 OSes and creates the GitHub Release.
 
 ---
 
-## Crédits & inspiration
+## Credits & inspiration
 
-Flowspire s'inspire de **[Gabin](https://github.com/one-click-studio/gabin)**, le réalisateur automatique open source de **[One Click Studio](https://oneclickstudio.fr)** (licence MIT). Gabin a posé l'idée d'une réalisation **organique** pilotée par le son ; Flowspire en reprend l'esprit pour l'amener **nativement dans OBS, sans driver ni câble audio virtuel**.
+Flowspire is inspired by **[Gabin](https://github.com/one-click-studio/gabin)**, the open source automatic director from **[One Click Studio](https://oneclickstudio.fr)** (MIT license). Gabin laid down the idea of **organic** directing driven by sound; Flowspire carries that spirit over to bring it **natively into OBS, with no driver and no virtual audio cable**.
 
-## Licence
+## License
 
-[GPL-2.0-or-later](LICENSE). Gratuit et open source.
+[GPL-2.0-or-later](LICENSE). Free and open source.
 
-## Soutenir
+## Support
 
-Flowspire est **gratuit et open source — aucune fonction n'est jamais bloquée**. S'il vous fait gagner du temps sur vos lives, un petit coup de pouce aide à le maintenir :
+Flowspire is **free and open source — no feature is ever locked**. If it saves you time on your livestreams, a little tip helps keep it maintained:
 
-[![Soutenir sur PayPal](https://img.shields.io/badge/Soutenir-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/DavidZouari)
+[![Donate via PayPal](https://img.shields.io/badge/Donate-PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white)](https://paypal.me/DavidZouari)
 
-*(Le bouton **Soutenir** est aussi accessible directement dans les paramètres du plugin.)*
+*(The **Support** button is also available directly in the plugin settings.)*
