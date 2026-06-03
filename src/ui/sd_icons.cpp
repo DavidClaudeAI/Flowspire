@@ -8,6 +8,8 @@
 #include <QPainter>
 #include <QSvgRenderer>
 
+#include <cmath> // std::lround (icon() + logoFlowspire) — pas d'include transitif implicite
+
 namespace sd::ui {
 
 namespace {
