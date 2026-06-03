@@ -124,7 +124,19 @@ scripts\install-local.bat  :: installs the plugin into OBS (OBS must be closed)
 
 The **decision core** (`src/core`) is **pure** (no OBS dependency) and **unit-tested** (doctest/CTest) — you can evolve the directing logic without OBS.
 
-**Semantic versioning** (`MAJOR.MINOR.PATCH`), single source in `buildspec.json`, script `scripts\bump-version.py`. Releasing a version = `git tag X.Y.Z` then push → the CI builds the installers for all 3 OSes and creates the GitHub Release.
+**Semantic versioning** (`MAJOR.MINOR.PATCH`), single source in `buildspec.json`, script `scripts\bump-version.py`.
+
+**Builds run on demand, not on every merge.** Pull requests are built for validation; outside of that, trigger a build yourself from **Actions → Dispatch → Run workflow** (compiles the 3 OSes and uploads downloadable installers as artifacts).
+
+**Cutting a release** — bump the version, then tag and push:
+
+```bash
+python scripts/bump-version.py minor      # or patch / major
+git commit -am "feat : v0.3.0" && git tag 0.3.0 && git push --follow-tags
+# tip: tag 0.3.0-rc1 for a pre-release dry-run of the whole flow
+```
+
+The tag triggers the CI to build the 3 OSes, produce the installers — **Windows `.exe`** (Inno Setup, → `cmake/windows/resources/installer-Windows.iss`), **macOS `.pkg`**, **Linux `.deb`** — and create a **draft GitHub Release** with checksums, which you review before publishing. Installers are **unsigned** (one-time SmartScreen/Gatekeeper step, see the [user guide](docs/guide.md)).
 
 ---
 

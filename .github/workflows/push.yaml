@@ -1,11 +1,10 @@
 name: Push
 run-name: ${{ github.ref_name }} push run 🚀
 on:
+  # Compilation NON declenchee a chaque merge (choix David) : seuls les TAGS de version
+  # buildent (-> flux release). La validation avant merge se fait sur les PR (pr-pull.yaml)
+  # et la compilation a la demande via le workflow "Dispatch" (dispatch.yaml).
   push:
-    branches:
-      - master
-      - main
-      - 'release/**'
     tags:
       - '*'
 permissions:
