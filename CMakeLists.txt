@@ -81,3 +81,16 @@ target_include_directories(${CMAKE_PROJECT_NAME} SYSTEM PRIVATE vendor)
 target_compile_features(${CMAKE_PROJECT_NAME} PRIVATE cxx_std_17)
 
 set_target_properties_plugin(${CMAKE_PROJECT_NAME} PROPERTIES OUTPUT_NAME ${_name})
+
+# Windows : OBS embarque Qt6Network mais PAS de backend TLS -> notre verification de mise
+# a jour en HTTPS echouerait ("No functional TLS backend"). On embarque le backend
+# Schannel de Qt (TLS natif Windows, version alignee sur le Qt d'OBS) sous bin/64bit/tls ;
+# plugin-main ajoute ce dossier aux chemins de plugins Qt au chargement. (macOS/Linux ont
+# un backend TLS natif fourni avec Qt.)
+if(WIN32 AND ENABLE_QT AND TARGET Qt6::QSchannelBackendPlugin)
+  install(
+    FILES "$<TARGET_FILE:Qt6::QSchannelBackendPlugin>"
+    DESTINATION "${CMAKE_PROJECT_NAME}/bin/64bit/tls"
+    COMPONENT Runtime
+  )
+endif()

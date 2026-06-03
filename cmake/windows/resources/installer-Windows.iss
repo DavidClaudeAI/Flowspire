@@ -61,4 +61,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; Layout "par utilisateur" : on depose le plugin tel quel ({app} = ...\plugins\flowspire),
 ; donc OBS charge ...\plugins\flowspire\bin\64bit\flowspire.dll + ...\plugins\flowspire\data\ .
 Source: "{#SourceDir}\bin\64bit\{#MyModuleName}.dll"; DestDir: "{app}\bin\64bit"; Flags: ignoreversion
+; Backend TLS Qt (Schannel) embarque -> permet la verif de MAJ en HTTPS (OBS ne le fournit pas).
+Source: "{#SourceDir}\bin\64bit\tls\*"; DestDir: "{app}\bin\64bit\tls"; Flags: ignoreversion recursesubdirs
 Source: "{#SourceDir}\data\*"; DestDir: "{app}\data"; Flags: ignoreversion recursesubdirs createallsubdirs

@@ -22,6 +22,21 @@ the Free Software Foundation; either version 2 of the License, or
 
 #include "ui/sd_dock.hpp"
 
+#ifdef _WIN32
+// Pour embarquer le backend TLS Qt absent d'OBS (cf. registerWindowsTlsBackend).
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
+#include <QCoreApplication>
+#include <QFileInfo>
+#include <QString>
+#endif
+
 OBS_DECLARE_MODULE()
 OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 
@@ -118,6 +133,28 @@ static void unregisterHotkeys(void) {
     }
 }
 
+#ifdef _WIN32
+// OBS fournit Qt6Network mais PAS de backend TLS -> les requetes HTTPS de Qt (notre
+// verification de mise a jour) echouent avec "No functional TLS backend". On embarque
+// le backend Schannel de Qt (TLS natif Windows, version alignee sur le Qt d'OBS) dans
+// <plugin>/bin/64bit/tls, et on ajoute le dossier de NOTRE DLL aux chemins de plugins
+// de Qt pour qu'il l'y trouve. (macOS/Linux ont un backend TLS natif.)
+static void registerWindowsTlsBackend(void) {
+    HMODULE self = nullptr;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            reinterpret_cast<LPCWSTR>(&registerWindowsTlsBackend), &self)) {
+        return;
+    }
+    wchar_t path[MAX_PATH];
+    const DWORD n = GetModuleFileNameW(self, path, MAX_PATH);
+    if (n == 0 || n >= MAX_PATH) {
+        return;
+    }
+    const QString dir = QFileInfo(QString::fromWCharArray(path, static_cast<int>(n))).absolutePath();
+    QCoreApplication::addLibraryPath(dir);
+}
+#endif
+
 bool obs_module_load(void) {
     for (int i = 0; i < kMaxSpeakerHotkeys; ++i) {
         g_hkForceSpeaker[i] = OBS_INVALID_HOTKEY_ID;
@@ -131,6 +168,11 @@ void obs_module_post_load(void) {
     // traverserait du code C d'OBS -> std::terminate (crash d'OBS au demarrage).
     // On isole donc toute la construction du dock derriere un try/catch.
     try {
+#ifdef _WIN32
+        // Doit preceder toute requete HTTPS de Qt (la verif MAJ part a la creation du
+        // dock juste apres) -> on enregistre le backend TLS embarque maintenant.
+        registerWindowsTlsBackend();
+#endif
         // A ce stade, l'interface Qt d'OBS est prete : on peut creer le dock.
         auto* dock = new sd::ui::SdDock();
 
