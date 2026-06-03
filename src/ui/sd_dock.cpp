@@ -44,6 +44,7 @@
 #include "ui/sd_runtime.hpp"      // kTickMs (cadence partagee dock <-> assistant)
 #include "ui/sd_style.hpp"        // rgba() (helper QSS partage)
 #include "ui/sd_theme.hpp"        // jetons de design (couleurs/typo)
+#include "ui/sd_widgets.hpp"      // briques d'UI partagees (makeCard, primaryBtnQss)
 
 namespace sd::ui {
 
@@ -210,8 +211,8 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     badgeLay->addWidget(statusText_);
     // Badge cliquable : c'est le toggle du pilotage auto (ON/OFF). Les memes actions
     // restent accessibles par les hotkeys OBS (clavier / Stream Deck / Companion).
-    statusBadge_->setCursor(Qt::PointingHandCursor);
-    statusBadge_->setToolTip(i18n("Control.ToggleAuto"));
+    // Le curseur et l'infobulle sont poses par updateStatusBadge selon l'etat : en
+    // lecture seule (aucune config) le badge n'est PAS un interrupteur.
     statusBadge_->installEventFilter(this);
     header->addWidget(statusBadge_);
     root->addLayout(header);
@@ -300,18 +301,13 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     root->addWidget(modeLabel_);
 
     // --- Section scenes (intervenants + plan large) ---
-    auto* speakersSection = new QLabel(i18n("Section.Scenes"));
-    speakersSection->setStyleSheet(sectionLabelQss());
-    root->addWidget(speakersSection);
+    scenesSectionLabel_ = new QLabel(i18n("Section.Scenes"));
+    scenesSectionLabel_->setStyleSheet(sectionLabelQss());
+    root->addWidget(scenesSectionLabel_);
 
     rowsLayout_ = new QVBoxLayout();
     rowsLayout_->setSpacing(8);
     root->addLayout(rowsLayout_);
-
-    emptyLabel_ = new QLabel(i18n("Empty.NoSources"));
-    emptyLabel_->setWordWrap(true);
-    emptyLabel_->setStyleSheet(QString("color:%1;").arg(th::kTextSecondary));
-    rowsLayout_->addWidget(emptyLabel_);
 
     // La scene a l'antenne n'est plus affichee en TEXTE ici (doublon avec le
     // gestionnaire de scenes natif d'OBS qui la surligne deja). A la place, un temoin
@@ -504,15 +500,11 @@ void SdDock::reload() {
             displaySpeakers_.push_back({sp.id, sp.name, sp.audioSource});
         }
     } else {
+        // Etat d'accueil : on NE liste PLUS toutes les entrees audio (ca laissait croire
+        // a une regie deja configuree). displaySpeakers_ et cfg restent vides -> aucune
+        // carte d'intervenant ; une carte d'accueil (addWelcomeCard) invitera a lancer
+        // l'assistant, en rappelant d'abord les prerequis OBS (scenes + entrees audio).
         configMode_ = false;
-        for (const auto& name : names) {
-            sd::core::Speaker sp;
-            sp.id = name;
-            sp.name = name;
-            sp.audioSource = name;
-            cfg.speakers.push_back(sp);
-            displaySpeakers_.push_back({name, name, name});
-        }
     }
 
     director_ = std::make_unique<sd::core::Director>(cfg);
@@ -530,8 +522,15 @@ void SdDock::reload() {
         delete row.card;
     }
     rows_.clear();
-
-    emptyLabel_->setVisible(displaySpeakers_.empty());
+    // Carte d'accueil : suppression DIFFEREE (hide + deleteLater). Son bouton "Lancer
+    // l'assistant" declenche reload() (donc CE bloc) alors que son propre clic est encore
+    // en cours de traitement -> un delete immediat serait un use-after-free (meme piege
+    // qu'au Run 5). deleteLater repousse la destruction a la fin de l'evenement courant.
+    if (welcomeCard_) {
+        welcomeCard_->hide();
+        welcomeCard_->deleteLater();
+        welcomeCard_ = nullptr;
+    }
 
     for (size_t i = 0; i < displaySpeakers_.size(); ++i) {
         const DisplaySpeaker& ds = displaySpeakers_[i];
@@ -679,6 +678,15 @@ void SdDock::reload() {
         rows_.push_back(wideRow);
     }
 
+    // Etat d'accueil (aucune config) : carte d'accueil a la place de la liste d'entrees.
+    // On masque le seul en-tete "SCENES" (sans objet ici) ; le selecteur de profil reste
+    // VISIBLE -> on peut toujours rebasculer sur un profil configure (pas de piege quand
+    // un profil vierge est actif). Tout reapparait des qu'une config existe.
+    if (!configMode_) {
+        addWelcomeCard(names.size());
+    }
+    scenesSectionLabel_->setVisible(configMode_);
+
     updateModeLabel();
     shownStatus_ = -1;
     updateStatusBadge();
@@ -688,6 +696,61 @@ void SdDock::reload() {
     // on ne la traitera pas comme un forcage manuel au prochain tick (le moteur vient
     // d'etre recree, sa decision repart de zero).
     lastRequestedScene_ = sceneSwitcher_.currentProgramScene();
+}
+
+void SdDock::addWelcomeCard(size_t audioInputCount) {
+    namespace w = sd::ui::widgets;
+    // Carte affichee quand aucune regie n'est configuree. Remplace l'ancienne liste de
+    // TOUTES les entrees audio (trompeuse : elle laissait croire a une regie en place).
+    // On invite a lancer l'assistant en rappelant d'abord les prerequis OBS.
+    auto* card = w::makeCard(QStringLiteral("welcomeCard"));
+    auto* lay = new QVBoxLayout(card);
+    lay->setContentsMargins(16, 18, 16, 18);
+    lay->setSpacing(12);
+
+    // Icone d'accueil (memes etincelles que le bouton Assistant -> lien visuel).
+    auto* iconLabel = new QLabel();
+    iconLabel->setPixmap(icon(Icon::Sparkles, th::kAccent, 28));
+    iconLabel->setAlignment(Qt::AlignCenter);
+    lay->addWidget(iconLabel);
+
+    auto* title = new QLabel(i18n("Welcome.Title"));
+    title->setWordWrap(true);
+    title->setAlignment(Qt::AlignCenter);
+    title->setStyleSheet(
+        QString("color:%1; font-size:%2px; font-weight:700;").arg(th::kTextPrimary).arg(th::kFontTitle));
+    lay->addWidget(title);
+
+    // Rappel des prerequis AVANT de lancer l'assistant (sinon l'utilisateur le lance,
+    // decouvre qu'il n'a rien prepare dans OBS, et perd du temps). makeSub = texte
+    // secondaire standard (kTextSecondary + 13px + word-wrap) -> pas de style duplique.
+    lay->addWidget(w::makeSub(i18n("Welcome.Prereq")));
+
+    // Ligne d'etat : 2 cas distincts (demande David). Entrees audio presentes -> ligne
+    // rassurante (vert) ; aucune entree -> on guide d'abord vers leur creation dans OBS.
+    auto* status = new QLabel();
+    status->setWordWrap(true);
+    if (audioInputCount == 0) {
+        status->setText(i18n("Welcome.NoSources"));
+        status->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kWarning).arg(th::kFontBody));
+    } else {
+        const QString line = (audioInputCount == 1)
+                                 ? i18n("Welcome.Sources.One")
+                                 : i18n("Welcome.Sources.Many").arg(static_cast<int>(audioInputCount));
+        status->setText(line);
+        status->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kSuccess).arg(th::kFontBody));
+    }
+    lay->addWidget(status);
+
+    // Appel a l'action principal : bouton plein accent, pleine largeur.
+    auto* startBtn = new QPushButton(i18n("Welcome.Start"));
+    startBtn->setCursor(Qt::PointingHandCursor);
+    startBtn->setStyleSheet(w::primaryBtnQss());
+    connect(startBtn, &QPushButton::clicked, this, [this]() { openAssistant(); });
+    lay->addWidget(startBtn);
+
+    rowsLayout_->addWidget(card);
+    welcomeCard_ = card;
 }
 
 void SdDock::updateStatusBadge() {
@@ -722,6 +785,13 @@ void SdDock::updateStatusBadge() {
     statusDot_->setStyleSheet(QString("color:%1; font-size:%2px;").arg(color).arg(th::kFontBody));
     statusText_->setText(text);
     statusText_->setStyleSheet(QString("color:%1; font-size:%2px; font-weight:700;").arg(color).arg(th::kFontBody));
+
+    // En lecture seule (aucune config), le badge n'est PAS un interrupteur (rien a
+    // piloter) : curseur neutre + infobulle d'aide -> on n'invite pas a un clic sans
+    // effet. Configure -> il redevient le toggle ON/OFF (curseur main + infobulle).
+    const bool interactive = (status != StatusReadOnly);
+    statusBadge_->setCursor(interactive ? Qt::PointingHandCursor : Qt::ArrowCursor);
+    statusBadge_->setToolTip(interactive ? i18n("Control.ToggleAuto") : i18n("Control.ReadOnlyHint"));
 }
 
 void SdDock::updateModeLabel() {
@@ -729,10 +799,12 @@ void SdDock::updateModeLabel() {
         return;
     }
     if (!configMode_) {
-        modeLabel_->setText(i18n("Mode.ReadOnly"));
-        modeLabel_->setStyleSheet(QString("color:%1;").arg(th::kTextSecondary));
+        // Etat d'accueil : le message est porte par la carte d'accueil -> on masque ce
+        // libelle (sinon doublon avec l'invitation a lancer l'assistant).
+        modeLabel_->setVisible(false);
         return;
     }
+    modeLabel_->setVisible(true);
     if (autoEnabled_) {
         modeLabel_->setText(i18n("Mode.Auto.On"));
         modeLabel_->setStyleSheet(QString("color:%1; font-weight:600;").arg(th::kSuccess));
