@@ -17,6 +17,7 @@
 #include <QGraphicsDropShadowEffect>
 #include <QHBoxLayout>
 #include <QInputDialog>
+#include <QIntValidator>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
@@ -314,6 +315,69 @@ void SdSettings::Impl::mountGeneral(QVBoxLayout* host) {
         savePrefs(generalPrefs);
     });
     host->addWidget(offCard);
+
+    // --- Section : Connexion externe (Stream Deck / regie) ---
+    // Remontee du statut ON/OFF de la regie vers une appli externe (Bitfocus Companion) :
+    // Flowspire POST une variable personnalisee. Persistance immediate (savePrefs) ; le
+    // dock relit ces prefs et pousse l'etat a la fermeture des Parametres + periodiquement.
+    host->addWidget(makeSectionLabel(i18n("Settings.General.ExternalSection")));
+    auto* extCard = makeCard(QStringLiteral("genExtCard"));
+    auto* extLay = new QVBoxLayout(extCard);
+    extLay->setContentsMargins(14, 12, 14, 12);
+    extLay->setSpacing(10);
+
+    auto* extCheck = new QCheckBox(i18n("Settings.General.External.Enable"));
+    extCheck->setChecked(generalPrefs.statusPushEnabled);
+    extCheck->setCursor(Qt::PointingHandCursor);
+    extCheck->setStyleSheet(checkBoxQss());
+    QObject::connect(extCheck, &QCheckBox::toggled, q, [this](bool on) {
+        generalPrefs.statusPushEnabled = on;
+        savePrefs(generalPrefs); // persistance immediate (modele de l'onglet)
+    });
+    extLay->addWidget(extCheck);
+
+    // Ligne "Adresse IP" : label a largeur fixe + champ extensible.
+    auto* hostRow = new QWidget();
+    auto* hostRowLay = new QHBoxLayout(hostRow);
+    hostRowLay->setContentsMargins(0, 0, 0, 0);
+    hostRowLay->setSpacing(8);
+    auto* hostLabel = new QLabel(i18n("Settings.General.External.Host"));
+    hostLabel->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kTextSecondary));
+    hostLabel->setFixedWidth(70);
+    auto* hostEdit = new QLineEdit(QString::fromStdString(generalPrefs.statusPushHost));
+    hostEdit->setStyleSheet(lineEditQss());
+    QObject::connect(hostEdit, &QLineEdit::editingFinished, q, [this, hostEdit]() {
+        generalPrefs.statusPushHost = hostEdit->text().trimmed().toStdString();
+        savePrefs(generalPrefs);
+    });
+    hostRowLay->addWidget(hostLabel);
+    hostRowLay->addWidget(hostEdit, 1);
+    extLay->addWidget(hostRow);
+
+    // Ligne "Port" : saisie restreinte aux entiers 1..65535 (validator).
+    auto* portRow = new QWidget();
+    auto* portRowLay = new QHBoxLayout(portRow);
+    portRowLay->setContentsMargins(0, 0, 0, 0);
+    portRowLay->setSpacing(8);
+    auto* portLabel = new QLabel(i18n("Settings.General.External.Port"));
+    portLabel->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kTextSecondary));
+    portLabel->setFixedWidth(70);
+    auto* portEdit = new QLineEdit(QString::number(generalPrefs.statusPushPort));
+    portEdit->setStyleSheet(lineEditQss());
+    portEdit->setValidator(new QIntValidator(1, 65535, portEdit));
+    QObject::connect(portEdit, &QLineEdit::editingFinished, q, [this, portEdit]() {
+        const int p = portEdit->text().toInt();
+        if (p >= 1 && p <= 65535) {
+            generalPrefs.statusPushPort = p;
+            savePrefs(generalPrefs);
+        }
+    });
+    portRowLay->addWidget(portLabel);
+    portRowLay->addWidget(portEdit, 1);
+    extLay->addWidget(portRow);
+
+    extLay->addWidget(makeHint(i18n("Settings.General.External.Hint")));
+    host->addWidget(extCard);
 }
 
 bool SdSettings::Impl::dirty() const {

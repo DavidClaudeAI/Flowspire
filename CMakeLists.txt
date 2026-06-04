@@ -70,6 +70,7 @@ target_sources(
     src/ui/sd_prefs.cpp
     src/ui/sd_profiles_panel.cpp
     src/ui/sd_settings.cpp
+    src/ui/sd_status_push.cpp
     src/ui/sd_support.cpp
     src/ui/sd_update_check.cpp
 )

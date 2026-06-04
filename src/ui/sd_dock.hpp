@@ -109,6 +109,10 @@ private:
     void updateStatusBadge();
     void updateModeLabel();
     void startUpdateCheck(); // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
+    // Remontee best-effort de l'etat regie (ON/OFF) vers une appli externe (Companion) si
+    // l'option est activee dans les Parametres generaux. Appele a chaque bascule, au
+    // (re)chargement, et periodiquement (battement). Async, sans impact sur le pilotage.
+    void pushStatusIfEnabled();
     void styleSpeakerCard(Row& row, bool speaking);
     // Construit la carte d'accueil (etat sans config) dans rowsLayout_ : titre, rappel
     // des prerequis OBS, nombre d'entrees audio detectees, bouton "Lancer l'assistant".
@@ -149,6 +153,9 @@ private:
     // Ecriture differee (debounce) du seuil regle au slider : un glissement souris ou
     // une rafale clavier/molette ne declenche qu'UNE ecriture disque, apres stabilisation.
     QTimer* thresholdSaveTimer_ = nullptr;
+    // Battement de re-synchro du statut vers l'appli externe (Companion). Toujours actif ;
+    // pushStatusIfEnabled ne fait rien tant que l'option n'est pas cochee.
+    QTimer* statusPushTimer_ = nullptr;
     int shownStatus_ = -1;
 };
 

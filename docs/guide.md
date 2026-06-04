@@ -242,6 +242,18 @@ Flowspire exposes its actions as **native OBS hotkeys**. They have **no default 
 - **Resume** (Auto ON): it starts again from whoever is speaking at that moment.
 - Changing a scene **manually** in OBS also hands control back to the plugin cleanly.
 
+### Show the directing state on a button (Bitfocus Companion)
+
+You can make a **button change color** depending on whether auto-directing is on — **without installing any module**.
+
+1. In **Companion**, create a **custom variable** named `flowspire_active` (*Variables → Custom Variables*).
+2. In **Flowspire → Settings → General settings → External connection**, tick *Send the directing status…*, then enter the **IP address** of the machine running Companion (`127.0.0.1` if it's the same one) and the **port** (**8000** by default).
+3. On your Companion button, add a **"Variable value"** *feedback*: if `$(custom:flowspire_active)` equals `1` → green "ON AIR" background, otherwise grey.
+
+Flowspire writes `1` when auto-directing is active, `0` otherwise — on every toggle, at startup, and every 15 s (re-sync if Companion restarts). Everything goes over **local HTTP**: no module, no cable.
+
+> To **drive** directing from the same button (press = on/off), assign a key to the *"Flowspire: enable/disable auto-directing"* hotkey (above) and trigger it from Companion through the **OBS** module. One button both controls **and** reflects the state.
+
 ---
 
 ## 8. Profiles
