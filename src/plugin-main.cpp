@@ -111,17 +111,31 @@ static void hkForceSpeaker(void* data, obs_hotkey_id, obs_hotkey_t*, bool presse
     postToDock([index](sd::ui::SdDock* dock) { dock->forceSpeakerByIndex(index); });
 }
 
+// Noms STABLES des hotkeys Flowspire. Source UNIQUE : chaque nom sert A LA FOIS
+// d'identifiant d'enregistrement OBS ET de cle de (de)serialisation dans hotkeys.json.
+// Les definir ici (et nulle part ailleurs) evite qu'un renommage a un seul endroit
+// (enregistrement OU persistance) ne casse SILENCIEUSEMENT la sauvegarde des raccourcis.
+static constexpr const char* kHkToggleAutoName = "flowspire.toggle_auto";
+static constexpr const char* kHkForceWideName = "flowspire.force_wide";
+
+// Nom stable de la hotkey "forcer l'intervenant N" (index 0-based en interne, libelle
+// 1-based) ecrit dans `out` (taille `cap`). Appele par l'enregistrement ET la
+// (de)serialisation -> noms garantis identiques des deux cotes.
+static void speakerHotkeyName(int index, char* out, size_t cap) {
+    std::snprintf(out, cap, "flowspire.force_speaker_%d", index + 1);
+}
+
 static void registerHotkeys(void) {
-    g_hkToggleAuto = obs_hotkey_register_frontend(
-        "flowspire.toggle_auto", "Flowspire : activer/desactiver le pilotage auto", hkToggleAuto, nullptr);
+    g_hkToggleAuto = obs_hotkey_register_frontend(kHkToggleAutoName, "Flowspire : activer/desactiver le pilotage auto",
+                                                  hkToggleAuto, nullptr);
     g_hkForceWide =
-        obs_hotkey_register_frontend("flowspire.force_wide", "Flowspire : forcer le plan large", hkForceWide, nullptr);
+        obs_hotkey_register_frontend(kHkForceWideName, "Flowspire : forcer le plan large", hkForceWide, nullptr);
 
     for (int i = 0; i < kMaxSpeakerHotkeys; ++i) {
         g_speakerHkCtx[i].index = i;
         char name[64];
         char desc[96];
-        std::snprintf(name, sizeof(name), "flowspire.force_speaker_%d", i + 1);
+        speakerHotkeyName(i, name, sizeof(name));
         std::snprintf(desc, sizeof(desc), "Flowspire : forcer l'intervenant %d", i + 1);
         g_hkForceSpeaker[i] = obs_hotkey_register_frontend(name, desc, hkForceSpeaker, &g_speakerHkCtx[i]);
     }
@@ -153,14 +167,15 @@ static void unregisterHotkeys(void) {
 // l'utilisateur repart vierge a chaque redemarrage d'OBS.
 static constexpr const char* kHotkeysFile = "hotkeys.json";
 
-// Applique `fn(nom_stable, id)` a chaque hotkey Flowspire. Le NOM doit rester
-// identique a l'enregistrement : c'est la cle de (de)serialisation dans hotkeys.json.
+// Applique `fn(nom_stable, id)` a chaque hotkey Flowspire, en reutilisant les MEMES
+// noms que l'enregistrement (constantes kHk*Name + speakerHotkeyName) : c'est la
+// garantie que les cles de hotkeys.json correspondent toujours aux hotkeys reelles.
 static void forEachHotkey(const std::function<void(const char*, obs_hotkey_id)>& fn) {
-    fn("flowspire.toggle_auto", g_hkToggleAuto);
-    fn("flowspire.force_wide", g_hkForceWide);
+    fn(kHkToggleAutoName, g_hkToggleAuto);
+    fn(kHkForceWideName, g_hkForceWide);
     for (int i = 0; i < kMaxSpeakerHotkeys; ++i) {
         char name[64];
-        std::snprintf(name, sizeof(name), "flowspire.force_speaker_%d", i + 1);
+        speakerHotkeyName(i, name, sizeof(name));
         fn(name, g_hkForceSpeaker[i]);
     }
 }
