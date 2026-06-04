@@ -110,9 +110,10 @@ private:
     void updateModeLabel();
     void startUpdateCheck(); // verif MAJ async (Qt Network) -> affiche le bandeau si dispo
     // Remontee best-effort de l'etat regie (ON/OFF) vers une appli externe (Companion) si
-    // l'option est activee dans les Parametres generaux. Appele a chaque bascule, au
-    // (re)chargement, et periodiquement (battement). Async, sans impact sur le pilotage.
-    void pushStatusIfEnabled();
+    // l'option est activee. Lit le CACHE de prefs (rafraichi par reload) -> aucune I/O ici.
+    // `force` (battement) outrepasse la dedup pour re-synchroniser une cible qui a redemarre ;
+    // sans force, n'emet que si l'etat ou la cible a change. Async, sans impact sur le pilotage.
+    void pushStatusIfEnabled(bool force = false);
     void styleSpeakerCard(Row& row, bool speaking);
     // Construit la carte d'accueil (etat sans config) dans rowsLayout_ : titre, rappel
     // des prerequis OBS, nombre d'entrees audio detectees, bouton "Lancer l'assistant".
@@ -154,8 +155,19 @@ private:
     // une rafale clavier/molette ne declenche qu'UNE ecriture disque, apres stabilisation.
     QTimer* thresholdSaveTimer_ = nullptr;
     // Battement de re-synchro du statut vers l'appli externe (Companion). Toujours actif ;
-    // pushStatusIfEnabled ne fait rien tant que l'option n'est pas cochee.
+    // pushStatusIfEnabled ne fait rien (et ne lit AUCUN fichier) tant que l'option est OFF.
     QTimer* statusPushTimer_ = nullptr;
+    // Cache des prefs de remontee de statut, rafraichi dans reload() (seul moment ou elles
+    // peuvent changer : la fenetre Parametres rejoue reload a sa fermeture). Evite de lire
+    // prefs.json a chaque battement / bascule.
+    bool statusPushEnabled_ = false;
+    std::string statusPushHost_;
+    int statusPushPort_ = 0;
+    // Dernier statut effectivement envoye (dedup) : -1 = jamais. Bloque les POST redondants
+    // quand reload() est rejoue sans changement d'etat ni de cible.
+    int lastPushedActive_ = -1;
+    std::string lastPushedHost_;
+    int lastPushedPort_ = 0;
     int shownStatus_ = -1;
 };
 

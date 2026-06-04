@@ -370,6 +370,10 @@ void SdSettings::Impl::mountGeneral(QVBoxLayout* host) {
         if (p >= 1 && p <= 65535) {
             generalPrefs.statusPushPort = p;
             savePrefs(generalPrefs);
+        } else {
+            // Saisie vide / hors plage -> on restaure l'affichage sur la valeur reellement
+            // persistee : le champ ne doit pas "mentir" sur l'etat enregistre.
+            portEdit->setText(QString::number(generalPrefs.statusPushPort));
         }
     });
     portRowLay->addWidget(portLabel);

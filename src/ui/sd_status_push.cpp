@@ -36,6 +36,16 @@ void pushRegieStatus(QObject* ctx, const std::string& host, int port, bool activ
     query.addQueryItem(QStringLiteral("value"), active ? QStringLiteral("1") : QStringLiteral("0"));
     url.setQuery(query);
 
+    // `host` vient d'une saisie utilisateur (≠ URL constante de la verif MAJ) : un hote mal
+    // forme (espace, URL collee en entier, IPv6 sans crochets) donnerait une URL invalide ou
+    // une mauvaise cible. On verifie AVANT d'emettre -> diagnostic clair plutot qu'un envoi
+    // silencieux dans le vide.
+    if (!url.isValid()) {
+        obs_log(LOG_WARNING, "Flowspire: cible de statut invalide (host='%s', port=%d) -> non envoye", host.c_str(),
+                port);
+        return;
+    }
+
     // ctx (le dock) possede le manager -> il est detruit avec lui ; aucune requete ne
     // survit au dock. La valeur est dans le query param, le corps du POST reste vide.
     auto* nam = new QNetworkAccessManager(ctx);

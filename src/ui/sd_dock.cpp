@@ -400,7 +400,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     // redemarre ou rate un envoi). No-op tant que l'option n'est pas activee (loadPrefs).
     statusPushTimer_ = new QTimer(this);
     statusPushTimer_->setInterval(kStatusHeartbeatMs);
-    connect(statusPushTimer_, &QTimer::timeout, this, [this]() { pushStatusIfEnabled(); });
+    connect(statusPushTimer_, &QTimer::timeout, this, [this]() { pushStatusIfEnabled(/*force=*/true); });
     statusPushTimer_->start();
 
     // Auto-refresh : OBS termine de charger ses scenes/sources APRES la creation
@@ -531,8 +531,14 @@ void SdDock::reload() {
         autoEnabled_ = false; // GARDE-FOU : pas de pilotage sans config.
     }
     director_->setAutoEnabled(autoEnabled_);
-    // Etat regie fige -> on (re)synchronise l'appli externe : couvre le demarrage ET la
-    // fermeture des Parametres generaux (qui declenche un reload avec la cible a jour).
+    // Rafraichit le CACHE des prefs de remontee de statut (modifiables via les Parametres,
+    // qui rejouent un reload a leur fermeture) puis (re)synchronise l'appli externe. La dedup
+    // dans pushStatusIfEnabled evite les POST redondants quand reload est rejoue (events
+    // frontend) sans changement d'etat ni de cible.
+    const GlobalPrefs statusPrefs = loadPrefs();
+    statusPushEnabled_ = statusPrefs.statusPushEnabled;
+    statusPushHost_ = statusPrefs.statusPushHost;
+    statusPushPort_ = statusPrefs.statusPushPort;
     pushStatusIfEnabled();
     // Pas de re-application d'overrides en session : le seuil par intervenant est
     // PERSISTE dans le profil (Speaker.thresholdDb) et le Director vient d'etre seme
@@ -836,14 +842,24 @@ void SdDock::updateModeLabel() {
     }
 }
 
-void SdDock::pushStatusIfEnabled() {
-    // Relit les prefs a chaque appel (coherent avec startUpdateCheck / scene hors regie).
-    // Best-effort, asynchrone, sans TLS (HTTP local) -> aucun impact sur le pilotage.
-    const GlobalPrefs prefs = loadPrefs();
-    if (!prefs.statusPushEnabled) {
+void SdDock::pushStatusIfEnabled(bool force) {
+    // Best-effort, asynchrone, sans TLS (HTTP local) -> aucun impact sur le pilotage. Lit le
+    // CACHE (rafraichi par reload), pas le disque : un battement quand l'option est OFF ne
+    // coute qu'un test booleen.
+    if (!statusPushEnabled_) {
         return;
     }
-    pushRegieStatus(this, prefs.statusPushHost, prefs.statusPushPort, autoEnabled_);
+    const int active = autoEnabled_ ? 1 : 0;
+    // Dedup : on n'emet que si l'etat OU la cible a change depuis le dernier envoi. Le
+    // battement (force) outrepasse pour re-synchroniser une cible qui aurait redemarre.
+    if (!force && active == lastPushedActive_ && statusPushHost_ == lastPushedHost_ &&
+        statusPushPort_ == lastPushedPort_) {
+        return;
+    }
+    lastPushedActive_ = active;
+    lastPushedHost_ = statusPushHost_;
+    lastPushedPort_ = statusPushPort_;
+    pushRegieStatus(this, statusPushHost_, statusPushPort_, autoEnabled_);
 }
 
 void SdDock::setAuto(bool on) {
