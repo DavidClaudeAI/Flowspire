@@ -35,30 +35,32 @@ struct AudioSettings {
     // il n'est pas encore lu par le coeur.
     double volumeFloorDb = -60.0;
     int attackFrames = 2;  // frames au-dessus du seuil -> "parle"
-    int releaseFrames = 8; // frames sous le seuil -> "ne parle plus"
+    int releaseFrames = 6; // frames sous le seuil -> "ne parle plus"
 };
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
-    double minShotSeconds = 5.0;  // verrou anti-nervosite
-    double maxShotSeconds = 12.0; // rafraichissement du plan
+    double minShotSeconds = 3.0; // verrou anti-nervosite
+    double maxShotSeconds = 6.0; // rafraichissement du plan (tune en reel : rythme plus vif)
     // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
     // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
     double pingPongWindowSeconds = 0.0;
 };
 
-// Contexte B : plusieurs parlent en meme temps (poids relatifs).
+// Contexte B : plusieurs parlent en meme temps (poids relatifs). Defauts tunes en reel
+// (profil "Cyp Live" de David) : forte preference pour le plan large des que 2+ parlent.
 struct MultiWeights {
-    int loudestSpeaker = 45;
-    int currentSpeaker = 30;
-    int wideShot = 25;
+    int loudestSpeaker = 0;
+    int currentSpeaker = 5;
+    int wideShot = 100;
 };
 
-// Contexte C : personne ne parle (poids relatifs).
+// Contexte C : personne ne parle (poids relatifs). Defauts tunes en reel ("Cyp Live") :
+// on revient quasi systematiquement au plan large quand le silence s'installe.
 struct SilenceWeights {
-    int lastSpeaker = 80;
-    int wideShot = 20;
+    int lastSpeaker = 5;
+    int wideShot = 100;
 };
 
 struct Config {
