@@ -18,8 +18,10 @@ the Free Software Foundation; either version 2 of the License, or
 #include <cstdio>
 #include <exception>
 #include <functional>
+#include <string>
 #include <utility>
 
+#include "obs/obs_file_store.hpp"
 #include "ui/sd_dock.hpp"
 
 // OBS fournit Qt6Network mais PAS de backend TLS sur Windows ET macOS (cf.
@@ -51,9 +53,12 @@ OBS_MODULE_USE_DEFAULT_LOCALE(PLUGIN_NAME, "en-US")
 static constexpr const char* kDockId = "FlowspireDock";
 
 // Nombre de hotkeys "forcer l'intervenant N" exposees. Volontairement fixe :
-// les hotkeys sont enregistrees une fois au chargement (les bindings clavier /
-// Stream Deck sont memorises par OBS via le nom). Les N premiers intervenants de
-// la config sont mappes sur ces hotkeys ; au-dela, on force via le dock.
+// les hotkeys sont enregistrees une fois au chargement, et leurs combinaisons
+// (clavier / Stream Deck) sont persistees PAR LE PLUGIN dans hotkeys.json puis
+// rechargees au demarrage (cf. save/loadHotkeyBindings). OBS ne persiste PAS tout
+// seul les hotkeys "frontend" : sans ce mecanisme, le raccourci repart vierge a
+// chaque redemarrage. Les N premiers intervenants de la config sont mappes sur ces
+// hotkeys ; au-dela, on force via le dock.
 static constexpr int kMaxSpeakerHotkeys = 8;
 
 // Le dock vit cote OBS apres add_dock. On garde un pointeur pour router les
@@ -140,6 +145,80 @@ static void unregisterHotkeys(void) {
     }
 }
 
+// --- Persistance des bindings de hotkeys -----------------------------------
+// OBS ne sauvegarde PAS automatiquement les hotkeys "frontend" d'un plugin : c'est
+// au plugin de serialiser leurs combinaisons (obs_hotkey_save) puis de les recharger
+// (obs_hotkey_load). On les range dans hotkeys.json (dossier config du plugin, meme
+// store atomique + .bak que prefs.json). Sans ce mecanisme, le raccourci saisi par
+// l'utilisateur repart vierge a chaque redemarrage d'OBS.
+static constexpr const char* kHotkeysFile = "hotkeys.json";
+
+// Applique `fn(nom_stable, id)` a chaque hotkey Flowspire. Le NOM doit rester
+// identique a l'enregistrement : c'est la cle de (de)serialisation dans hotkeys.json.
+static void forEachHotkey(const std::function<void(const char*, obs_hotkey_id)>& fn) {
+    fn("flowspire.toggle_auto", g_hkToggleAuto);
+    fn("flowspire.force_wide", g_hkForceWide);
+    for (int i = 0; i < kMaxSpeakerHotkeys; ++i) {
+        char name[64];
+        std::snprintf(name, sizeof(name), "flowspire.force_speaker_%d", i + 1);
+        fn(name, g_hkForceSpeaker[i]);
+    }
+}
+
+static void saveHotkeyBindings(void) {
+    obs_data_t* root = obs_data_create();
+    forEachHotkey([root](const char* name, obs_hotkey_id id) {
+        if (id == OBS_INVALID_HOTKEY_ID) {
+            return;
+        }
+        obs_data_array_t* arr = obs_hotkey_save(id);
+        obs_data_set_array(root, name, arr);
+        obs_data_array_release(arr);
+    });
+    const char* json = obs_data_get_json(root);
+    sd::obsbridge::ObsFileStore store;
+    const auto res = store.write(kHotkeysFile, json ? json : "{}");
+    if (!res.ok) {
+        obs_log(LOG_WARNING, "Flowspire: echec d'ecriture de %s : %s", kHotkeysFile, res.error.c_str());
+    }
+    obs_data_release(root);
+}
+
+static void loadHotkeyBindings(void) {
+    sd::obsbridge::ObsFileStore store;
+    std::string text;
+    if (!store.read(kHotkeysFile, text)) {
+        return; // absent au 1er lancement -> aucun binding a restaurer (normal).
+    }
+    obs_data_t* root = obs_data_create_from_json(text.c_str());
+    if (!root) {
+        obs_log(LOG_WARNING, "Flowspire: %s illisible, bindings hotkeys non recharges", kHotkeysFile);
+        return;
+    }
+    forEachHotkey([root](const char* name, obs_hotkey_id id) {
+        if (id == OBS_INVALID_HOTKEY_ID) {
+            return;
+        }
+        obs_data_array_t* arr = obs_data_get_array(root, name);
+        if (arr) {
+            obs_hotkey_load(id, arr);
+            obs_data_array_release(arr);
+        }
+    });
+    obs_data_release(root);
+}
+
+// OBS appelle ce callback a chaque ecriture de sa config (sauvegardes periodiques de
+// la scene collection ET sauvegarde finale a la fermeture). On en profite pour
+// persister les bindings PENDANT que le sous-systeme hotkey est encore vivant. A
+// l'unload du module, ce sous-systeme peut deja etre detruit -> on n'y sauvegarde PAS
+// (au risque d'ecraser hotkeys.json avec du vide).
+static void onFrontendSave(obs_data_t*, bool saving, void*) {
+    if (saving) {
+        saveHotkeyBindings();
+    }
+}
+
 #if defined(_WIN32) || defined(__APPLE__)
 // OBS fournit Qt6Network mais PAS de backend TLS sur Windows ET macOS -> les requetes
 // HTTPS de Qt (notre verification de mise a jour) echouent avec "No functional TLS
@@ -218,6 +297,10 @@ void obs_module_post_load(void) {
 
         // Les hotkeys ne sont utiles qu'avec un dock vivant pour les router.
         registerHotkeys();
+        // Restaure les combinaisons saisies par l'utilisateur (APRES l'enregistrement),
+        // puis demande a OBS de nous rappeler a ses sauvegardes pour les re-persister.
+        loadHotkeyBindings();
+        obs_frontend_add_save_callback(onFrontendSave, nullptr);
     } catch (const std::exception& e) {
         obs_log(LOG_ERROR, "Flowspire dock creation failed: %s", e.what());
     } catch (...) {
@@ -226,6 +309,9 @@ void obs_module_post_load(void) {
 }
 
 void obs_module_unload(void) {
+    // On se desabonne d'abord des sauvegardes frontend : plus aucun onFrontendSave ne
+    // pourra toucher les hotkeys pendant/apres leur retrait.
+    obs_frontend_remove_save_callback(onFrontendSave, nullptr);
     // Ordre important : on coupe d'abord les hotkeys, puis on oublie le dock,
     // puis OBS le detruit. SURETE : obs_hotkey_unregister est synchrone (il prend
     // le mutex hotkey interne d'OBS), donc apres son retour AUCUNE callback de
