@@ -184,8 +184,8 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 | Réglage | Effet |
 | --- | --- |
 | **Scène de plan large** | La scène de groupe, montrée quand plusieurs parlent ou qu'un plan d'ensemble s'impose. **Laissez vide pour ne jamais l'utiliser.** |
-| **Quand plusieurs parlent** | Poids du tirage entre *le plus fort* / *rester sur l'actuel* / *plan large*. *(défauts : 45 / 30 / 25)* |
-| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. *(défauts : 80 / 20)* |
+| **Quand plusieurs parlent** | Poids du tirage entre *le plus fort* / *rester sur l'actuel* / *plan large*. *(défauts : 0 / 5 / 100 — on privilégie le plan d'ensemble quand 2+ parlent)* |
+| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. *(défauts : 5 / 100)* |
 
 ### Rythme & sensibilité
 
@@ -193,8 +193,8 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 
 | Réglage | Effet | Défaut |
 | --- | --- | --- |
-| **Temps mini de plan** | Durée minimale d'affichage d'un plan avant qu'un changement soit permis (évite les coupes nerveuses). | 5 s |
-| **Temps maxi de plan** | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier. | 12 s |
+| **Temps mini de plan** | Durée minimale d'affichage d'un plan avant qu'un changement soit permis (évite les coupes nerveuses). | 3 s |
+| **Temps maxi de plan** | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier. | 6 s |
 | **Anti ping-pong (mémoire)** | Évite de recouper trop vite vers quelqu'un qui vient de parler. **0 = désactivé** ; n'agit qu'**au-dessus du temps mini**. | 0 (désactivé) |
 | **Seuil de voix** | Niveau sonore au-dessus duquel une personne est considérée comme « parle ». Plus bas = plus sensible. | −35 dB |
 | **Délai d'attaque** | Durée de voix continue avant de confirmer qu'une personne **commence** à parler (ignore les bruits brefs : clic, choc). Plus court = plus réactif. | court |
