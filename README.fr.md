@@ -66,6 +66,7 @@ Un panneau OBS clair : qui parle, la scène **à l'antenne** (le trait rouge), l
 - **Variété des plans** : plusieurs scènes pour une même personne (gros plan, plan d'écoute…) → le plugin **alterne** pour éviter la monotonie.
 - **Plan large** de repli quand plusieurs parlent ou que personne ne parle.
 - **Raccourcis OBS natifs** (clavier **et Stream Deck**) : marche/arrêt, plan large, forcer une personne.
+- **Statut sur le Stream Deck** : remonte l'état marche/arrêt de la régie vers **Bitfocus Companion** (le bouton change de couleur), sans aucun module.
 - **Profils** : une config par type d'émission, bascule en un clic.
 - **Assistant** pas-à-pas — tout se règle sans toucher au moindre fichier.
 - **Multilingue** (français + anglais).

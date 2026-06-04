@@ -242,6 +242,18 @@ Flowspire expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pa
 - **Reprendre** (Auto ON) : il repart de qui parle à cet instant.
 - Changer une scène **manuellement** dans OBS rend aussi la main au plugin proprement.
 
+### Afficher l'état de la régie sur un bouton (Bitfocus Companion)
+
+Vous pouvez faire **changer un bouton de couleur** selon que la régie auto est active ou non — **sans installer le moindre module**.
+
+1. Dans **Companion**, créez une **variable personnalisée** nommée `flowspire_active` (*Variables → Custom Variables*).
+2. Dans **Flowspire → Paramètres → Paramètres généraux → Connexion externe**, cochez *Envoyer le statut…*, puis indiquez l'**adresse IP** de la machine où tourne Companion (`127.0.0.1` si c'est la même) et le **port** (**8000** par défaut).
+3. Sur votre bouton Companion, ajoutez un *feedback* **« Variable value »** : si `$(custom:flowspire_active)` vaut `1` → fond vert « EN RÉGIE », sinon gris.
+
+Flowspire y écrit `1` quand la régie auto est active, `0` sinon — à chaque bascule, au démarrage, et toutes les 15 s (re-synchro si Companion redémarre). Tout passe en **HTTP local** : aucun module, aucun câble.
+
+> Pour **commander** la régie depuis le même bouton (appui = marche/arrêt), assignez une touche au raccourci *« Flowspire : activer/désactiver le pilotage auto »* (plus haut) et déclenchez-la depuis Companion via le module **OBS**. Un seul bouton commande **et** reflète l'état.
+
 ---
 
 ## 8. Profils

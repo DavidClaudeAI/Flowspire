@@ -37,6 +37,7 @@
 #include "ui/sd_assistant.hpp"    // assistant de configuration (modale)
 #include "ui/sd_prefs.hpp"        // preferences globales (verif MAJ, scene hors regie)
 #include "ui/sd_settings.hpp"     // parametres avances (modale)
+#include "ui/sd_status_push.hpp"  // remontee du statut regie vers une appli externe (Companion)
 #include "ui/sd_update_check.hpp" // verification de mise a jour (Qt Network)
 #include "ui/sd_i18n.hpp"         // i18n native OBS (i18n)
 #include "ui/sd_icons.hpp"        // icones lucide teintees
@@ -55,6 +56,11 @@ constexpr int kFloorDb = static_cast<int>(sd::core::kDbFloor);
 // Delai d'ecriture differee du seuil regle au slider (debounce) : couvre une rafale
 // clavier/molette. Le relachement souris, lui, ecrit immediatement.
 constexpr int kThresholdSaveDebounceMs = 500;
+
+// Cadence du rappel periodique de statut vers l'appli externe (Companion). Le statut
+// est aussi pousse a chaque changement d'etat et au (re)chargement ; ce battement sert
+// uniquement de re-synchro douce si la cible a redemarre/raté un envoi (best-effort).
+constexpr int kStatusHeartbeatMs = 15000;
 
 int dbToInt(double db) {
     int v = static_cast<int>(std::lround(db));
@@ -390,6 +396,13 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     thresholdSaveTimer_->setInterval(kThresholdSaveDebounceMs);
     connect(thresholdSaveTimer_, &QTimer::timeout, this, [this]() { saveActiveProfileNow(); });
 
+    // Rappel periodique du statut vers l'appli externe (re-synchro douce si la cible a
+    // redemarre ou rate un envoi). No-op tant que l'option n'est pas activee (loadPrefs).
+    statusPushTimer_ = new QTimer(this);
+    statusPushTimer_->setInterval(kStatusHeartbeatMs);
+    connect(statusPushTimer_, &QTimer::timeout, this, [this]() { pushStatusIfEnabled(/*force=*/true); });
+    statusPushTimer_->start();
+
     // Auto-refresh : OBS termine de charger ses scenes/sources APRES la creation
     // du dock -> on se reabonne pour recharger tout seul (plus besoin de cliquer
     // Rafraichir au lancement). Callback retire dans le destructeur.
@@ -402,6 +415,9 @@ SdDock::~SdDock() {
     obs_frontend_remove_event_callback(frontendEventCb, this);
     if (timer_) {
         timer_->stop();
+    }
+    if (statusPushTimer_) {
+        statusPushTimer_->stop(); // plus aucun envoi de statut lance pendant la destruction
     }
     monitor_.stop();
 }
@@ -515,6 +531,15 @@ void SdDock::reload() {
         autoEnabled_ = false; // GARDE-FOU : pas de pilotage sans config.
     }
     director_->setAutoEnabled(autoEnabled_);
+    // Rafraichit le CACHE des prefs de remontee de statut (modifiables via les Parametres,
+    // qui rejouent un reload a leur fermeture) puis (re)synchronise l'appli externe. La dedup
+    // dans pushStatusIfEnabled evite les POST redondants quand reload est rejoue (events
+    // frontend) sans changement d'etat ni de cible.
+    const GlobalPrefs statusPrefs = loadPrefs();
+    statusPushEnabled_ = statusPrefs.statusPushEnabled;
+    statusPushHost_ = statusPrefs.statusPushHost;
+    statusPushPort_ = statusPrefs.statusPushPort;
+    pushStatusIfEnabled();
     // Pas de re-application d'overrides en session : le seuil par intervenant est
     // PERSISTE dans le profil (Speaker.thresholdDb) et le Director vient d'etre seme
     // depuis activeConfig_ par son constructeur (setConfig). La valeur a l'ecran est
@@ -817,6 +842,26 @@ void SdDock::updateModeLabel() {
     }
 }
 
+void SdDock::pushStatusIfEnabled(bool force) {
+    // Best-effort, asynchrone, sans TLS (HTTP local) -> aucun impact sur le pilotage. Lit le
+    // CACHE (rafraichi par reload), pas le disque : un battement quand l'option est OFF ne
+    // coute qu'un test booleen.
+    if (!statusPushEnabled_) {
+        return;
+    }
+    const int active = autoEnabled_ ? 1 : 0;
+    // Dedup : on n'emet que si l'etat OU la cible a change depuis le dernier envoi. Le
+    // battement (force) outrepasse pour re-synchroniser une cible qui aurait redemarre.
+    if (!force && active == lastPushedActive_ && statusPushHost_ == lastPushedHost_ &&
+        statusPushPort_ == lastPushedPort_) {
+        return;
+    }
+    lastPushedActive_ = active;
+    lastPushedHost_ = statusPushHost_;
+    lastPushedPort_ = statusPushPort_;
+    pushRegieStatus(this, statusPushHost_, statusPushPort_, autoEnabled_);
+}
+
 void SdDock::setAuto(bool on) {
     if (on && !configMode_) {
         return; // GARDE-FOU : pas d'activation sans config (couvre la hotkey).
@@ -835,6 +880,7 @@ void SdDock::setAuto(bool on) {
     }
     updateModeLabel();
     updateStatusBadge();
+    pushStatusIfEnabled(); // reflete immediatement le nouvel etat ON/OFF cote appli externe
 }
 
 void SdDock::toggleAuto() {

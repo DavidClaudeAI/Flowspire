@@ -66,6 +66,7 @@ A clean OBS panel: who is speaking, the scene **on air** (the red bar), the on/o
 - **Variety of shots**: several scenes for the same person (close-up, reaction shot…) → the plugin **alternates** to avoid monotony.
 - **Wide shot** as a fallback when several people speak or nobody speaks.
 - **Native OBS hotkeys** (keyboard **and Stream Deck**): on/off, wide shot, force a person.
+- **Status on the Stream Deck**: reports the directing on/off state to **Bitfocus Companion** (the button changes color), with no module.
 - **Profiles**: one config per show type, switch with a single click.
 - **Wizard** step by step — everything is set up without touching a single file.
 - **Multilingual** (French + English).

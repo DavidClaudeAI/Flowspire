@@ -10,6 +10,8 @@
 // parametres. L'implementation, elle, parle a ObsFileStore.
 #pragma once
 
+#include <string>
+
 namespace sd::ui {
 
 // Que faire quand l'utilisateur passe MANUELLEMENT (dock natif d'OBS) sur une scene
@@ -24,6 +26,13 @@ struct GlobalPrefs {
     bool checkUpdatesOnStartup = true;
     // Defaut = pause (le plus sur : on ne "vole" jamais une scene hors regie).
     OffSceneBehavior offSceneBehavior = OffSceneBehavior::PauseAuto;
+
+    // Remontee du statut de la regie (ON/OFF) vers une application externe (Bitfocus
+    // Companion...) : POST d'une variable personnalisee via son API HTTP locale. Opt-in :
+    // desactive par defaut -> aucun appel reseau tant que l'utilisateur ne l'active pas.
+    bool statusPushEnabled = false;
+    std::string statusPushHost = "127.0.0.1"; // hote de l'appli cible (IP ou nom)
+    int statusPushPort = 8000;                // port de l'API (defaut Companion = 8000)
 };
 
 // Lit prefs.json. Toute absence / illisibilite -> valeurs par defaut (jamais d'echec,
