@@ -223,7 +223,7 @@ Réglages **globaux** (valables pour tous les profils), appliqués immédiatemen
 
 ## 7. Raccourcis (clavier & Stream Deck)
 
-Flowspire expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pas de touche par défaut** : ouvrez **OBS → Paramètres → Raccourcis clavier** et assignez la touche de votre choix (par exemple **F13–F18**, idéales pour un Stream Deck).
+Flowspire expose ses actions comme des **raccourcis OBS natifs**. Ils n'ont **pas de touche par défaut** : ouvrez **OBS → Paramètres → Raccourcis clavier** et assignez la touche de votre choix (par exemple **F13–F18**, idéales pour un Stream Deck). Une fois assignée, **la touche est mémorisée** et conservée d'un redémarrage d'OBS à l'autre.
 
 | Action (libellé dans OBS) | Effet |
 | --- | --- |
@@ -268,6 +268,8 @@ Linux   : ~/.config/obs-studio/plugin_config/flowspire/profiles/
 
 - `index.json` = catalogue des profils + profil actif.
 - `<id>.json` = le contenu d'un profil.
+
+Les **réglages d'application** (Paramètres généraux) et les **touches de raccourcis** que vous assignez vivent dans le dossier parent `flowspire/` (`prefs.json` et `hotkeys.json`), avec la même protection.
 
 Toute écriture est **atomique** avec sauvegarde `.bak` ; un fichier illisible est récupéré automatiquement. Vous n'avez **jamais besoin d'éditer ces fichiers à la main** — l'interface fait tout.
 

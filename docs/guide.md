@@ -223,7 +223,7 @@ The threshold slider under each speaker, in the dock, **overrides the global thr
 
 ## 7. Hotkeys (keyboard & Stream Deck)
 
-Flowspire exposes its actions as **native OBS hotkeys**. They have **no default key**: open **OBS → Settings → Hotkeys** and assign the key of your choice (for example **F13–F18**, ideal for a Stream Deck).
+Flowspire exposes its actions as **native OBS hotkeys**. They have **no default key**: open **OBS → Settings → Hotkeys** and assign the key of your choice (for example **F13–F18**, ideal for a Stream Deck). Once assigned, **the key is remembered** and kept across OBS restarts.
 
 | Action (label in OBS) | Effect |
 | --- | --- |
@@ -268,6 +268,8 @@ Linux   : ~/.config/obs-studio/plugin_config/flowspire/profiles/
 
 - `index.json` = catalog of profiles + active profile.
 - `<id>.json` = the contents of a profile.
+
+Your **app settings** (General settings) and the **hotkey keys** you assign live in the parent `flowspire/` folder (`prefs.json` and `hotkeys.json`), with the same protection.
 
 Every write is **atomic** with a `.bak` backup; an unreadable file is recovered automatically. You **never need to edit these files by hand** — the interface does it all.
 
