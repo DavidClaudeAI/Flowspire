@@ -856,6 +856,62 @@ TEST_CASE("director : un nouveau locuteur pendant la grace de silence bascule no
     CHECK(d.switched == true);
 }
 
+TEST_CASE("director : grace de silence + temps-mini — blanc AVANT le temps-mini tient le locuteur") {
+    // Cas d'origine de David : un plan vient d'etre pris, un blanc survient AVANT le
+    // temps-mini. La grace ET le verrou temps-mini doivent tous deux retenir le locuteur ;
+    // on ne bascule au plan large qu'une fois les DEUX ecoules.
+    Config c = twoSpeakerConfig(); // minShot = 3 s, wide = "Plateau"
+    c.timing.silenceReactionSeconds = 1.0;
+    Director dir(c, seq({0.85})); // A_close en contexte A ; wide en silence
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}}); // A_close, lastSwitch = 0.1
+    REQUIRE(dir.currentScene() == "A_close");
+
+    // A se tait TRES VITE (le blanc commence bien avant les 3 s de temps-mini).
+    double tSilence = -1.0, t = 0.2;
+    for (int i = 0; i < 20 && tSilence < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.context == Context::Silence) {
+            tSilence = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(tSilence > 0.0); // ~0.9 s (relachement 8 frames)
+
+    // t=2 : grace (1 s) ecoulee, MAIS le temps-mini (lastSwitch 0.1 + 3 s) tient encore.
+    CHECK(dir.update(2.0, {{"A", kDbFloor}, {"B", kDbFloor}}).scene == "A_close");
+    // t=3.5 : grace ecoulee ET temps-mini ecoule -> on bascule enfin au plan large.
+    CHECK(dir.update(3.5, {{"A", kDbFloor}, {"B", kDbFloor}}).scene == "Plateau");
+}
+
+TEST_CASE("director : grace de silence SANS plan large — reste sur le dernier locuteur") {
+    Config c = twoSpeakerConfig();
+    c.wideShotScene = ""; // pas de plan large
+    c.timing.silenceReactionSeconds = 1.0;
+    Director dir(c, seq({0.0})); // A_close (1er du pool)
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    dir.update(4.0, {{"A", mulToDb(0.5)}}); // A_close, temps-mini ecoule
+    REQUIRE(dir.currentScene() == "A_close");
+
+    double tSilence = -1.0, t = 4.1;
+    for (int i = 0; i < 20 && tSilence < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.context == Context::Silence) {
+            tSilence = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(tSilence > 0.0);
+
+    CHECK(dir.update(tSilence + 0.5, {{"A", kDbFloor}, {"B", kDbFloor}}).scene == "A_close"); // grace
+    // Grace ecoulee : sans plan large, la decision de silence reste sur le dernier locuteur
+    // (jamais d'ecran vide).
+    Decision d = dir.update(tSilence + 2.0, {{"A", kDbFloor}, {"B", kDbFloor}});
+    CHECK(d.context == Context::Silence);
+    CHECK(d.scene == "A_close");
+}
+
 // --- Anti ping-pong (Run 12) : amortir la navette en contexte multiple ---
 
 TEST_CASE("director : l'anti ping-pong amortit la navette (contexte multiple)") {

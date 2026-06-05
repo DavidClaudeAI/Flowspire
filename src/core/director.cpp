@@ -133,6 +133,7 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     out.context = ctx;
 
     if (!autoEnabled_) {
+        silenceSince_ = -1.0; // auto coupe : la grace de silence ne court pas (repart propre a la reactivation).
         return out;
     }
 

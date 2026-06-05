@@ -131,8 +131,11 @@ Config fromJson(const std::string& text) {
     if (cfg.timing.maxShotSeconds < cfg.timing.minShotSeconds) {
         cfg.timing.maxShotSeconds = cfg.timing.minShotSeconds;
     }
-    // Delai avant reaction au silence : jamais negatif (0 = reaction immediate).
-    if (cfg.timing.silenceReactionSeconds < 0.0) {
+    // Delai avant reaction au silence : non fini (inf/NaN d'un JSON edite a la main) ou
+    // negatif -> 0 (reaction immediate, comportement sur). Sans le garde isfinite, un +inf
+    // passerait le test `< 0` et le moteur tiendrait le plan a l'infini. Coherent avec le
+    // filtre isfinite deja applique au seuil par intervenant (thresholdDb).
+    if (!std::isfinite(cfg.timing.silenceReactionSeconds) || cfg.timing.silenceReactionSeconds < 0.0) {
         cfg.timing.silenceReactionSeconds = 0.0;
     }
 
