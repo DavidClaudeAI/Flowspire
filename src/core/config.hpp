@@ -53,8 +53,8 @@ struct TimingSettings {
     // l'a jamais quitte (reprise instantanee). 0 = reaction immediate (comportement
     // historique). N'affecte QUE le silence : un nouveau locuteur bascule normalement.
     // DISTINCT du "delai de silence" (audio.releaseFrames = a partir de quand une personne
-    // est consideree silencieuse, detection par personne).
-    double silenceReactionSeconds = 1.0;
+    // est consideree silencieuse, detection par personne). Defaut tune en reel ("Cyp Live").
+    double silenceReactionSeconds = 1.5;
 };
 
 // Contexte B : plusieurs parlent en meme temps (poids relatifs).

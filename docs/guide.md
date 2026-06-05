@@ -196,7 +196,7 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 | **Minimum shot time** | Minimum time a shot is shown before a change is allowed (avoids jittery cuts). | 5 s |
 | **Maximum shot time** | Past this time on the same shot, we refresh the view to vary it. | 12 s |
 | **Anti ping-pong (memory)** | Avoids cutting back too quickly to someone who just spoke. **0 = disabled**; only acts **above the minimum time**. | 0 (disabled) |
-| **Silence reaction delay** | When **nobody** speaks, we **stay on the current shot** for this long before switching (wide shot / last speaker). Avoids dropping someone on a mere breath; if they resume within the delay, we never left them. **Only affects silence**: switching to a speaker who starts talking stays immediate. **"Immediate"** = switch without waiting. | 1 s |
+| **Silence reaction delay** | When **nobody** speaks, we **stay on the current shot** for this long before switching (wide shot / last speaker). Avoids dropping someone on a mere breath; if they resume within the delay, we never left them. **Only affects silence**: switching to a speaker who starts talking stays immediate. **"Immediate"** = switch without waiting. | 1.5 s |
 | **Voice threshold** | Sound level above which a person is considered to be "speaking". Lower = more sensitive. | −35 dB |
 | **Attack delay** | Duration of continuous voice before confirming that a person **starts** speaking (ignores brief noises: a click, a knock). Shorter = more responsive. | short |
 | **Silence delay** | Duration of a blank before considering that **one person** has **finished** speaking (per-person detection — not to be confused with "Silence reaction delay" above). | short |
