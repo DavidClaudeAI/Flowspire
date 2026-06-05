@@ -37,9 +37,14 @@ Config twoSpeakerConfig() {
     c.wideShotScene = "Plateau";
     c.timing.minShotSeconds = 3.0;
     c.timing.maxShotSeconds = 12.0;
-    // Reaction au silence IMMEDIATE dans le fixture (independant du defaut livre) : les
-    // tests silence existants verifient la bascule immediate. La grace a son propre test.
-    c.timing.silenceReactionSeconds = 0.0;
+    // Poids, relachement ET reaction au silence FIXES ici (independants des defauts livres) :
+    // ces tests verifient la LOGIQUE de tirage/hysteresis, pas la config par defaut du produit.
+    // Les defauts livres ont change (profil "Cyp Live") -> sans ce verrouillage, les tests
+    // B/C/silence casseraient.
+    c.audio.releaseFrames = 8;
+    c.whenMultiple = {45, 30, 25};
+    c.whenSilence = {80, 20};
+    c.timing.silenceReactionSeconds = 0.0; // reaction immediate (la grace a ses propres tests)
     Speaker a;
     a.id = "A";
     a.name = "Alice";
@@ -149,7 +154,7 @@ TEST_CASE("config : JSON tolerant aux cles absentes") {
     const Config c = fromJson(R"({"version":1,"speakers":[]})");
     CHECK(c.speakers.empty());
     CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0)); // defaut
-    CHECK(c.whenMultiple.wideShot == 25);                      // defaut
+    CHECK(c.whenMultiple.wideShot == 100);                     // defaut (tune "Cyp Live")
 }
 
 TEST_CASE("config : JSON invalide leve une exception") {
