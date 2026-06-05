@@ -35,7 +35,7 @@ struct AudioSettings {
     // il n'est pas encore lu par le coeur.
     double volumeFloorDb = -60.0;
     int attackFrames = 2;  // frames au-dessus du seuil -> "parle"
-    int releaseFrames = 6; // frames sous le seuil -> "ne parle plus"
+    int releaseFrames = 8; // frames sous le seuil -> "ne parle plus"
 };
 
 // Reglages de rythme (secondes).
