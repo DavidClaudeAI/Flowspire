@@ -131,6 +131,10 @@ private:
     std::string lastSpeaker_;  // dernier intervenant a avoir parle
     double lastSwitch_ = -1e9; // instant du dernier changement de scene
     Context lastContext_ = Context::Silence;
+    // "Delai avant reaction au silence" : instant ou le silence (plus personne ne parle) a
+    // commence. < 0 => on n'est pas en silence. Tant que (now - silenceSince_) < seuil, on
+    // GARDE le plan courant au lieu d'appliquer la decision de silence.
+    double silenceSince_ = -1.0;
 
     // Memoise la decision aleatoire par "situation" (evite le scintillement :
     // on ne retire pas un nouveau plan a chaque tick d'une meme situation).
