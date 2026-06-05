@@ -184,8 +184,8 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 | Setting | Effect |
 | --- | --- |
 | **Wide shot scene** | The group scene, shown when several people speak or when a group shot is called for. **Leave empty to never use it.** |
-| **When several speak** | Weight of the pick between *the loudest* / *stay on the current one* / *wide shot*. *(defaults: 45 / 30 / 25)* |
-| **When nobody speaks** | Weight of the pick between *last speaker* / *wide shot*. *(defaults: 80 / 20)* |
+| **When several speak** | Weight of the pick between *the loudest* / *stay on the current one* / *wide shot*. *(defaults: 0 / 5 / 100 — favor the group shot when 2+ speak)* |
+| **When nobody speaks** | Weight of the pick between *last speaker* / *wide shot*. *(defaults: 5 / 100)* |
 
 ### Rhythm & sensitivity
 
@@ -193,8 +193,8 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 
 | Setting | Effect | Default |
 | --- | --- | --- |
-| **Minimum shot time** | Minimum time a shot is shown before a change is allowed (avoids jittery cuts). | 5 s |
-| **Maximum shot time** | Past this time on the same shot, we refresh the view to vary it. | 12 s |
+| **Minimum shot time** | Minimum time a shot is shown before a change is allowed (avoids jittery cuts). | 3 s |
+| **Maximum shot time** | Past this time on the same shot, we refresh the view to vary it. | 6 s |
 | **Anti ping-pong (memory)** | Avoids cutting back too quickly to someone who just spoke. **0 = disabled**; only acts **above the minimum time**. | 0 (disabled) |
 | **Voice threshold** | Sound level above which a person is considered to be "speaking". Lower = more sensitive. | −35 dB |
 | **Attack delay** | Duration of continuous voice before confirming that a person **starts** speaking (ignores brief noises: a click, a knock). Shorter = more responsive. | short |
