@@ -494,9 +494,19 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
         [](int v) { return v == 0 ? i18n("Rhythm.PingPongOff") : fmtSeconds(v); }, false);
     ppR->setOnChange([this](int v) { cfg_.timing.pingPongWindowSeconds = v; });
     ppR->setInfo(i18n("Tip.Rhythm.PingPong"));
+
+    // Delai avant reaction au silence : a 0 (tout a gauche), reaction immediate -> on
+    // affiche "Immediat" au lieu de "0 s" (comme l'anti ping-pong pour son "Desactive").
+    auto* silReactR = new SliderRow(
+        i18n("Rhythm.SilenceReaction"), 0, 5, static_cast<int>(std::lround(cfg_.timing.silenceReactionSeconds)),
+        [](int v) { return v == 0 ? i18n("Rhythm.SilenceReactionImmediate") : fmtSeconds(v); }, false);
+    silReactR->setOnChange([this](int v) { cfg_.timing.silenceReactionSeconds = v; });
+    silReactR->setInfo(i18n("Tip.Rhythm.SilenceReaction"));
+
     tlay->addWidget(minR);
     tlay->addWidget(maxR);
     tlay->addWidget(ppR);
+    tlay->addWidget(silReactR);
     host->addWidget(timing);
 
     host->addWidget(makeSectionLabel(i18n("Rhythm.AudioSection")));

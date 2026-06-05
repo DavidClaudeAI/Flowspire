@@ -37,6 +37,9 @@ Config twoSpeakerConfig() {
     c.wideShotScene = "Plateau";
     c.timing.minShotSeconds = 3.0;
     c.timing.maxShotSeconds = 12.0;
+    // Reaction au silence IMMEDIATE dans le fixture (independant du defaut livre) : les
+    // tests silence existants verifient la bascule immediate. La grace a son propre test.
+    c.timing.silenceReactionSeconds = 0.0;
     Speaker a;
     a.id = "A";
     a.name = "Alice";
@@ -113,7 +116,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     // valeurs non-defaut sur TOUS les champs pour detecter une cle oubliee
     in.version = 7;
     in.audio = {-28.0, -55.0, 3, 11}; // voiceThr, volFloor, attack, release
-    in.timing = {2.5, 9.0, 7.0};
+    in.timing = {2.5, 9.0, 7.0, 4.0}; // min, max, pingPong, silenceReaction
     in.whenMultiple = {40, 35, 25};
     in.whenSilence = {70, 30};
     const Config out = fromJson(toJson(in));
@@ -133,6 +136,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     CHECK(out.timing.minShotSeconds == doctest::Approx(2.5));
     CHECK(out.timing.maxShotSeconds == doctest::Approx(9.0));
     CHECK(out.timing.pingPongWindowSeconds == doctest::Approx(7.0));
+    CHECK(out.timing.silenceReactionSeconds == doctest::Approx(4.0));
 
     CHECK(out.whenMultiple.loudestSpeaker == 40);
     CHECK(out.whenMultiple.currentSpeaker == 35);
@@ -766,6 +770,90 @@ TEST_CASE("director : setConfig seme l'override de seuil depuis le profil") {
     CHECK(dir.speakerThresholdDb("B") == doctest::Approx(-35.0));
     // Un intervenant inconnu retombe aussi sur le global (pas d'override orphelin).
     CHECK(dir.speakerThresholdDb("inconnu") == doctest::Approx(-35.0));
+}
+
+// --- Delai avant reaction au silence (grace de silence) ---
+
+TEST_CASE("director : grace de silence — tient le locuteur puis bascule au plan large") {
+    Config c = twoSpeakerConfig();
+    c.timing.silenceReactionSeconds = 2.0; // grace de 2 s
+    // rng=0.85 : contexte A -> A_close (pool 90/10) ; silence -> wide (whenSilence 80/20).
+    Director dir(c, seq({0.85}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    dir.update(4.0, {{"A", mulToDb(0.5)}}); // A_close, lastSwitch=0.1, temps-mini (3 s) ecoule
+    REQUIRE(dir.currentScene() == "A_close");
+
+    // A se tait : on avance jusqu'a ce que le silence soit confirme (relachement detecteur).
+    double tSilence = -1.0, t = 4.1;
+    for (int i = 0; i < 20 && tSilence < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.context == Context::Silence) {
+            tSilence = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(tSilence > 0.0);
+    // Pendant la grace (silence < 2 s) : on RESTE sur A_close.
+    CHECK(dir.update(tSilence + 1.0, {{"A", kDbFloor}, {"B", kDbFloor}}).scene == "A_close");
+    // Au-dela de la grace : on bascule sur le plan large.
+    CHECK(dir.update(tSilence + 2.5, {{"A", kDbFloor}, {"B", kDbFloor}}).scene == "Plateau");
+}
+
+TEST_CASE("director : reprise pendant la grace de silence -> on n'a jamais quitte le locuteur") {
+    Config c = twoSpeakerConfig();
+    c.timing.silenceReactionSeconds = 2.0;
+    Director dir(c, seq({0.85}));
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    dir.update(4.0, {{"A", mulToDb(0.5)}});
+    REQUIRE(dir.currentScene() == "A_close");
+
+    double tSilence = -1.0, t = 4.1;
+    for (int i = 0; i < 20 && tSilence < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.context == Context::Silence) {
+            tSilence = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(tSilence > 0.0);
+    CHECK(dir.update(tSilence + 1.0, {{"A", kDbFloor}, {"B", kDbFloor}}).scene == "A_close"); // grace
+
+    // A REPREND la parole avant la fin de la grace (attaque 2 frames) -> on n'a jamais quitte.
+    dir.update(tSilence + 1.2, {{"A", mulToDb(0.9)}});
+    Decision d = dir.update(tSilence + 1.3, {{"A", mulToDb(0.9)}});
+    CHECK(d.context == Context::Single);
+    CHECK(d.scene == "A_close");
+    CHECK(d.switched == false); // pas de bascule : reprise instantanee
+}
+
+TEST_CASE("director : un nouveau locuteur pendant la grace de silence bascule normalement") {
+    Config c = twoSpeakerConfig();
+    c.timing.silenceReactionSeconds = 2.0;
+    Director dir(c, seq({0.0})); // contexte A/B : 1ere scene du pool
+    dir.update(0.0, {{"A", mulToDb(0.5)}});
+    dir.update(0.1, {{"A", mulToDb(0.5)}});
+    dir.update(4.0, {{"A", mulToDb(0.5)}}); // A_close, temps-mini ecoule
+    REQUIRE(dir.currentScene() == "A_close");
+
+    double tSilence = -1.0, t = 4.1;
+    for (int i = 0; i < 20 && tSilence < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", kDbFloor}, {"B", kDbFloor}});
+        if (d.context == Context::Silence) {
+            tSilence = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(tSilence > 0.0);
+
+    // Pendant la grace, B prend la parole -> bascule IMMEDIATE (la grace n'agit que sur le silence).
+    dir.update(tSilence + 0.5, {{"B", mulToDb(0.9)}});
+    Decision d = dir.update(tSilence + 0.6, {{"B", mulToDb(0.9)}});
+    CHECK(d.context == Context::Single);
+    CHECK(d.owner == "B");
+    CHECK(d.scene == "B_close");
+    CHECK(d.switched == true);
 }
 
 // --- Anti ping-pong (Run 12) : amortir la navette en contexte multiple ---

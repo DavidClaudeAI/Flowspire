@@ -42,7 +42,8 @@ std::string toJson(const Config& cfg) {
         {"timing",
          {{"minShotSeconds", cfg.timing.minShotSeconds},
           {"maxShotSeconds", cfg.timing.maxShotSeconds},
-          {"pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds}}},
+          {"pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds},
+          {"silenceReactionSeconds", cfg.timing.silenceReactionSeconds}}},
         {"whenMultiple",
          {{"loudestSpeaker", cfg.whenMultiple.loudestSpeaker},
           {"currentSpeaker", cfg.whenMultiple.currentSpeaker},
@@ -99,6 +100,7 @@ Config fromJson(const std::string& text) {
         cfg.timing.minShotSeconds = t.value("minShotSeconds", cfg.timing.minShotSeconds);
         cfg.timing.maxShotSeconds = t.value("maxShotSeconds", cfg.timing.maxShotSeconds);
         cfg.timing.pingPongWindowSeconds = t.value("pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds);
+        cfg.timing.silenceReactionSeconds = t.value("silenceReactionSeconds", cfg.timing.silenceReactionSeconds);
     }
 
     if (j.contains("whenMultiple")) {
@@ -128,6 +130,10 @@ Config fromJson(const std::string& text) {
     }
     if (cfg.timing.maxShotSeconds < cfg.timing.minShotSeconds) {
         cfg.timing.maxShotSeconds = cfg.timing.minShotSeconds;
+    }
+    // Delai avant reaction au silence : jamais negatif (0 = reaction immediate).
+    if (cfg.timing.silenceReactionSeconds < 0.0) {
+        cfg.timing.silenceReactionSeconds = 0.0;
     }
 
     return cfg;

@@ -28,6 +28,7 @@ void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
     ownerLeftAt_.clear(); // memoire anti ping-pong : repart de zero a chaque (re)config
+    silenceSince_ = -1.0; // grace de silence : on repart "pas en silence" a chaque (re)config
     // On repart de zero puis on SEME les overrides depuis la config : le seuil
     // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
     // donc la config/JSON reste la source de verite au chargement. Un intervenant
@@ -133,6 +134,27 @@ Decision Director::update(double now, const std::map<std::string, double>& level
 
     if (!autoEnabled_) {
         return out;
+    }
+
+    // 0) GRACE DE SILENCE ("delai avant reaction au silence"). Quand plus personne ne
+    //    parle, on GARDE le plan courant tant que le silence n'a pas dure
+    //    silenceReactionSeconds, puis on laisse la decision de silence s'appliquer plus
+    //    bas. Un blanc court (respiration, temps entre deux phrases) ne bascule donc plus
+    //    au plan large ; et si l'orateur reprend dans l'intervalle, on ne l'a jamais quitte
+    //    (reprise instantanee, sans payer le temps-mini). N'agit QUE sur le silence : un
+    //    nouveau locuteur (ctx != Silence) reinitialise le minuteur et bascule normalement.
+    //    DISTINCT de la detection par personne (releaseFrames) qui, elle, definit a partir
+    //    de quand quelqu'un est "silencieux".
+    if (ctx == Context::Silence) {
+        if (silenceSince_ < 0.0) {
+            silenceSince_ = now; // le silence vient de commencer.
+        }
+        // On ne "tient" que s'il y a un plan a tenir (pas au demarrage, currentScene_ vide).
+        if (!currentScene_.empty() && (now - silenceSince_) < cfg_.timing.silenceReactionSeconds) {
+            return out; // hold du plan courant ; re-evalue au prochain tick.
+        }
+    } else {
+        silenceSince_ = -1.0; // quelqu'un parle -> la grace de silence est annulee.
     }
 
     // 1bis) VARIETE AU TEMPS-MAX : si on tient le plan courant depuis plus de

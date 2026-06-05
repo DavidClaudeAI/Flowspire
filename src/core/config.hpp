@@ -46,6 +46,15 @@ struct TimingSettings {
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
     // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
     double pingPongWindowSeconds = 0.0;
+    // "Delai avant reaction au silence" : une fois que PLUS PERSONNE ne parle, duree
+    // pendant laquelle on GARDE le plan courant avant d'appliquer la decision de silence
+    // (plan large / dernier locuteur). Un blanc court (respiration, temps entre deux
+    // phrases) ne fait donc plus basculer ; si l'orateur reprend dans l'intervalle, on ne
+    // l'a jamais quitte (reprise instantanee). 0 = reaction immediate (comportement
+    // historique). N'affecte QUE le silence : un nouveau locuteur bascule normalement.
+    // DISTINCT du "delai de silence" (audio.releaseFrames = a partir de quand une personne
+    // est consideree silencieuse, detection par personne).
+    double silenceReactionSeconds = 1.0;
 };
 
 // Contexte B : plusieurs parlent en meme temps (poids relatifs).
