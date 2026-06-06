@@ -240,16 +240,17 @@ TEST_CASE("director : contexte B (plusieurs) — 'rester' garde le plan du locut
     CHECK(d.scene == "A_close");
 }
 
-TEST_CASE("director : multi — si le locuteur sur lequel on reste se tait, on ne le filme pas muet") {
-    // Avec le retrait de "le plus fort" + cle 'M', un locuteur memoise qui se tait risquait
-    // d'etre filme muet jusqu'au temps-max. Correction : la cle suit le locuteur tant qu'il
-    // parle ; s'il se tait (mais 2+ parlent encore) on re-tire -> plan large (jamais "le plus
-    // fort", meme si son poids large vaut 0).
+TEST_CASE("director : multi — plan large a 0, un locuteur qui se tait NE force PAS le plan large") {
+    // David : plan large a 0 = "jamais de plan large". Quand le locuteur sur lequel on reste se
+    // tait (mais 2+ parlent encore), on RESPECTE ce 0 -> on garde son plan (le vrai changement
+    // se fera quand quelqu'un reprend SEUL la parole = contexte Single). On ne va au plan large
+    // que si son poids est > 0. (NB : la cle suit le locuteur -> il y a bien re-tirage quand il
+    // se tait, mais ce re-tirage respecte le poids 0.)
     Config c;
     c.wideShotScene = "Plateau";
     c.timing.minShotSeconds = 3.0;
-    c.timing.maxShotSeconds = 30.0;     // grand : ne doit PAS gouverner le decrochage du muet
-    c.whenMultiple = {100, 0};          // "rester" fortement prefere -> isole l'effet du muet
+    c.timing.maxShotSeconds = 30.0;     // grand : ne doit PAS gouverner la decision
+    c.whenMultiple = {100, 0};          // "rester" seul possible (plan large interdit)
     c.audio.attackFrames = 2;           // EPINGLE (timing deterministe, independant du defaut struct)
     c.audio.releaseFrames = 2;
     Speaker a;
@@ -276,14 +277,15 @@ TEST_CASE("director : multi — si le locuteur sur lequel on reste se tait, on n
         dir.update(0.2 + i * 0.1, {{"A", hi}, {"B", hi}, {"C", kDbFloor}}); // A+B multi -> on reste sur A
     }
     REQUIRE(dir.currentScene() == "A_close");
-    // A SE TAIT ; B et C parlent (toujours multi) -> on doit decrocher du muet vers le plan large.
+    // A SE TAIT ; B et C parlent (toujours multi). Plan large interdit (poids 0) -> on RESTE
+    // sur A (on ne force pas le plan large, on ne saute pas "au plus fort").
     Decision d;
     for (int i = 0; i < 10; ++i) {
         d = dir.update(4.0 + i * 0.1, {{"A", kDbFloor}, {"B", hi}, {"C", hi}});
     }
     CHECK(d.context == Context::Multiple);
-    CHECK(d.owner.empty());      // pas fige sur A muet
-    CHECK(d.scene == "Plateau"); // recul sur le plan large (jamais saut "au plus fort")
+    CHECK(d.owner == "A");       // plan large a 0 respecte : on garde le plan courant
+    CHECK(d.scene == "A_close");
 }
 
 TEST_CASE("director : anti ping-pong NE se declenche PAS sur la pause d'un orateur seul") {

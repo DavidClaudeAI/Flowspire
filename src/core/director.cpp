@@ -186,10 +186,12 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         // Contexte B : tirage { rester sur le plan courant / plan large }. Le VOLUME n'est
         // pas un critere de bascule -> pas d'option "le plus fort". Mettre en avant une
         // personne se fait naturellement quand elle "gagne" la parole (-> contexte Single).
-        // "Rester" n'a de sens que si le locuteur courant PARLE ENCORE : sinon (il s'est tu
-        // mais 2+ parlent toujours) on le filmerait muet jusqu'au temps-max. La cle inclut donc
-        // currentOwner_ tant qu'il parle ; des qu'il se tait, la cle bascule -> re-tirage. Ce
-        // re-tirage ne saute JAMAIS "au plus fort" (option supprimee) : au pire le plan large.
+        // La cle inclut currentOwner_ tant qu'il parle ; des qu'il se tait (mais 2+ parlent
+        // toujours), la cle bascule -> RE-TIRAGE (sinon on resterait fige sur lui jusqu'au
+        // temps-max). Ce re-tirage RESPECTE les poids : il ne saute JAMAIS "au plus fort"
+        // (option supprimee), et il ne FORCE PAS le plan large -> si son poids vaut 0
+        // ("jamais de plan large"), on reste sur le locuteur ; s'il vaut > 0, le plan large
+        // recoit sa chance des qu'il se tait.
         const bool ownerSpeaking =
             !currentOwner_.empty() &&
             std::find(speakingSorted_.begin(), speakingSorted_.end(), currentOwner_) != speakingSorted_.end();
@@ -204,16 +206,22 @@ Decision Director::update(double now, const std::map<std::string, double>& level
             }
             const std::string* tag = weightedPick(opts, rngValue());
             const std::string choice = tag ? *tag : std::string("current");
-            if (choice == "wide" || !ownerSpeaking) {
-                // Soit le tirage a donne le plan large, soit on ne peut pas "rester" sur un
-                // locuteur qui parle (locuteur courant muet, ou plan courant large/force sans
-                // owner) -> plan large s'il existe. Jamais de saut "au plus fort" ; sans plan
-                // large, resolvePlayable evitera l'ecran noir.
+            if (choice == "wide") {
                 cachedOwner_.clear();
-                cachedWide_ = !cfg_.wideShotScene.empty();
+                cachedWide_ = true;
             } else {
-                cachedOwner_ = currentOwner_; // rester sur le locuteur courant (il parle encore)
-                cachedWide_ = false;
+                // "Rester sur le plan courant". On RESPECTE le poids plan large : poids 0 =>
+                // on ne le force JAMAIS, meme si le locuteur courant s'est tu -> on garde son
+                // plan (le vrai changement viendra quand quelqu'un reprend seul la parole =>
+                // contexte Single). Si le plan courant n'est pas un locuteur (plan large ou
+                // scene forcee sans owner), "rester" revient au plan large s'il existe.
+                if (!currentOwner_.empty()) {
+                    cachedOwner_ = currentOwner_;
+                    cachedWide_ = false;
+                } else {
+                    cachedOwner_.clear();
+                    cachedWide_ = !cfg_.wideShotScene.empty();
+                }
             }
         }
         desiredOwner = cachedOwner_;
