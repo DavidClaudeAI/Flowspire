@@ -339,8 +339,23 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     sbLay->addStretch();
     sbLay->addWidget(sbChevron);
     connect(styleButton_, &QPushButton::clicked, this, [this]() { showStyleMenu(); });
+    // Icone d'acces direct a la gestion (comme le profil) : ouvre les reglages sur l'onglet
+    // "Realisation" (gerer les styles, ajuster les curseurs).
+    auto* styleEdit = new QPushButton();
+    styleEdit->setIcon(icon(Icon::Settings, th::kAccent, 14));
+    styleEdit->setCursor(Qt::PointingHandCursor);
+    styleEdit->setToolTip(i18n("Settings.Nav.Rhythm"));
+    styleEdit->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                                     " padding:7px 9px; }"
+                                     "QPushButton:hover { border-color:%4; }")
+                                 .arg(th::kSurface3)
+                                 .arg(rgba(th::kAccent, 0.4))
+                                 .arg(th::kRadiusButton)
+                                 .arg(th::kAccent));
+    connect(styleEdit, &QPushButton::clicked, this, [this]() { openSettings(SdSettings::TabRhythm); });
     styleBarLay->addWidget(styleLabel);
     styleBarLay->addWidget(styleButton_, 1);
+    styleBarLay->addWidget(styleEdit);
     root->addWidget(styleBar_);
 
     modeLabel_ = new QLabel();
@@ -1047,34 +1062,13 @@ void SdDock::updateStyleBar() {
     if (styleBar_) {
         styleBar_->setVisible(configMode_); // pas de style a regler sans config (etat d'accueil)
     }
-    // Libelle du bouton = nom du style actif S'IL est connu (fourni OU perso), sinon "Perso"
-    // (reglage manuel, ou nom perime d'un style supprime -> robuste).
+    // Libelle = nom du style actif (fourni OU perso), ou "Perso" si reglage manuel (styleName
+    // vide). On NE relit PAS la bibliotheque ici : (1) evite une I/O disque a chaque reload ;
+    // (2) si styles.json etait illisible, on n'afficherait pas "Perso" a tort (le nom reste
+    // affiche). Un style supprime ailleurs montre encore son nom -> ses VALEURS sont de toute
+    // facon conservees dans le profil, donc c'est plus juste que "Perso".
     const std::string& sn = activeConfig_.styleName;
-    QString label;
-    if (!sn.empty()) {
-        bool known = false;
-        for (const auto& b : sd::core::builtinRhythmStyles()) {
-            if (b.name == sn) {
-                known = true;
-                break;
-            }
-        }
-        if (!known) {
-            for (const auto& s : sd::styles::loadLibrary().styles) {
-                if (s.name == sn) {
-                    known = true;
-                    break;
-                }
-            }
-        }
-        if (known) {
-            label = QString::fromStdString(sn);
-        }
-    }
-    if (label.isEmpty()) {
-        label = i18n("Rhythm.StyleCustom"); // "Perso"
-    }
-    styleNameLabel_->setText(label);
+    styleNameLabel_->setText(sn.empty() ? i18n("Rhythm.StyleCustom") : QString::fromStdString(sn));
 }
 
 void SdDock::showStyleMenu() {
