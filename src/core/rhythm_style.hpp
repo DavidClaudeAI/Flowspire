@@ -40,9 +40,10 @@ struct RhythmStyle {
 // variante dans la bibliotheque globale (etape ulterieure).
 std::vector<RhythmStyle> builtinRhythmStyles();
 
-// Applique un style a une config : copie UNIQUEMENT les 4 parametres de rythme dans
-// cfg.timing et memorise le nom du style actif (cfg.styleName). Ne touche ni au seuil, ni
-// aux poids plan large, ni a l'attaque/relache.
+// Applique un style a une config : copie le TEMPO (cfg.timing : 4 params) ET la tendance
+// plan large (cfg.whenMultiple + cfg.whenSilence), puis memorise le nom du style actif
+// (cfg.styleName). Ne touche NI au seuil/sensibilite (cfg.audio) NI a la scene plan large
+// (cfg.wideShotScene) NI aux intervenants -> un changement de style ne casse pas la calibration.
 void applyRhythmStyle(Config& cfg, const RhythmStyle& style);
 
 } // namespace sd::core

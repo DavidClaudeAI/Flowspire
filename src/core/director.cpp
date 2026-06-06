@@ -358,9 +358,13 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
 void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold, Decision& out,
                       bool recordLeave) {
     // Anti ping-pong : on note l'instant ou l'on QUITTE le proprietaire courant (pour
-    // detecter ensuite un retour trop rapide vers lui = navette). PAS sur un forcage
-    // (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto suivant.
-    if (recordLeave && !currentOwner_.empty() && currentOwner_ != owner) {
+    // detecter ensuite un retour trop rapide vers lui = navette). On n'arme QUE si l'on part
+    // vers UN AUTRE LOCUTEUR (owner non vide) : c'est le signal d'un echange A<->B. Quitter
+    // un locuteur pour le PLAN LARGE (owner vide : sa propre pause -> silence -> plan large)
+    // n'est PAS une navette -> ne pas armer, sinon sa reprise resterait bloquee sur le plan
+    // large (revue : faux declenchement sur un orateur seul qui fait des pauses). PAS non plus
+    // sur un forcage (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto.
+    if (recordLeave && !currentOwner_.empty() && !owner.empty() && currentOwner_ != owner) {
         ownerLeftAt_[currentOwner_] = now;
     }
     out.switched = (scene != currentScene_);

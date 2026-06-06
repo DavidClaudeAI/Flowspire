@@ -42,6 +42,7 @@ Config twoSpeakerConfig() {
     // ces tests verifient la LOGIQUE de tirage/hysteresis, pas la config par defaut du produit.
     // Les defauts livres ont change (profil "Cyp Live") -> sans ce verrouillage, les tests
     // B/C/silence casseraient.
+    c.audio.attackFrames = 2;  // EPINGLE (sinon depend du defaut struct -> timing des tests fragile)
     c.audio.releaseFrames = 8;
     c.whenMultiple = {30, 25}; // {rester, plan large} (plus de "le plus fort")
     c.whenSilence = {80, 20};
@@ -249,6 +250,7 @@ TEST_CASE("director : multi — si le locuteur sur lequel on reste se tait, on n
     c.timing.minShotSeconds = 3.0;
     c.timing.maxShotSeconds = 30.0;     // grand : ne doit PAS gouverner le decrochage du muet
     c.whenMultiple = {100, 0};          // "rester" fortement prefere -> isole l'effet du muet
+    c.audio.attackFrames = 2;           // EPINGLE (timing deterministe, independant du defaut struct)
     c.audio.releaseFrames = 2;
     Speaker a;
     a.id = "A";
@@ -282,6 +284,60 @@ TEST_CASE("director : multi — si le locuteur sur lequel on reste se tait, on n
     CHECK(d.context == Context::Multiple);
     CHECK(d.owner.empty());      // pas fige sur A muet
     CHECK(d.scene == "Plateau"); // recul sur le plan large (jamais saut "au plus fort")
+}
+
+TEST_CASE("director : anti ping-pong NE se declenche PAS sur la pause d'un orateur seul") {
+    // Regression (revue) : l'anti ping-pong ("retour au plan large") vise la navette A<->B.
+    // Un orateur SEUL qui marque une pause (-> plan large au silence) puis reprend ne doit PAS
+    // rester bloque sur le plan large : ce n'est pas une navette. Corrige en n'armant la navette
+    // que lorsqu'on quitte un locuteur POUR UN AUTRE LOCUTEUR (pas pour le plan large).
+    Config c;
+    c.wideShotScene = "Plateau";
+    c.timing.minShotSeconds = 1.0;
+    c.timing.maxShotSeconds = 30.0;
+    c.timing.pingPongWindowSeconds = 5.0;  // anti ping-pong arme
+    c.timing.silenceReactionSeconds = 0.0; // reaction au silence immediate (isole l'effet)
+    c.whenSilence = {0, 100};              // silence -> plan large a coup sur
+    c.audio.attackFrames = 2;
+    c.audio.releaseFrames = 2;
+    Speaker a;
+    a.id = "A";
+    a.name = "A";
+    a.audioSource = "sA";
+    a.scenes = {{"A_close", 100}};
+    c.speakers = {a};
+    Director dir(c, seq({0.0}));
+    const double hi = mulToDb(0.9);
+    dir.update(0.0, {{"A", hi}});
+    dir.update(0.1, {{"A", hi}}); // A seul -> A_close
+    REQUIRE(dir.currentScene() == "A_close");
+    // A se tait : apres le verrou mini, on bascule au plan large (silence).
+    for (int i = 0; i < 30 && dir.currentScene() != "Plateau"; ++i) {
+        dir.update(1.2 + i * 0.1, {{"A", kDbFloor}});
+    }
+    REQUIRE(dir.currentScene() == "Plateau");
+    // A REPREND la parole DANS la fenetre (5 s) -> on doit RECOUPER SUR A (ce n'etait pas une navette).
+    Decision d;
+    double t = 5.0;
+    for (int i = 0; i < 20; ++i) {
+        d = dir.update(t, {{"A", hi}});
+        t += 0.1;
+    }
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_close");
+}
+
+TEST_CASE("config : un style applique (tempo + poids plan large) survit a un aller-retour JSON") {
+    Config c = twoSpeakerConfig();
+    applyRhythmStyle(c, builtinRhythmStyles()[2]); // Speed {65,10}/{30,70}, pingPong 5, mini 2
+    const Config back = fromJson(toJson(c));
+    CHECK(back.styleName == "Speed");
+    CHECK(back.timing.minShotSeconds == doctest::Approx(2.0));
+    CHECK(back.timing.pingPongWindowSeconds == doctest::Approx(5.0));
+    CHECK(back.whenMultiple.currentSpeaker == 65);
+    CHECK(back.whenMultiple.wideShot == 10);
+    CHECK(back.whenSilence.lastSpeaker == 30);
+    CHECK(back.whenSilence.wideShot == 70);
 }
 
 TEST_CASE("director : contexte B — choix 'plan large' quand plusieurs parlent") {
