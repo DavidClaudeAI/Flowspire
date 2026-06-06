@@ -403,11 +403,8 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     g1l->setContentsMargins(14, 12, 14, 12);
     g1l->setSpacing(10);
     g1l->addWidget(makeGroupHeader(i18n("Wide.Multiple")));
-    auto* r1 = new SliderRow(i18n("Wide.Loudest"), 0, 100, cfg_.whenMultiple.loudestSpeaker, nullptr, true);
-    r1->setOnChange([this, multRows, recompute](int v) {
-        cfg_.whenMultiple.loudestSpeaker = v;
-        recompute(multRows);
-    });
+    // "Le plus fort" RETIRE (le volume ne decide pas qui on montre) -> en multi il reste
+    // { rester sur le plan courant / plan large }.
     auto* r2 = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr, true);
     r2->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.currentSpeaker = v;
@@ -418,11 +415,9 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
         cfg_.whenMultiple.wideShot = v;
         recompute(multRows);
     });
-    r1->setInfo(i18n("Tip.Wide.Loudest"));
     r2->setInfo(i18n("Tip.Wide.Current"));
     r3->setInfo(i18n("Tip.Wide.WideShot"));
-    *multRows = {r1, r2, r3};
-    g1l->addWidget(r1);
+    *multRows = {r2, r3};
     g1l->addWidget(r2);
     g1l->addWidget(r3);
     host->addWidget(g1);
@@ -454,7 +449,7 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
 }
 
 // === Panneau Rythme & sensibilite ===========================================
-void ConfigPanels::mountRhythm(QVBoxLayout* host) {
+void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
     clearLayout(host);
 
     // Pointeurs croises vers les 4 curseurs de rythme : servent (a) au couplage min<=max
@@ -465,6 +460,32 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto ppRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto silRowPtr = std::make_shared<SliderRow*>(nullptr);
+    // Holders des 4 curseurs de "politique plan large" (eux aussi pilotes par le style, avec
+    // badges %). Restent nullptr quand includeWidePolicy == false (panneau de l'assistant).
+    auto mCurRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto mWideRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto sLastRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto sWideRowPtr = std::make_shared<SliderRow*>(nullptr);
+    // Recompute des badges % (part de chaque poids dans la somme du groupe). Gardes par les
+    // holders -> no-op tant que les curseurs n'existent pas (ou en mode assistant).
+    auto recomputeMulti = [mCurRowPtr, mWideRowPtr]() {
+        const int sum = (*mCurRowPtr ? (*mCurRowPtr)->value() : 0) + (*mWideRowPtr ? (*mWideRowPtr)->value() : 0);
+        if (*mCurRowPtr) {
+            (*mCurRowPtr)->setBadge(pctOf((*mCurRowPtr)->value(), sum));
+        }
+        if (*mWideRowPtr) {
+            (*mWideRowPtr)->setBadge(pctOf((*mWideRowPtr)->value(), sum));
+        }
+    };
+    auto recomputeSil = [sLastRowPtr, sWideRowPtr]() {
+        const int sum = (*sLastRowPtr ? (*sLastRowPtr)->value() : 0) + (*sWideRowPtr ? (*sWideRowPtr)->value() : 0);
+        if (*sLastRowPtr) {
+            (*sLastRowPtr)->setBadge(pctOf((*sLastRowPtr)->value(), sum));
+        }
+        if (*sWideRowPtr) {
+            (*sWideRowPtr)->setBadge(pctOf((*sWideRowPtr)->value(), sum));
+        }
+    };
 
     // === Selecteur de style de realisation (Chill / Cool / Speed / Perso) ============
     // Un style = un bundle nomme de parametres de RYTHME (cf. core/rhythm_style). Le
@@ -502,7 +523,8 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     };
     // Applique un style : copie ses valeurs (coeur) PUIS fait glisser les curseurs. Le
     // garde `applying` empeche ces setValue de repasser le style en "Perso".
-    auto onPick = [this, applying, refresh, minRowPtr, maxRowPtr, ppRowPtr, silRowPtr](const sd::core::RhythmStyle& st) {
+    auto onPick = [this, applying, refresh, minRowPtr, maxRowPtr, ppRowPtr, silRowPtr, mCurRowPtr, mWideRowPtr,
+                   sLastRowPtr, sWideRowPtr, recomputeMulti, recomputeSil](const sd::core::RhythmStyle& st) {
         *applying = true;
         sd::core::applyRhythmStyle(cfg_, st);
         if (*minRowPtr) {
@@ -517,7 +539,22 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
         if (*silRowPtr) {
             (*silRowPtr)->setValue(static_cast<int>(std::lround(st.silenceReactionSeconds * 2.0))); // demi-secondes
         }
+        // Politique plan large (presente seulement si includeWidePolicy ; sinon holders nuls).
+        if (*mCurRowPtr) {
+            (*mCurRowPtr)->setValue(st.whenMultiple.currentSpeaker);
+        }
+        if (*mWideRowPtr) {
+            (*mWideRowPtr)->setValue(st.whenMultiple.wideShot);
+        }
+        if (*sLastRowPtr) {
+            (*sLastRowPtr)->setValue(st.whenSilence.lastSpeaker);
+        }
+        if (*sWideRowPtr) {
+            (*sWideRowPtr)->setValue(st.whenSilence.wideShot);
+        }
         *applying = false;
+        recomputeMulti();
+        recomputeSil();
         refresh();
     };
 
@@ -627,6 +664,92 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     tlay->addWidget(ppR);
     tlay->addWidget(silReactR);
     host->addWidget(timing);
+
+    // === Politique plan large (fusion de l'ancien onglet) : scene de groupe (SETUP) +
+    //     "quand 2+ parlent" / "quand silence" (poids PILOTES PAR LE STYLE). ============
+    if (includeWidePolicy) {
+        // -- Scene de groupe : SETUP (depend des cameras), hors style --
+        auto* sceneCard = makeCard(QStringLiteral("rhyWideScene"));
+        auto* scLay = new QVBoxLayout(sceneCard);
+        scLay->setContentsMargins(14, 12, 14, 12);
+        scLay->setSpacing(8);
+        scLay->addWidget(makeGroupHeader(i18n("Wide.SceneLabel")));
+        auto* wideCombo = new ComboField();
+        wideCombo->setAllowEmpty(true, i18n("Wide.ScenePlaceholder"));
+        wideCombo->setPlaceholder(i18n("Wide.ScenePlaceholder"));
+        wideCombo->setEmptyHint(i18n("Cameras.NoSceneAvail"));
+        wideCombo->setOptions(toOptions(scenes_), QString::fromStdString(cfg_.wideShotScene));
+        wideCombo->setOnChange([this](const QString& v) { cfg_.wideShotScene = v.toStdString(); });
+        scLay->addWidget(withInfo(wideCombo, i18n("Tip.Wide.Scene")));
+        host->addWidget(sceneCard);
+
+        // -- Quand 2+ parlent : { rester / plan large } (pilote par le style) --
+        auto* g1 = makeCard(QStringLiteral("rhyMul"));
+        auto* g1l = new QVBoxLayout(g1);
+        g1l->setContentsMargins(14, 12, 14, 12);
+        g1l->setSpacing(10);
+        g1l->addWidget(makeGroupHeader(i18n("Wide.Multiple")));
+        auto* mCurR = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr, true);
+        mCurR->setOnChange([this, recomputeMulti, applying, refresh](int v) {
+            cfg_.whenMultiple.currentSpeaker = v;
+            recomputeMulti();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        auto* mWideR = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenMultiple.wideShot, nullptr, true);
+        mWideR->setOnChange([this, recomputeMulti, applying, refresh](int v) {
+            cfg_.whenMultiple.wideShot = v;
+            recomputeMulti();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        mCurR->setInfo(i18n("Tip.Wide.Current"));
+        mWideR->setInfo(i18n("Tip.Wide.WideShot"));
+        *mCurRowPtr = mCurR;
+        *mWideRowPtr = mWideR;
+        g1l->addWidget(mCurR);
+        g1l->addWidget(mWideR);
+        host->addWidget(g1);
+
+        // -- Quand personne ne parle : { dernier locuteur / plan large } (pilote par le style) --
+        auto* g2 = makeCard(QStringLiteral("rhySil"));
+        auto* g2l = new QVBoxLayout(g2);
+        g2l->setContentsMargins(14, 12, 14, 12);
+        g2l->setSpacing(10);
+        g2l->addWidget(makeGroupHeader(i18n("Wide.Silence")));
+        auto* sLastR = new SliderRow(i18n("Wide.LastSpeaker"), 0, 100, cfg_.whenSilence.lastSpeaker, nullptr, true);
+        sLastR->setOnChange([this, recomputeSil, applying, refresh](int v) {
+            cfg_.whenSilence.lastSpeaker = v;
+            recomputeSil();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        auto* sWideR = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenSilence.wideShot, nullptr, true);
+        sWideR->setOnChange([this, recomputeSil, applying, refresh](int v) {
+            cfg_.whenSilence.wideShot = v;
+            recomputeSil();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        sLastR->setInfo(i18n("Tip.Wide.LastSpeaker"));
+        sWideR->setInfo(i18n("Tip.Wide.WideShot"));
+        *sLastRowPtr = sLastR;
+        *sWideRowPtr = sWideR;
+        g2l->addWidget(sLastR);
+        g2l->addWidget(sWideR);
+        host->addWidget(g2);
+
+        recomputeMulti(); // badges initiaux
+        recomputeSil();
+    }
 
     host->addWidget(makeSectionLabel(i18n("Rhythm.AudioSection")));
     auto* audio = makeCard(QStringLiteral("rhyAudio"));

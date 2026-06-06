@@ -4,13 +4,15 @@
 // (le "temperament" du realisateur : pose, equilibre, vif). Choisir un style = copier ses
 // valeurs dans la Config courante (cf. applyRhythmStyle).
 //
-// PERIMETRE VOLONTAIREMENT RESTREINT AU RYTHME (decision produit, veille §9/§14) :
-//   - INCLUS  : temps mini de plan, temps maxi, delai avant reaction au silence, anti ping-pong.
-//   - EXCLUS  : le seuil / la sensibilite (depend de la salle et des micros -> calibre a part),
-//               la tendance plan large (poids whenMultiple/whenSilence -> reste manuel, preserve
-//               le tuning de l'utilisateur), l'attaque/relache (famille "detection", releve de
-//               l'assistant de calibration, pas du temperament).
-// Ce decouplage garantit qu'un changement de style ne casse jamais la calibration audio.
+// PERIMETRE = la POLITIQUE DE REALISATION complete (decision produit, veille §9/§14 +
+// recentrage 2026-06-06, apres test reel) :
+//   - INCLUS  : le tempo (temps mini/maxi, reaction au silence, anti ping-pong) ET la
+//               tendance plan large (poids whenMultiple/whenSilence). Le temperament couvre
+//               les 3 situations (1 parle / 2+ parlent / silence), pas seulement le tempo :
+//               c'est ce qui faisait que "Speed" restait lent en multi/silence avant.
+//   - EXCLUS  : le seuil / la sensibilite ET l'attaque/relache (famille "detection" : depend
+//               de la salle et des micros, releve de l'assistant de calibration, pas du
+//               temperament). Un changement de style ne casse donc jamais la calibration audio.
 #pragma once
 
 #include <string>
@@ -27,7 +29,9 @@ struct RhythmStyle {
     double minShotSeconds = 3.0;          // verrou anti-nervosite
     double maxShotSeconds = 6.0;          // rafraichissement du plan
     double silenceReactionSeconds = 1.5;  // grace de silence
-    double pingPongWindowSeconds = 0.0;   // 0 = anti ping-pong desactive
+    double pingPongWindowSeconds = 0.0;   // 0 = anti ping-pong (retour au plan large) desactive
+    MultiWeights whenMultiple;            // contexte B (2+ parlent) : { rester / plan large }
+    SilenceWeights whenSilence;           // contexte C (silence)    : { dernier locuteur / plan large }
 };
 
 // Les 3 styles LIVRES, en lecture seule, du plus pose au plus vif :

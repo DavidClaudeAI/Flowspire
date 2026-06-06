@@ -177,28 +177,32 @@ Tout se règle depuis l'**Assistant** (création guidée) ou les **Paramètres a
 
 Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. *gros plan 90* + *plan d'écoute 10*).
 
-### Plan large & priorités
+### Réalisation *(ex-« Rythme » + ex-« Plan large », fusionnés en un seul onglet)*
 
-![Réglages — plan large](img/setting-wide.png)
+![Réglages — réalisation](img/setting-rythm.png)
 
-| Réglage | Effet |
-| --- | --- |
-| **Scène de plan large** | La scène de groupe, montrée quand plusieurs parlent ou qu'un plan d'ensemble s'impose. **Laissez vide pour ne jamais l'utiliser.** |
-| **Quand plusieurs parlent** | Poids du tirage entre *le plus fort* / *rester sur l'actuel* / *plan large*. *(défauts : 0 / 5 / 100 — on privilégie le plan d'ensemble quand 2+ parlent)* |
-| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. *(défauts : 5 / 100)* |
+**En haut de la page, le sélecteur de style de réalisation.** Choisissez un **tempérament** d'un clic — **Chill** (posé, plans longs), **Cool** (équilibré, le réglage par défaut), **Speed** (vif, coupes nettes) — et **tous les curseurs se positionnent tout seuls** : le **tempo ET la tendance au plan large**. Dès que vous bougez un curseur à la main, le style passe sur **Perso** (vos valeurs, conservées). Un style définit **tout votre tempérament de réalisation**, mais **ne touche jamais** votre **seuil de voix** ni l'attaque/le silence — ça, c'est de la calibration micro/salle, réglée à part (en bas de la page).
 
-### Rythme & sensibilité
-
-![Réglages — rythme et sensibilité](img/setting-rythm.png)
-
-**En haut de cette page, le sélecteur de style de réalisation.** Choisissez un **tempérament** d'un clic — **Chill** (posé, plans longs), **Cool** (équilibré, le réglage par défaut), **Speed** (vif, coupes nettes) — et les curseurs de rythme ci-dessous **se positionnent tout seuls**. Dès que vous bougez un curseur à la main, le style passe sur **Perso** (vos valeurs, conservées). Un style ne touche **que le rythme** (les 4 premiers réglages ci-dessous) : il **ne change jamais** votre seuil de voix ni votre tendance au plan large.
+**Le tempo :**
 
 | Réglage | Effet | Défaut |
 | --- | --- | --- |
 | **Temps mini de plan** | Durée minimale d'affichage d'un plan avant qu'un changement soit permis (évite les coupes nerveuses). | 3 s |
 | **Temps maxi de plan** | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier. | 6 s |
-| **Anti ping-pong (mémoire)** | Évite de recouper trop vite vers quelqu'un qui vient de parler. **0 = désactivé** ; n'agit qu'**au-dessus du temps mini**. | 0 (désactivé) |
+| **Retour au plan large sur échange rapide** | Quand deux personnes se répondent du tac au tac (chacune seule à son tour), au lieu de faire l'essuie-glace on **se recule sur le plan large** le temps que ça respire, puis on repart. **0 = désactivé** ; **n'agit que si un plan large existe** (sinon c'est le temps mini qui régule). | 0 (désactivé) |
 | **Délai avant réaction au silence** | Quand **plus personne** ne parle, on **reste sur le plan courant** ce temps avant de basculer (plan large / dernier orateur). Évite de lâcher quelqu'un sur une simple respiration ; s'il reprend dans l'intervalle, on ne l'a jamais quitté. **N'affecte que le silence** : passer à un intervenant qui prend la parole reste immédiat. **« Immédiat »** = bascule sans attendre. | 1,5 s |
+**La tendance plan large** *(pilotée par le style)* :
+
+| Réglage | Effet | Défaut (Cool) |
+| --- | --- | --- |
+| **Scène de plan large** | La scène de groupe, montrée quand plusieurs parlent ou qu'un plan d'ensemble s'impose. **Laissez vide pour ne jamais l'utiliser** (le moteur s'adapte alors sans plan large). | — |
+| **Quand plusieurs parlent** | Poids du tirage entre *rester sur l'actuel* / *plan large*. Le **volume n'est plus un critère** (« le plus fort » a été retiré) ; mettre quelqu'un en avant se fait naturellement quand il garde la parole. | rester 5 / large 100 |
+| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. | dernier 5 / large 100 |
+
+**La sensibilité** *(indépendante du style — calibration micro/salle)* :
+
+| Réglage | Effet | Défaut |
+| --- | --- | --- |
 | **Seuil de voix** | Niveau sonore au-dessus duquel une personne est considérée comme « parle ». Plus bas = plus sensible. | −35 dB |
 | **Délai d'attaque** | Durée de voix continue avant de confirmer qu'une personne **commence** à parler (ignore les bruits brefs : clic, choc). Plus court = plus réactif. | court |
 | **Délai de silence** | Durée de blanc avant de considérer qu'**une personne** a **fini** de parler (détection par personne — à ne pas confondre avec « Délai avant réaction au silence » ci-dessus). | court |

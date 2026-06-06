@@ -2,7 +2,8 @@
 // Pur (aucune dependance OBS). Implemente le modele unifie a 3 contextes,
 // chacun resolu par un TIRAGE AU SORT PONDERE (jamais une regle rigide) :
 //   A - une personne parle      : tirage parmi les scenes de cette personne
-//   B - plusieurs parlent       : { le plus fort / rester / plan large }
+//   B - plusieurs parlent       : { rester sur le plan courant / plan large } (le volume
+//                                  n'est PAS un critere -> pas d'option "le plus fort")
 //   C - personne ne parle       : { dernier locuteur / plan large }
 //
 // Garde-fous :
@@ -19,10 +20,11 @@
 //
 // Anti-nervosite : deux garde-fous complementaires.
 //   - verrou temps-mini : empeche tout re-cut avant minShotSeconds.
-//   - anti ping-pong (ownerLeftAt_) : en contexte MULTIPLE (chevauchement), evite
-//     la navette frenetique entre deux personnes qui s'interrompent -> si basculer
-//     vers le plus fort reviendrait sur un plan qu'on vient de quitter (< fenetre
-//     pingPongWindowSeconds), on prefere RESTER. Fenetre a 0 => anti ping-pong off.
+//   - anti ping-pong (ownerLeftAt_) = "retour au plan large sur echange rapide" : quand
+//     deux personnes se relaient comme SEULS locuteurs (navette), si recouper reviendrait
+//     sur un plan qu'on vient de quitter (< fenetre pingPongWindowSeconds), on se RECULE
+//     sur le plan large le temps que ca respire, puis on repart. N'agit QUE si un plan
+//     large existe (sinon le temps-mini gere). Fenetre a 0 => off.
 #pragma once
 
 #include <functional>

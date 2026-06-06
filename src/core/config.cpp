@@ -46,8 +46,7 @@ std::string toJson(const Config& cfg) {
           {"pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds},
           {"silenceReactionSeconds", cfg.timing.silenceReactionSeconds}}},
         {"whenMultiple",
-         {{"loudestSpeaker", cfg.whenMultiple.loudestSpeaker},
-          {"currentSpeaker", cfg.whenMultiple.currentSpeaker},
+         {{"currentSpeaker", cfg.whenMultiple.currentSpeaker},
           {"wideShot", cfg.whenMultiple.wideShot}}},
         {"whenSilence", {{"lastSpeaker", cfg.whenSilence.lastSpeaker}, {"wideShot", cfg.whenSilence.wideShot}}},
     };
@@ -109,7 +108,8 @@ Config fromJson(const std::string& text) {
 
     if (j.contains("whenMultiple")) {
         const auto& m = j.at("whenMultiple");
-        cfg.whenMultiple.loudestSpeaker = m.value("loudestSpeaker", cfg.whenMultiple.loudestSpeaker);
+        // "loudestSpeaker" (ancienne option "le plus fort") : cle volontairement IGNOREE a la
+        // lecture (retrocompat) -> les profils anterieurs perdent ce poids, sans erreur.
         cfg.whenMultiple.currentSpeaker = m.value("currentSpeaker", cfg.whenMultiple.currentSpeaker);
         cfg.whenMultiple.wideShot = m.value("wideShot", cfg.whenMultiple.wideShot);
     }

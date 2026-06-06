@@ -177,28 +177,33 @@ Everything is set from the **Wizard** (guided creation) or the **Advanced settin
 
 Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reaction shot 10*).
 
-### Wide shot & priorities
+### Directing *(former "Rhythm" + "Wide shot" merged into one tab)*
 
-![Settings — wide shot](img/setting-wide.png)
+![Settings — directing](img/setting-rythm.png)
 
-| Setting | Effect |
-| --- | --- |
-| **Wide shot scene** | The group scene, shown when several people speak or when a group shot is called for. **Leave empty to never use it.** |
-| **When several speak** | Weight of the pick between *the loudest* / *stay on the current one* / *wide shot*. *(defaults: 0 / 5 / 100 — favor the group shot when 2+ speak)* |
-| **When nobody speaks** | Weight of the pick between *last speaker* / *wide shot*. *(defaults: 5 / 100)* |
+**At the top of the page, the directing-style selector.** Pick a **temperament** in one click — **Chill** (calm, long shots), **Cool** (balanced, the default), **Speed** (snappy, clean cuts) — and **all the sliders move into place on their own**: the **tempo AND the wide-shot tendency**. As soon as you nudge a slider by hand, the style switches to **Custom** (your values, kept). A style defines **your whole directing temperament**, but **never** touches your **voice threshold** or attack/silence — that's mic/room calibration, set separately (at the bottom of the page).
 
-### Rhythm & sensitivity
-
-![Settings — rhythm and sensitivity](img/setting-rythm.png)
-
-**At the top of this page, the directing-style selector.** Pick a **temperament** in one click — **Chill** (calm, long shots), **Cool** (balanced, the default), **Speed** (snappy, clean cuts) — and the rhythm sliders below **move into place on their own**. As soon as you nudge a slider by hand, the style switches to **Custom** (your values, kept). A style only affects **rhythm** (the first 4 settings below): it **never** changes your voice threshold or your wide-shot tendency.
+**Tempo:**
 
 | Setting | Effect | Default |
 | --- | --- | --- |
 | **Minimum shot time** | Minimum time a shot is shown before a change is allowed (avoids jittery cuts). | 3 s |
 | **Maximum shot time** | Past this time on the same shot, we refresh the view to vary it. | 6 s |
-| **Anti ping-pong (memory)** | Avoids cutting back too quickly to someone who just spoke. **0 = disabled**; only acts **above the minimum time**. | 0 (disabled) |
+| **Pull back to wide on fast exchanges** | When two people trade lines back and forth (each alone in turn), instead of whip-paning we **pull back to the wide shot** for a beat, then resume. **0 = disabled**; **only acts if a wide shot exists** (otherwise the minimum time governs). | 0 (disabled) |
 | **Silence reaction delay** | When **nobody** speaks, we **stay on the current shot** for this long before switching (wide shot / last speaker). Avoids dropping someone on a mere breath; if they resume within the delay, we never left them. **Only affects silence**: switching to a speaker who starts talking stays immediate. **"Immediate"** = switch without waiting. | 1.5 s |
+
+**Wide-shot tendency** *(driven by the style)*:
+
+| Setting | Effect | Default (Cool) |
+| --- | --- | --- |
+| **Wide shot scene** | The group scene, shown when several people speak or when a group shot is called for. **Leave empty to never use it** (the engine then adapts without a wide shot). | — |
+| **When several speak** | Weight of the pick between *stay on the current one* / *wide shot*. Volume is **no longer a criterion** ("the loudest" was removed); featuring someone happens naturally when they keep the floor. | stay 5 / wide 100 |
+| **When nobody speaks** | Weight of the pick between *last speaker* / *wide shot*. | last 5 / wide 100 |
+
+**Sensitivity** *(independent of the style — mic/room calibration)*:
+
+| Setting | Effect | Default |
+| --- | --- | --- |
 | **Voice threshold** | Sound level above which a person is considered to be "speaking". Lower = more sensitive. | −35 dB |
 | **Attack delay** | Duration of continuous voice before confirming that a person **starts** speaking (ignores brief noises: a click, a knock). Shorter = more responsive. | short |
 | **Silence delay** | Duration of a blank before considering that **one person** has **finished** speaking (per-person detection — not to be confused with "Silence reaction delay" above). | short |
