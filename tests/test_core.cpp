@@ -13,6 +13,7 @@
 #include "core/profiles.hpp"
 #include "core/rhythm_style.hpp"
 #include "core/speaker_detector.hpp"
+#include "core/threshold_calibration.hpp"
 #include "core/version.hpp"
 #include "core/weighted_pick.hpp"
 
@@ -1286,4 +1287,98 @@ TEST_CASE("config : styleName survit a un aller-retour JSON et est retrocompatib
     // Cle absente (profil anterieur a la feature) -> vide = "Perso".
     const Config legacy = fromJson(R"({"version":1})");
     CHECK(legacy.styleName.empty());
+}
+
+// ---------------------------------------------------------------------------
+// Calibration automatique du seuil (ThresholdCalibrator) — #3
+// ---------------------------------------------------------------------------
+
+TEST_CASE("Calibration : micro gate (gros ecart) -> seuil bas mais dans le creux") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 70; ++i) {
+        cal.addSample(-60.0); // gate ferme : quasi-silence
+    }
+    for (int i = 0; i < 40; ++i) {
+        cal.addSample(-15.0); // voix franche
+    }
+    REQUIRE(cal.done());
+    const double t = cal.thresholdDb();
+    CHECK(t > kDbFloor); // jamais au plancher absolu
+    CHECK(t < -15.0);    // toujours SOUS la voix
+    CHECK(t < -37.5);    // placement proportionnel (fraction < 0.5) -> sous le milieu
+}
+
+TEST_CASE("Calibration : micro ouvert bruyant (petit ecart) -> seuil au-dessus du bruit") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 70; ++i) {
+        cal.addSample(-42.0); // bruit de piece
+    }
+    for (int i = 0; i < 40; ++i) {
+        cal.addSample(-18.0); // voix
+    }
+    REQUIRE(cal.done());
+    const double t = cal.thresholdDb();
+    CHECK(t > -42.0); // au-dessus du bruit de fond
+    CHECK(t < -18.0); // sous la voix
+}
+
+TEST_CASE("Calibration : ne parle pas (que du silence) -> non cale, rien a ecrire") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 200; ++i) {
+        cal.addSample(-55.0);
+    }
+    CHECK_FALSE(cal.done()); // aucun ecart voix/silence -> on ne touche pas au seuil
+}
+
+TEST_CASE("Calibration : ecart trop faible -> non cale") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 70; ++i) {
+        cal.addSample(-40.0);
+    }
+    for (int i = 0; i < 40; ++i) {
+        cal.addSample(-34.0); // ecart 6 dB < minGap (12)
+    }
+    CHECK_FALSE(cal.done());
+}
+
+TEST_CASE("Calibration : fige apres avoir cale (gel, pas de derive)") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 70; ++i) {
+        cal.addSample(-60.0);
+    }
+    for (int i = 0; i < 40; ++i) {
+        cal.addSample(-15.0);
+    }
+    REQUIRE(cal.done());
+    const double t = cal.thresholdDb();
+    for (int i = 0; i < 100; ++i) {
+        cal.addSample(0.0); // bruit max apres coup -> doit etre ignore (no-op)
+    }
+    CHECK(cal.done());
+    CHECK(cal.thresholdDb() == doctest::Approx(t));
+}
+
+TEST_CASE("Calibration : finalizeNow conclut tot si l'ecart est franc") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 50; ++i) {
+        cal.addSample(-60.0);
+    }
+    for (int i = 0; i < 30; ++i) {
+        cal.addSample(-15.0); // 80 echantillons < minFrames (100) -> pas d'auto-conclusion
+    }
+    CHECK_FALSE(cal.done());
+    CHECK(cal.finalizeNow()); // bouton "Terminer" : assez d'ecart -> cale
+    CHECK(cal.done());
+    const double t = cal.thresholdDb();
+    CHECK(t > kDbFloor);
+    CHECK(t < -15.0);
+}
+
+TEST_CASE("Calibration : finalizeNow sans ecart suffisant -> echoue, reste non cale") {
+    ThresholdCalibrator cal;
+    for (int i = 0; i < 60; ++i) {
+        cal.addSample(-50.0);
+    }
+    CHECK_FALSE(cal.finalizeNow());
+    CHECK_FALSE(cal.done());
 }
