@@ -138,14 +138,15 @@ Le dock est votre tableau de bord en temps réel :
 - **Chaque intervenant** a son **vu-mètre** et son **curseur de seuil** : le niveau bouge sous le curseur, vous calez la sensibilité **visuellement**. Ce réglage est pris en compte **immédiatement** et **mémorisé** dans le profil.
 - **Le témoin « à l'antenne » (tally)** : un **trait rouge** apparaît à gauche de la scène réellement diffusée et **se déplace** quand la réalisation change de plan.
 - **Le plan large** figure dans la liste (sans vu-mètre), pour le voir s'allumer lui aussi.
+- **Cliquez une carte pour forcer son plan** : cliquer la carte d'un intervenant le passe **à l'antenne**, cliquer la carte du plan large bascule sur le **plan large** — un **forçage temporaire** (l'auto reprend après le temps mini), exactement comme un raccourci. Le **curseur de seuil** reste indépendant (il ne force pas).
 
-Le reste du pilotage passe par vos **scènes OBS** et vos **raccourcis** : le dock reste volontairement épuré.
+Vous pouvez aussi piloter via vos **scènes OBS** et vos **raccourcis** : le dock reste volontairement épuré.
 
 ---
 
 ## 5. Forcer un plan à la main
 
-Même en réalisation auto, vous gardez la main. **Cliquez n'importe quelle scène dans le gestionnaire de scènes natif d'OBS** (ou un bouton Stream Deck) et Flowspire la passe à l'antenne :
+Même en réalisation auto, vous gardez la main. Le plus rapide : **cliquez une carte dans le dock Flowspire** (un intervenant, ou la carte du plan large) pour passer ce plan à l'antenne. Vous pouvez aussi **cliquer n'importe quelle scène dans le gestionnaire de scènes natif d'OBS** (ou un bouton Stream Deck) et Flowspire la passe à l'antenne :
 
 - Si la scène **fait partie de votre régie** (le plan d'un intervenant ou le plan large) → **forçage temporaire** : le plan tient le temps minimum, puis l'auto reprend.
 - Si la scène est **en dehors de votre régie** (une intro, un écran de pause…) → le comportement est **réglable** dans **Paramètres avancés → Paramètres généraux** :

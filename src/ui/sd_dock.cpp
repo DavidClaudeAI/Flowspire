@@ -167,6 +167,15 @@ QWidget* makeTally(QHBoxLayout* lay) {
     lay->addWidget(tally, 0, Qt::AlignVCenter);
     return tally;
 }
+
+// Rend une carte cliquable pour le forcage : filtre d'evenements (le clic non consomme par un
+// enfant interactif remonte jusqu'a la carte), curseur "main", infobulle. Le forcage lui-meme
+// est resolu dans SdDock::eventFilter (qui retrouve la carte dans rows_). `filter` = le SdDock.
+void makeCardClickable(QWidget* card, QObject* filter, const QString& tooltip) {
+    card->installEventFilter(filter);
+    card->setCursor(Qt::PointingHandCursor);
+    card->setToolTip(tooltip);
+}
 } // namespace
 
 double SdDock::nowSeconds() {
@@ -484,17 +493,44 @@ bool SdDock::eventFilter(QObject* watched, QEvent* event) {
             return true;
         }
     }
+    // Clic sur une carte -> forcage : l'intervenant correspondant (forcage TEMPORAIRE, l'auto
+    // reprend apres le temps mini), ou le plan large pour la carte "Plan large". Les enfants
+    // interactifs (slider de seuil, bouton de calibration) ont deja consomme le clic : on ne
+    // recoit ici que les clics tombes sur le corps de la carte.
+    if (event->type() == QEvent::MouseButtonRelease) {
+        auto* me = static_cast<QMouseEvent*>(event);
+        if (me->button() == Qt::LeftButton) {
+            for (size_t i = 0; i < rows_.size(); ++i) {
+                if (rows_[i].card == watched) {
+                    if (rows_[i].isWide) {
+                        forceWide();
+                    } else {
+                        forceSpeakerByIndex(static_cast<int>(i));
+                    }
+                    return true;
+                }
+            }
+        }
+    }
     return QWidget::eventFilter(watched, event);
 }
 
 void SdDock::styleSpeakerCard(Row& row, bool speaking) {
     // Carte : bordure verte si actif, grise sinon. Selecteur #spkCard -> la
     // bordure ne touche QUE la carte (pas de traits parasites sur les enfants).
+    // Survol : la carte etant cliquable (forcage), on la teinte legerement en bleu (accent) +
+    // bordure accentuee (#spkCard:hover). IMPORTANT : surtout PAS kSurface3 en fond de survol —
+    // c'est la couleur des PISTES (vumetre + glissiere de seuil), qui se fondraient dedans et
+    // "disparaitraient". Un bleu translucide ne peut pas entrer en collision avec ces pistes
+    // grises. L'indice principal de clicabilite reste le curseur "main" pose sur la carte.
     row.card->setStyleSheet(QString("#spkCard { background:%1; border:1px solid %2;"
-                                    " border-radius:%3px; }")
+                                    " border-radius:%3px; }"
+                                    "#spkCard:hover { background:%4; border-color:%5; }")
                                 .arg(th::kSurface2)
                                 .arg(speaking ? QString::fromUtf8(th::kSuccess) : rgba(th::kBorder, 1.0))
-                                .arg(th::kRadiusCard));
+                                .arg(th::kRadiusCard)
+                                .arg(rgba(th::kAccent, 0.12))
+                                .arg(rgba(th::kAccent, 0.6)));
     // Avatar : icone user teintee (vert si actif), fond rond translucide.
     row.avatar->setPixmap(icon(Icon::User, speaking ? th::kSuccess : th::kTextTertiary, 18));
     row.avatar->setStyleSheet(QString("background:%1; border:2px solid %2; border-radius:%3px;")
@@ -621,6 +657,11 @@ void SdDock::reload() {
         // Hauteur mini : la carte ne se laisse pas ecraser quand le dock est reduit
         // (le contenu ne sera pas coupe ; le defilement prend le relais).
         card->setMinimumHeight(th::kAvatarSize + 20);
+        // Carte CLIQUABLE : un clic sur le corps force cet intervenant a l'antenne (forcage
+        // temporaire -> l'auto reprend apres le temps mini). Les enfants interactifs (slider de
+        // seuil) consomment leurs propres clics -> naturellement exemptes (l'eventFilter ne voit
+        // que les clics qui remontent jusqu'a la carte).
+        makeCardClickable(card, this, i18n("Speaker.ForceHint"));
         auto* lay = new QHBoxLayout(card);
         lay->setContentsMargins(8, 10, 10, 10); // marge gauche reduite : espace du tally
         lay->setSpacing(10);
@@ -705,6 +746,13 @@ void SdDock::reload() {
         lay->addWidget(center, 1);
         lay->addWidget(threshBlock);
 
+        // Clic-carte : on ne pose PAS WA_TransparentForMouseEvents sur les enfants -> il
+        // desactiverait AUSSI leurs propres enfants (doc Qt : "the widget and its children"),
+        // ce qui casserait le slider de seuil et le bouton de calibration. Inutile de toute
+        // facon : les elements passifs (labels, avatar, vumetre, conteneurs) ignorent les
+        // clics, qui remontent donc naturellement jusqu'a la carte (meme mecanique que le
+        // badge d'etat) ; le slider et le bouton, eux, consomment leurs propres clics.
+
         rowsLayout_->addWidget(card);
         // Init membre-a-membre (comme la carte plan large) : robuste a un reordonnancement
         // futur des champs de Row, contrairement a une init positionnelle.
@@ -730,6 +778,8 @@ void SdDock::reload() {
         auto* card = new QWidget();
         card->setObjectName(QStringLiteral("spkCard"));
         card->setMinimumHeight(th::kAvatarSize + 20);
+        // Meme principe que les cartes d'intervenants : clic = forcage du plan large.
+        makeCardClickable(card, this, i18n("Dock.WideShot.ForceHint"));
         auto* lay = new QHBoxLayout(card);
         lay->setContentsMargins(8, 10, 10, 10);
         lay->setSpacing(10);

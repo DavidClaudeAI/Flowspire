@@ -138,14 +138,15 @@ The dock is your real-time dashboard:
 - **Each speaker** has their **audio meter** and their **threshold slider**: the level moves under the slider, so you set the sensitivity **visually**. This adjustment takes effect **immediately** and is **saved** in the profile.
 - **The "on-air" indicator (tally)**: a **red bar** appears to the left of the scene actually being broadcast and **moves** when the directing changes shot.
 - **The wide shot** appears in the list (without an audio meter), so you can see it light up too.
+- **Click a card to force that shot**: clicking a speaker's card puts **them** on air, clicking the wide-shot card switches to the **wide shot** — a **temporary force** (auto resumes after the minimum time), just like a hotkey. Dragging the **threshold slider** stays independent (it doesn't force).
 
-The rest of the control happens through your **OBS scenes** and your **hotkeys**: the dock stays deliberately uncluttered.
+You can also drive it through your **OBS scenes** and your **hotkeys**: the dock stays deliberately uncluttered.
 
 ---
 
 ## 5. Force a shot by hand
 
-Even in auto-directing, you keep control. **Click any scene in OBS's native scene manager** (or a Stream Deck button) and Flowspire puts it on air:
+Even in auto-directing, you keep control. The quickest way: **click a card in the Flowspire dock** (a speaker, or the wide-shot card) to put that shot on air. You can also **click any scene in OBS's native scene manager** (or a Stream Deck button) and Flowspire puts it on air:
 
 - If the scene **is part of your directing setup** (a speaker's shot or the wide shot) → **temporary force**: the shot holds for the minimum time, then auto resumes.
 - If the scene is **outside your directing setup** (an intro, a pause screen…) → the behavior is **configurable** in **Advanced settings → General settings**:
