@@ -192,9 +192,8 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         // (option supprimee), et il ne FORCE PAS le plan large -> si son poids vaut 0
         // ("jamais de plan large"), on reste sur le locuteur ; s'il vaut > 0, le plan large
         // recoit sa chance des qu'il se tait.
-        const bool ownerSpeaking =
-            !currentOwner_.empty() &&
-            std::find(speakingSorted_.begin(), speakingSorted_.end(), currentOwner_) != speakingSorted_.end();
+        const bool ownerSpeaking = !currentOwner_.empty() && std::find(speakingSorted_.begin(), speakingSorted_.end(),
+                                                                       currentOwner_) != speakingSorted_.end();
         key = ownerSpeaking ? ("M:" + currentOwner_) : "M";
         if (key != decisionKey_) {
             std::vector<std::pair<std::string, int>> opts;
@@ -265,8 +264,8 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     //   temps-mini gere (l'amortir sans plan large reviendrait juste a allonger le temps-mini).
     //   En multi normal la cible est currentOwner_ (on "reste", il parle encore) ou le plan
     //   large -> desiredOwner != currentOwner_ n'y est pas vraie : pas de navette en multi.
-    if (!desiredWide && !desiredOwner.empty() && desiredOwner != currentOwner_ &&
-        !cfg_.wideShotScene.empty() && isPingPongBounce(now, desiredOwner)) {
+    if (!desiredWide && !desiredOwner.empty() && desiredOwner != currentOwner_ && !cfg_.wideShotScene.empty() &&
+        isPingPongBounce(now, desiredOwner)) {
         desiredOwner.clear();
         desiredWide = true;
     }

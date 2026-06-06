@@ -46,8 +46,7 @@ std::string toJson(const Config& cfg) {
           {"pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds},
           {"silenceReactionSeconds", cfg.timing.silenceReactionSeconds}}},
         {"whenMultiple",
-         {{"currentSpeaker", cfg.whenMultiple.currentSpeaker},
-          {"wideShot", cfg.whenMultiple.wideShot}}},
+         {{"currentSpeaker", cfg.whenMultiple.currentSpeaker}, {"wideShot", cfg.whenMultiple.wideShot}}},
         {"whenSilence", {{"lastSpeaker", cfg.whenSilence.lastSpeaker}, {"wideShot", cfg.whenSilence.wideShot}}},
     };
     return j.dump(2);

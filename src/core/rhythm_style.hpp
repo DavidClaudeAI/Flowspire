@@ -25,13 +25,13 @@ namespace sd::core {
 // Un style = un nom + les 4 parametres de rythme. Les defauts repliquent ceux de
 // TimingSettings (un RhythmStyle vide == config livree par defaut).
 struct RhythmStyle {
-    std::string name;                     // identifiant ET libelle affiche (nom propre, non traduit)
-    double minShotSeconds = 3.0;          // verrou anti-nervosite
-    double maxShotSeconds = 6.0;          // rafraichissement du plan
-    double silenceReactionSeconds = 1.5;  // grace de silence
-    double pingPongWindowSeconds = 0.0;   // 0 = anti ping-pong (retour au plan large) desactive
-    MultiWeights whenMultiple;            // contexte B (2+ parlent) : { rester / plan large }
-    SilenceWeights whenSilence;           // contexte C (silence)    : { dernier locuteur / plan large }
+    std::string name;                    // identifiant ET libelle affiche (nom propre, non traduit)
+    double minShotSeconds = 3.0;         // verrou anti-nervosite
+    double maxShotSeconds = 6.0;         // rafraichissement du plan
+    double silenceReactionSeconds = 1.5; // grace de silence
+    double pingPongWindowSeconds = 0.0;  // 0 = anti ping-pong (retour au plan large) desactive
+    MultiWeights whenMultiple;           // contexte B (2+ parlent) : { rester / plan large }
+    SilenceWeights whenSilence;          // contexte C (silence)    : { dernier locuteur / plan large }
 };
 
 // Les 3 styles LIVRES, en lecture seule, du plus pose au plus vif :

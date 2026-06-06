@@ -16,7 +16,13 @@ std::vector<RhythmStyle> builtinRhythmStyles() {
     return {
         {"Chill", 5.0, 10.0, 2.5, 0.0, {10, 90}, {10, 90}}, // pose : plans longs, plan large genereux
         {"Cool", 3.0, 6.0, 1.5, 0.0, {5, 100}, {5, 100}},   // equilibre = reglage reel "Cyp Live"
-        {"Speed", 2.0, 4.0, 1.0, 5.0, {65, 10}, {30, 70}},  // vif : serre en multi, large surtout au silence ; anti ping-pong arme
+        {"Speed",
+         2.0,
+         4.0,
+         1.0,
+         5.0,
+         {65, 10},
+         {30, 70}}, // vif : serre en multi, large surtout au silence ; anti ping-pong arme
     };
 }
 

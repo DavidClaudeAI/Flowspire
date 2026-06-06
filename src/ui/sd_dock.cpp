@@ -30,12 +30,12 @@
 #include <unordered_set>
 #include <utility>
 
-#include "plugin-support.h"        // PLUGIN_VERSION (derive de buildspec.json par CMake)
-#include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
-#include "core/profiles.hpp"       // catalogue de profils (modele pur)
-#include "core/rhythm_style.hpp"   // styles de realisation (built-ins, applyRhythmStyle)
-#include "obs/profiles_store.hpp"  // magasin de profils (profil actif = source de verite)
-#include "obs/style_store.hpp"     // bibliotheque globale de styles (sd::styles::loadLibrary)
+#include "plugin-support.h"       // PLUGIN_VERSION (derive de buildspec.json par CMake)
+#include "core/audio_util.hpp"    // source de verite du plancher (kDbFloor)
+#include "core/profiles.hpp"      // catalogue de profils (modele pur)
+#include "core/rhythm_style.hpp"  // styles de realisation (built-ins, applyRhythmStyle)
+#include "obs/profiles_store.hpp" // magasin de profils (profil actif = source de verite)
+#include "obs/style_store.hpp"    // bibliotheque globale de styles (sd::styles::loadLibrary)
 #include "ui/sd_assistant.hpp"    // assistant de configuration (modale)
 #include "ui/sd_prefs.hpp"        // preferences globales (verif MAJ, scene hors regie)
 #include "ui/sd_settings.hpp"     // parametres avances (modale)

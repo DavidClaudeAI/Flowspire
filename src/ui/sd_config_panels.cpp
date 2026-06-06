@@ -658,8 +658,8 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
         saveBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
             bool ok = false;
             const QString name = QInputDialog::getText(styleCard, i18n("Rhythm.StyleSaveAsTitle"),
-                                                       i18n("Rhythm.StyleSaveAsPrompt"), QLineEdit::Normal,
-                                                       QString(), &ok);
+                                                       i18n("Rhythm.StyleSaveAsPrompt"), QLineEdit::Normal, QString(),
+                                                       &ok);
             const std::string trimmed = name.trimmed().toStdString();
             if (!ok || trimmed.empty()) {
                 return;
@@ -667,8 +667,8 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
             const std::string unique = sd::core::makeUniqueStyleName(*libStyles, trimmed);
             libStyles->push_back(sd::core::styleFromConfig(cfg_, unique));
             sd::styles::saveLibrary(*libStyles);
-            cfg_.styleName = unique;               // on est desormais "sur" ce style enregistre
-            mountRhythm(host, includeWidePolicy);  // re-monte : le nouveau style apparait + selectionne
+            cfg_.styleName = unique;              // on est desormais "sur" ce style enregistre
+            mountRhythm(host, includeWidePolicy); // re-monte : le nouveau style apparait + selectionne
         });
         mineLay->addWidget(saveBtn);
         slay->addWidget(mineRow);

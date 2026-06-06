@@ -42,7 +42,7 @@ Config twoSpeakerConfig() {
     // ces tests verifient la LOGIQUE de tirage/hysteresis, pas la config par defaut du produit.
     // Les defauts livres ont change (profil "Cyp Live") -> sans ce verrouillage, les tests
     // B/C/silence casseraient.
-    c.audio.attackFrames = 2;  // EPINGLE (sinon depend du defaut struct -> timing des tests fragile)
+    c.audio.attackFrames = 2; // EPINGLE (sinon depend du defaut struct -> timing des tests fragile)
     c.audio.releaseFrames = 8;
     c.whenMultiple = {30, 25}; // {rester, plan large} (plus de "le plus fort")
     c.whenSilence = {80, 20};
@@ -124,7 +124,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     in.version = 7;
     in.audio = {-28.0, -55.0, 3, 11}; // voiceThr, volFloor, attack, release
     in.timing = {2.5, 9.0, 7.0, 4.0}; // min, max, pingPong, silenceReaction
-    in.whenMultiple = {40, 35}; // {rester, plan large}
+    in.whenMultiple = {40, 35};       // {rester, plan large}
     in.whenSilence = {70, 30};
     const Config out = fromJson(toJson(in));
 
@@ -247,7 +247,7 @@ TEST_CASE("director : contexte B (plusieurs) — 'rester' garde le plan du locut
     }
     Decision d = dir.update(4.0, {{"A", mulToDb(0.8)}, {"B", mulToDb(0.7)}});
     CHECK(d.context == Context::Multiple);
-    CHECK(d.owner == "A");       // on reste sur le locuteur courant, pas de bascule "au plus fort"
+    CHECK(d.owner == "A"); // on reste sur le locuteur courant, pas de bascule "au plus fort"
     CHECK(d.scene == "A_close");
 }
 
@@ -260,9 +260,9 @@ TEST_CASE("director : multi — plan large a 0, un locuteur qui se tait NE force
     Config c;
     c.wideShotScene = "Plateau";
     c.timing.minShotSeconds = 3.0;
-    c.timing.maxShotSeconds = 30.0;     // grand : ne doit PAS gouverner la decision
-    c.whenMultiple = {100, 0};          // "rester" seul possible (plan large interdit)
-    c.audio.attackFrames = 2;           // EPINGLE (timing deterministe, independant du defaut struct)
+    c.timing.maxShotSeconds = 30.0; // grand : ne doit PAS gouverner la decision
+    c.whenMultiple = {100, 0};      // "rester" seul possible (plan large interdit)
+    c.audio.attackFrames = 2;       // EPINGLE (timing deterministe, independant du defaut struct)
     c.audio.releaseFrames = 2;
     Speaker a;
     a.id = "A";
@@ -295,7 +295,7 @@ TEST_CASE("director : multi — plan large a 0, un locuteur qui se tait NE force
         d = dir.update(4.0 + i * 0.1, {{"A", kDbFloor}, {"B", hi}, {"C", hi}});
     }
     CHECK(d.context == Context::Multiple);
-    CHECK(d.owner == "A");       // plan large a 0 respecte : on garde le plan courant
+    CHECK(d.owner == "A"); // plan large a 0 respecte : on garde le plan courant
     CHECK(d.scene == "A_close");
 }
 
@@ -1099,9 +1099,9 @@ Decision runBounce(double window, const std::string& wide) {
             dir.update(t0 + i * 0.1, lv);
         }
     };
-    solo(0.0, "A", 6);  // A seul -> A_close (verrou s'arme)
-    solo(3.5, "B", 6);  // apres le verrou : B seul -> cut B (on quitte A)
-    solo(7.0, "A", 5);  // A revient (le verrou de B est ecoule) -> retour amorti ?
+    solo(0.0, "A", 6); // A seul -> A_close (verrou s'arme)
+    solo(3.5, "B", 6); // apres le verrou : B seul -> cut B (on quitte A)
+    solo(7.0, "A", 5); // A revient (le verrou de B est ecoule) -> retour amorti ?
     return dir.update(7.6, {{"A", hi}, {"B", kDbFloor}});
 }
 } // namespace
@@ -1137,9 +1137,9 @@ TEST_CASE("director : anti ping-pong relache APRES la fenetre -> on repart sur l
             dir.update(t, {{"A", kDbFloor}, {"B", hi}});
         }
     };
-    feedA(0.0, 0.5);  // -> A
-    soloB(3.5, 4.0);  // -> B (on quitte A ~3.6)
-    feedA(7.0, 7.5);  // A revient DANS la fenetre (3.6 + 5 = 8.6) -> recule sur le plan large
+    feedA(0.0, 0.5); // -> A
+    soloB(3.5, 4.0); // -> B (on quitte A ~3.6)
+    feedA(7.0, 7.5); // A revient DANS la fenetre (3.6 + 5 = 8.6) -> recule sur le plan large
     CHECK(dir.currentScene() == "Plateau");
     // A continue ; la fenetre est depassee (8.6) ET le verrou du plan large ecoule -> on repart sur A.
     feedA(7.6, 11.0);
@@ -1230,8 +1230,9 @@ TEST_CASE("rhythm style : les 3 built-ins, ordre et valeurs") {
     }
     // La politique plan large fait partie du temperament : Speed reste bien plus "serre"
     // quand 2+ parlent (moins de plan large, plus "rester") que Cool.
-    CHECK(styles[2].whenMultiple.wideShot < styles[1].whenMultiple.wideShot);          // Speed < Cool en large
-    CHECK(styles[2].whenMultiple.currentSpeaker > styles[1].whenMultiple.currentSpeaker); // Speed reste + sur le locuteur
+    CHECK(styles[2].whenMultiple.wideShot < styles[1].whenMultiple.wideShot); // Speed < Cool en large
+    CHECK(styles[2].whenMultiple.currentSpeaker >
+          styles[1].whenMultiple.currentSpeaker); // Speed reste + sur le locuteur
 }
 
 TEST_CASE("rhythm style : appliquer un style a 0 DESARME l'anti ping-pong (pas seulement laisse)") {

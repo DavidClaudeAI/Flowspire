@@ -11,8 +11,7 @@ namespace {
 const std::string kStylesRel = "styles.json";
 
 // Tente de lire+parser la bibliotheque a `rel`. false si absent/illisible OU JSON invalide.
-bool tryRead(const sd::obsbridge::FileStore& store, const std::string& rel,
-             std::vector<sd::core::RhythmStyle>& out) {
+bool tryRead(const sd::obsbridge::FileStore& store, const std::string& rel, std::vector<sd::core::RhythmStyle>& out) {
     std::string text;
     if (!store.read(rel, text)) {
         return false;

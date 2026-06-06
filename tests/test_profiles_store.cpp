@@ -211,10 +211,10 @@ TEST_CASE("style_store : fichier corrompu recupere depuis son .bak") {
     sd::styles::StyleStore store(fs);
     sd::core::RhythmStyle a;
     a.name = "Talk pose";
-    store.save({a});            // styles.json v1 (pas encore de .bak)
+    store.save({a}); // styles.json v1 (pas encore de .bak)
     sd::core::RhythmStyle b = a;
     b.name = "Talk pose 2";
-    store.save({a, b});         // styles.json v2 ; .bak = v1
+    store.save({a, b});                        // styles.json v2 ; .bak = v1
     fs.setRaw("styles.json", "{ pas du JSON"); // corruption du fichier courant
     const sd::styles::LibraryResult r = store.load();
     REQUIRE(r.ok);
