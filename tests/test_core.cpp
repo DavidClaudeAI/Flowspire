@@ -158,6 +158,17 @@ TEST_CASE("config : JSON tolerant aux cles absentes") {
     CHECK(c.whenMultiple.wideShot == 100);                     // defaut (tune "Cyp Live")
 }
 
+TEST_CASE("config : retrocompat - ancienne cle whenMultiple.loudestSpeaker ignoree sans erreur") {
+    // Un profil ecrit par v0.5.0 contient "loudestSpeaker" (option "le plus fort" retiree). Il
+    // doit se charger SANS erreur, la cle etant simplement ignoree, currentSpeaker/wideShot
+    // preserves, et styleName a vide (=Perso) faute de cle.
+    const Config c =
+        fromJson(R"({"version":1,"whenMultiple":{"loudestSpeaker":45,"currentSpeaker":30,"wideShot":25}})");
+    CHECK(c.whenMultiple.currentSpeaker == 30);
+    CHECK(c.whenMultiple.wideShot == 25);
+    CHECK(c.styleName.empty());
+}
+
 TEST_CASE("config : JSON invalide leve une exception") {
     CHECK_THROWS(fromJson("{ ceci n'est pas du json"));
 }

@@ -113,8 +113,6 @@ QString SdSettings::Impl::panelTitle(int p) const {
         return i18n("Settings.Nav.Speakers");
     case SdSettings::TabCameras:
         return i18n("Settings.Nav.Cameras");
-    case SdSettings::TabWide:
-        return i18n("Settings.Nav.Wide");
     case SdSettings::TabRhythm:
         return i18n("Settings.Nav.Rhythm");
     case SdSettings::TabProfiles:

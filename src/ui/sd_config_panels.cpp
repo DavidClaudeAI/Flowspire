@@ -408,14 +408,19 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     g1l->addWidget(makeGroupHeader(i18n("Wide.Multiple")));
     // "Le plus fort" RETIRE (le volume ne decide pas qui on montre) -> en multi il reste
     // { rester sur le plan courant / plan large }.
+    // Toucher un poids = quitter le style nomme actif -> "Perso" (la politique plan large fait
+    // partie du temperament). Coherent avec mountRhythm. Pas de pastille/menu ici (assistant),
+    // donc on se contente d'effacer styleName (l'etape Realisation refletera "Perso").
     auto* r2 = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr, true);
     r2->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.currentSpeaker = v;
+        cfg_.styleName.clear();
         recompute(multRows);
     });
     auto* r3 = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenMultiple.wideShot, nullptr, true);
     r3->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.wideShot = v;
+        cfg_.styleName.clear();
         recompute(multRows);
     });
     r2->setInfo(i18n("Tip.Wide.Current"));
@@ -433,11 +438,13 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     auto* s1 = new SliderRow(i18n("Wide.LastSpeaker"), 0, 100, cfg_.whenSilence.lastSpeaker, nullptr, true);
     s1->setOnChange([this, silRows, recompute](int v) {
         cfg_.whenSilence.lastSpeaker = v;
+        cfg_.styleName.clear();
         recompute(silRows);
     });
     auto* s2 = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenSilence.wideShot, nullptr, true);
     s2->setOnChange([this, silRows, recompute](int v) {
         cfg_.whenSilence.wideShot = v;
+        cfg_.styleName.clear();
         recompute(silRows);
     });
     s1->setInfo(i18n("Tip.Wide.LastSpeaker"));

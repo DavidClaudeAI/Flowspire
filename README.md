@@ -84,11 +84,11 @@ It distinguishes **three situations**, each with its own pick:
 flowchart TD
     Q{"Who is speaking<br/>right now?"}
     Q -->|One person| P1["Pick among <b>their</b> scenes<br/>close-up · reaction shot · wide shot"]
-    Q -->|Several| P2["Pick between<br/>the loudest · stay on the current one · wide shot"]
+    Q -->|Several| P2["Pick between<br/>stay on the current one · wide shot"]
     Q -->|Nobody| P3["Pick between<br/>last speaker · wide shot"]
 ```
 
-On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on a laugh), **silence delay** (no cut on a breath), **maximum shot time** (we refresh to vary), **anti ping-pong** (no back-and-forth when two people interrupt each other).
+The **directing style** (Chill / Cool / Speed, or your own) sets, in one click, the tempo **and** the wide-shot tendency across these three situations. On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on a laugh), **silence delay** (no cut on a breath), **maximum shot time** (we refresh to vary), **pull back to the wide shot on fast exchanges** (when two people trade lines back and forth, we step back to the group for a beat).
 
 > **Weights are proportions, not percentages.** *Close-up 90* + *wide shot 10* → you'll see the close-up ~90% of the time. The plugin works out the % on its own.
 
