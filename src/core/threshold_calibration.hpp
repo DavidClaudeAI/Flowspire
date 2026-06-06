@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
+#include <deque>
 #include <vector>
 
 namespace sd::core {
@@ -67,7 +68,7 @@ public:
         }
         samples_.push_back(db);
         if (static_cast<int>(samples_.size()) > params_.maxFrames) {
-            samples_.erase(samples_.begin()); // fenetre glissante : on jette le plus ancien.
+            samples_.pop_front(); // fenetre glissante O(1) : on jette le plus ancien (deque).
         }
         if (static_cast<int>(samples_.size()) >= params_.minFrames) {
             double t = 0.0;
@@ -100,8 +101,11 @@ public:
 private:
     // Calcule le seuil si l'ecart voix-plancher est suffisant. Precondition : samples_ non vide.
     bool computeThreshold(double& out) const {
-        const double floor = percentileDb(samples_, params_.floorPercentile);
-        const double voice = percentileDb(samples_, params_.voicePercentile);
+        // percentileDb reordonne une COPIE : on materialise la fenetre glissante (deque) en
+        // vector une fois, puis on en tire le plancher et la voix.
+        const std::vector<double> v(samples_.begin(), samples_.end());
+        const double floor = percentileDb(v, params_.floorPercentile);
+        const double voice = percentileDb(v, params_.voicePercentile);
         const double gap = voice - floor;
         if (gap < params_.minGapDb) {
             return false; // pas assez d'ecart : pas assez parle, ou aucun silence capte.
@@ -119,7 +123,7 @@ private:
     }
 
     CalibrationParams params_{};
-    std::vector<double> samples_{};
+    std::deque<double> samples_{}; // fenetre glissante (pop_front O(1) quand pleine)
     bool done_ = false;
     double thresholdDb_ = 0.0;
 };
