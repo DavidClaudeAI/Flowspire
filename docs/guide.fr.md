@@ -139,6 +139,7 @@ Le dock est votre tableau de bord en temps réel :
 - **Le témoin « à l'antenne » (tally)** : un **trait rouge** apparaît à gauche de la scène réellement diffusée et **se déplace** quand la réalisation change de plan.
 - **Le plan large** figure dans la liste (sans vu-mètre), pour le voir s'allumer lui aussi.
 - **Cliquez une carte pour forcer son plan** : cliquer la carte d'un intervenant le passe **à l'antenne**, cliquer la carte du plan large bascule sur le **plan large** — un **forçage temporaire** (l'auto reprend après le temps mini), exactement comme un raccourci. Le **curseur de seuil** reste indépendant (il ne force pas).
+- **Calibrer les seuils automatiquement** : le **bouton baguette** sur chaque carte règle le seuil de la personne tout seul — parlez normalement, il trouve le bon niveau (entre votre silence et votre voix) puis le fige (pas de dérive). **Calibrer tous les seuils** (bouton dans l'en-tête SCÈNES) arme tout le monde d'un coup : une barre de progression montre qui est calé ; cliquez **Terminer** quand ça vous va. Fonctionne aussi avec un micro à noise gate (le seuil est placé proportionnellement dans l'écart, jamais collé au plancher).
 
 Vous pouvez aussi piloter via vos **scènes OBS** et vos **raccourcis** : le dock reste volontairement épuré.
 

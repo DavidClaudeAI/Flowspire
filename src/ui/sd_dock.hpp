@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "core/director.hpp"
+#include "core/threshold_calibration.hpp"
 #include "obs/audio_level_monitor.hpp"
 #include "obs/scene_switcher.hpp"
 
@@ -66,8 +67,9 @@ private:
         QWidget* card = nullptr;  // carte (sa destruction detruit les enfants)
         QLabel* avatar = nullptr; // icone user teintee selon l'etat
         QLabel* nameLabel = nullptr;
-        LevelMeter* meter = nullptr;  // vumetre custom (+ marqueur de seuil)
-        QSlider* threshold = nullptr; // slider de seuil par intervenant
+        LevelMeter* meter = nullptr;         // vumetre custom (+ marqueur de seuil)
+        QSlider* threshold = nullptr;        // slider de seuil par intervenant
+        QPushButton* calibrateBtn = nullptr; // bouton "calibrer ce seuil" (icone = etat)
         QLabel* stateLabel = nullptr;
         QWidget* tally = nullptr; // temoin vertical "a l'antenne" (rouge), a gauche de la carte
         bool isWide = false;      // carte "Plan large" (pas un intervenant : ni audio ni vumetre)
@@ -117,6 +119,14 @@ private:
     // sans force, n'emet que si l'etat ou la cible a change. Async, sans impact sur le pilotage.
     void pushStatusIfEnabled(bool force = false);
     void styleSpeakerCard(Row& row, bool speaking);
+    // --- Calibration auto du seuil (#3) ---
+    void onCalibrateClicked(const std::string& speakerId); // bouton carte : (re)demarre / annule
+    void startCalibrationAll();                            // bouton global : arme tout le monde
+    void finishCalibration();                              // "Terminer" : fige ce qui peut l'etre, ferme
+    void updateCalibrateButton(Row& row);                  // icone selon l'etat (repos / en cours / cale)
+    void updateCalibrationBanner();                        // libelle "N/M cales" + visibilite du bandeau
+    void refreshCalibrationUi(); // MAJ icones + bandeau + fin AUTO de session (a chaque changement d'etat)
+    void applyCalibratedThreshold(Row& row, double thresholdDb); // ecrit le seuil VIA le slider (reuse cablage)
     // Construit la carte d'accueil (etat sans config) dans rowsLayout_ : titre, rappel
     // des prerequis OBS, nombre d'entrees audio detectees, bouton "Lancer l'assistant".
     void addWelcomeCard(size_t audioInputCount);
@@ -155,6 +165,17 @@ private:
     QWidget* updateBanner_ = nullptr; // bandeau "mise a jour dispo" (masque par defaut)
     QLabel* updateBannerLabel_ = nullptr;
     QPushButton* updateBannerButton_ = nullptr;
+
+    // --- Calibration auto du seuil (#3) ---
+    // Un calibrateur par intervenant en cours OU cale dans la session courante (presence
+    // dans la map = pas au repos). Vide = repos. La calibration ne fait qu'OBSERVER les
+    // niveaux deja lus par le tick ; a "cale" -> on ecrit le seuil via le slider (reuse).
+    std::map<std::string, sd::core::ThresholdCalibrator> calibrators_;
+    bool calibrationBannerActive_ = false;           // session GLOBALE en cours -> bandeau affiche
+    QPushButton* calibrateAllButton_ = nullptr;      // "Calibrer tous les seuils" (en-tete SCENES)
+    QWidget* calibrationBanner_ = nullptr;           // bandeau de progression (masque par defaut)
+    QLabel* calibrationBannerLabel_ = nullptr;       // "Calibration... N/M cales"
+    QPushButton* calibrationFinishButton_ = nullptr; // "Terminer"
     QTimer* timer_ = nullptr;
     // Ecriture differee (debounce) du seuil regle au slider : un glissement souris ou
     // une rafale clavier/molette ne declenche qu'UNE ecriture disque, apres stabilisation.
