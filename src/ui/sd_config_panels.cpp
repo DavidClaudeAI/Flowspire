@@ -623,7 +623,10 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
         mineLay->setContentsMargins(0, 0, 0, 0);
         mineLay->setSpacing(8);
         auto* userCombo = new ComboField();
-        userCombo->setAllowEmpty(true, i18n("Rhythm.StyleSelectNone"));
+        // PAS de setAllowEmpty : on ne propose pas d'entree "—" selectionnable (un no-op qui
+        // desynchroniserait l'affichage du menu de l'etat reel). Le placeholder "— selectionner —"
+        // s'affiche quand aucun style perso n'est actif ; pour quitter un style on en choisit un
+        // autre, on touche un curseur (-> Perso) ou on clique un fourni.
         userCombo->setPlaceholder(i18n("Rhythm.StyleSelectNone"));
         userCombo->setEmptyHint(i18n("Rhythm.StyleNoneSaved"));
         QStringList userNames;
