@@ -5,8 +5,10 @@
 #include "ui/sd_config_panels.hpp"
 
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSlider>
 #include <QString>
@@ -20,6 +22,7 @@
 #include <utility>
 
 #include "core/rhythm_style.hpp"
+#include "obs/style_store.hpp"
 #include "ui/sd_i18n.hpp"
 #include "ui/sd_icons.hpp"
 #include "ui/sd_style.hpp"
@@ -493,6 +496,14 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
     // "Perso". `applying` neutralise ce basculement pendant l'application programmee.
     auto applying = std::make_shared<bool>(false);
     auto chips = std::make_shared<std::vector<std::pair<std::string, ClickButton*>>>(); // nom -> chip ("" = Perso)
+    // Bibliotheque GLOBALE des styles PERSO (chargee seulement en reglages avances). Les
+    // actions enregistrer/renommer/supprimer la modifient puis re-montent le panneau.
+    auto libStyles = std::make_shared<std::vector<sd::core::RhythmStyle>>();
+    if (includeWidePolicy) {
+        *libStyles = sd::styles::loadLibrary().styles;
+    }
+    auto userComboPtr = std::make_shared<ComboField*>(nullptr); // menu "Mes styles" (persos)
+    auto manageRowPtr = std::make_shared<QWidget*>(nullptr);    // ligne renommer/supprimer
 
     auto paintChip = [](ClickButton* b, const QString& label, bool selected) {
         const QString base = QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
@@ -505,9 +516,13 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
             b->setLabel(label, th::kTextSecondary, 13, 600);
         }
     };
-    // Repeint tous les chips selon le style actif (cfg_.styleName). "Perso" s'allume des
-    // qu'aucun style livre ne correspond (y compris un nom inconnu -> robuste).
-    auto refresh = [this, chips, paintChip]() {
+    // Repeint l'etat du selecteur selon le style actif (cfg_.styleName) :
+    //  - pastille livree (Chill/Cool/Speed) allumee si elle correspond ;
+    //  - "Perso" allumee si AUCUN style (livre OU perso) n'est actif ;
+    //  - le menu "Mes styles" pointe sur le style perso actif (sinon "—") ;
+    //  - la ligne renommer/supprimer n'apparait que sur un style perso.
+    auto refresh = [this, chips, paintChip, libStyles, userComboPtr, manageRowPtr]() {
+        const bool userActive = !cfg_.styleName.empty() && sd::core::styleNameExists(*libStyles, cfg_.styleName);
         bool builtinActive = false;
         for (const auto& pr : *chips) {
             if (!pr.first.empty() && pr.first == cfg_.styleName) {
@@ -516,9 +531,15 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
         }
         for (const auto& pr : *chips) {
             const bool isPerso = pr.first.empty();
-            const bool selected = isPerso ? !builtinActive : (pr.first == cfg_.styleName);
+            const bool selected = isPerso ? (!builtinActive && !userActive) : (pr.first == cfg_.styleName);
             const QString label = isPerso ? i18n("Rhythm.StyleCustom") : QString::fromStdString(pr.first);
             paintChip(pr.second, label, selected);
+        }
+        if (*userComboPtr) {
+            (*userComboPtr)->setValue(userActive ? QString::fromStdString(cfg_.styleName) : QString());
+        }
+        if (*manageRowPtr) {
+            (*manageRowPtr)->setVisible(userActive);
         }
     };
     // Applique un style : copie ses valeurs (coeur) PUIS fait glisser les curseurs. Le
@@ -582,9 +603,130 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
     chipLay->addWidget(persoChip);
     chipLay->addStretch();
     slay->addWidget(chipRow);
+
+    // === "Mes styles" : bibliotheque GLOBALE des persos (menu deroulant), reglages avances ===
+    // Separation claire (decidee avec David) : pastilles = styles FOURNIS ; menu = TES styles.
+    if (includeWidePolicy) {
+        // Petit bouton secondaire (fond surface, liseré accent au survol).
+        auto smallBtn = [](const QString& text) {
+            auto* b = new ClickButton();
+            b->setMargins(11, 8);
+            const QString base = QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
+            b->setBox(base.arg(th::kSurface3).arg(th::kBorder), base.arg(th::kSurface3).arg(rgba(th::kAccent, 0.5)));
+            b->setLabel(text, th::kTextSecondary, 13, 600);
+            return b;
+        };
+
+        slay->addWidget(makeSectionLabel(i18n("Rhythm.StyleMineSection")));
+        auto* mineRow = new QWidget();
+        auto* mineLay = new QHBoxLayout(mineRow);
+        mineLay->setContentsMargins(0, 0, 0, 0);
+        mineLay->setSpacing(8);
+        auto* userCombo = new ComboField();
+        userCombo->setAllowEmpty(true, i18n("Rhythm.StyleSelectNone"));
+        userCombo->setPlaceholder(i18n("Rhythm.StyleSelectNone"));
+        userCombo->setEmptyHint(i18n("Rhythm.StyleNoneSaved"));
+        QStringList userNames;
+        for (const auto& s : *libStyles) {
+            userNames << QString::fromStdString(s.name);
+        }
+        userCombo->setOptions(userNames, QString());
+        userCombo->setOnChange([this, libStyles, onPick](const QString& v) {
+            const std::string name = v.toStdString();
+            for (const auto& s : *libStyles) {
+                if (s.name == name) {
+                    onPick(s); // applique le style perso (glisse les curseurs + marque actif)
+                    return;
+                }
+            }
+        });
+        *userComboPtr = userCombo;
+        mineLay->addWidget(userCombo, 1);
+
+        // "Enregistrer sous..." : capture le reglage courant comme nouveau style nomme.
+        auto* saveBtn = smallBtn(i18n("Rhythm.StyleSaveAs"));
+        saveBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
+            bool ok = false;
+            const QString name = QInputDialog::getText(styleCard, i18n("Rhythm.StyleSaveAsTitle"),
+                                                       i18n("Rhythm.StyleSaveAsPrompt"), QLineEdit::Normal,
+                                                       QString(), &ok);
+            const std::string trimmed = name.trimmed().toStdString();
+            if (!ok || trimmed.empty()) {
+                return;
+            }
+            const std::string unique = sd::core::makeUniqueStyleName(*libStyles, trimmed);
+            libStyles->push_back(sd::core::styleFromConfig(cfg_, unique));
+            sd::styles::saveLibrary(*libStyles);
+            cfg_.styleName = unique;               // on est desormais "sur" ce style enregistre
+            mountRhythm(host, includeWidePolicy);  // re-monte : le nouveau style apparait + selectionne
+        });
+        mineLay->addWidget(saveBtn);
+        slay->addWidget(mineRow);
+
+        // Ligne renommer / supprimer (affichee seulement quand un style PERSO est actif).
+        auto* manageRow = new QWidget();
+        auto* manageLay = new QHBoxLayout(manageRow);
+        manageLay->setContentsMargins(0, 0, 0, 0);
+        manageLay->setSpacing(8);
+        auto* renameBtn = smallBtn(i18n("Rhythm.StyleRename"));
+        renameBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
+            const std::string cur = cfg_.styleName;
+            if (cur.empty() || !sd::core::styleNameExists(*libStyles, cur)) {
+                return;
+            }
+            bool ok = false;
+            const QString name = QInputDialog::getText(styleCard, i18n("Rhythm.StyleRenameTitle"),
+                                                       i18n("Rhythm.StyleSaveAsPrompt"), QLineEdit::Normal,
+                                                       QString::fromStdString(cur), &ok);
+            const std::string trimmed = name.trimmed().toStdString();
+            if (!ok || trimmed.empty() || trimmed == cur) {
+                return;
+            }
+            std::vector<sd::core::RhythmStyle> others; // unicite EXCLUANT l'entree renommee
+            for (const auto& s : *libStyles) {
+                if (s.name != cur) {
+                    others.push_back(s);
+                }
+            }
+            const std::string unique = sd::core::makeUniqueStyleName(others, trimmed);
+            for (auto& s : *libStyles) {
+                if (s.name == cur) {
+                    s.name = unique;
+                }
+            }
+            sd::styles::saveLibrary(*libStyles);
+            cfg_.styleName = unique;
+            mountRhythm(host, includeWidePolicy);
+        });
+        auto* deleteBtn = smallBtn(i18n("Rhythm.StyleDelete"));
+        deleteBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
+            const std::string cur = cfg_.styleName;
+            if (cur.empty() || !sd::core::styleNameExists(*libStyles, cur)) {
+                return;
+            }
+            const QMessageBox::StandardButton b =
+                QMessageBox::question(styleCard, i18n("Rhythm.StyleDeleteTitle"),
+                                      i18n("Rhythm.StyleDeleteConfirm").arg(QString::fromStdString(cur)));
+            if (b != QMessageBox::Yes) {
+                return;
+            }
+            libStyles->erase(std::remove_if(libStyles->begin(), libStyles->end(),
+                                            [&](const sd::core::RhythmStyle& s) { return s.name == cur; }),
+                             libStyles->end());
+            sd::styles::saveLibrary(*libStyles);
+            cfg_.styleName.clear(); // le style actif n'existe plus -> Perso (valeurs gardees)
+            mountRhythm(host, includeWidePolicy);
+        });
+        manageLay->addWidget(renameBtn);
+        manageLay->addWidget(deleteBtn);
+        manageLay->addStretch();
+        *manageRowPtr = manageRow;
+        slay->addWidget(manageRow);
+    }
+
     slay->addWidget(makeHint(i18n("Rhythm.StyleHint")));
     host->addWidget(styleCard);
-    refresh(); // etat initial des chips (les chips existent ; sliders pas encore necessaires)
+    refresh(); // etat initial du selecteur (chips + menu + ligne renommer/supprimer)
 
     // === Curseurs de rythme (pilotes par le style, ou ajustes a la main = "Perso") ===
     auto* timing = makeCard(QStringLiteral("rhyTiming"));

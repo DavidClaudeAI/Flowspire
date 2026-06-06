@@ -183,6 +183,8 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 
 **At the top of the page, the directing-style selector.** Pick a **temperament** in one click — **Chill** (calm, long shots), **Cool** (balanced, the default), **Speed** (snappy, clean cuts) — and **all the sliders move into place on their own**: the **tempo AND the wide-shot tendency**. As soon as you nudge a slider by hand, the style switches to **Custom** (your values, kept). A style defines **your whole directing temperament**, but **never** touches your **voice threshold** or attack/silence — that's mic/room calibration, set separately (at the bottom of the page).
 
+**Your own styles ("My styles").** Once you have a setting you like, **"Save as…"** names it and adds it to the **"My styles"** dropdown — reusable on **any show** (it's a **global** library, independent of profiles). You can **rename** or **delete** your styles; the built-in ones (Chill/Cool/Speed) stay read-only. Chips = the **built-ins**; the dropdown = **yours**.
+
 **Tempo:**
 
 | Setting | Effect | Default |

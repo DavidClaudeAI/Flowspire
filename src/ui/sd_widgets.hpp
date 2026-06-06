@@ -312,6 +312,12 @@ public:
     }
     void setEmptyHint(const QString& hint) { emptyHint_ = hint; }
     QString value() const { return value_; }
+    // Selectionne `v` PAR PROGRAMME (ne declenche PAS onChange) : sert a refleter l'etat
+    // courant (ex : le style perso actif) sans reboucler sur le callback.
+    void setValue(const QString& v) {
+        value_ = v;
+        updateText();
+    }
     void setOnChange(std::function<void(const QString&)> cb) { cb_ = std::move(cb); }
 
 protected:

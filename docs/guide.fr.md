@@ -183,6 +183,8 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 
 **En haut de la page, le sélecteur de style de réalisation.** Choisissez un **tempérament** d'un clic — **Chill** (posé, plans longs), **Cool** (équilibré, le réglage par défaut), **Speed** (vif, coupes nettes) — et **tous les curseurs se positionnent tout seuls** : le **tempo ET la tendance au plan large**. Dès que vous bougez un curseur à la main, le style passe sur **Perso** (vos valeurs, conservées). Un style définit **tout votre tempérament de réalisation**, mais **ne touche jamais** votre **seuil de voix** ni l'attaque/le silence — ça, c'est de la calibration micro/salle, réglée à part (en bas de la page).
 
+**Vos propres styles (« Mes styles »).** Une fois un réglage qui vous plaît, **« Enregistrer sous… »** lui donne un nom et l'ajoute au menu déroulant **« Mes styles »** — réutilisable sur **n'importe quel show** (c'est une bibliothèque **globale**, indépendante des profils). Vous pouvez **renommer** ou **supprimer** vos styles ; les styles fournis (Chill/Cool/Speed) restent en lecture seule. Les pastilles = les **fournis** ; le menu = **les vôtres**.
+
 **Le tempo :**
 
 | Réglage | Effet | Défaut |
