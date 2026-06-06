@@ -134,6 +134,7 @@ The dock is your real-time dashboard:
 
 - **The header** shows the logo and a **switch badge**: *Active* (the plugin is directing), *Paused* (frozen), *Read-only* (no config). **One click** enables or stops auto-directing.
 - **The profile selector** lets you switch from one configuration to another.
+- **The "Directing" selector** changes the **style** in one click, **live**: a grouped menu lists the **built-in** styles (Chill/Cool/Speed), then, under a **"My styles"** separator, the ones you've saved. Shows **"Custom"** if you've tweaked by hand.
 - **Each speaker** has their **audio meter** and their **threshold slider**: the level moves under the slider, so you set the sensitivity **visually**. This adjustment takes effect **immediately** and is **saved** in the profile.
 - **The "on-air" indicator (tally)**: a **red bar** appears to the left of the scene actually being broadcast and **moves** when the directing changes shot.
 - **The wide shot** appears in the list (without an audio meter), so you can see it light up too.

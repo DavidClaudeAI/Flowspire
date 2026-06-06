@@ -134,6 +134,7 @@ Le dock est votre tableau de bord en temps réel :
 
 - **L'en-tête** affiche le logo et un **badge interrupteur** : *Actif* (le plugin réalise), *En pause* (figé), *Lecture seule* (aucune config). **Un clic** active ou coupe la réalisation auto.
 - **Le sélecteur de profil** permet de basculer d'une configuration à l'autre.
+- **Le sélecteur « Réalisation »** change le **style** en 1 clic, **en direct** : un menu groupé liste les styles **fournis** (Chill/Cool/Speed), puis, sous un séparateur **« Mes styles »**, ceux que vous avez enregistrés. Affiche **« Perso »** si vous avez ajusté à la main.
 - **Chaque intervenant** a son **vu-mètre** et son **curseur de seuil** : le niveau bouge sous le curseur, vous calez la sensibilité **visuellement**. Ce réglage est pris en compte **immédiatement** et **mémorisé** dans le profil.
 - **Le témoin « à l'antenne » (tally)** : un **trait rouge** apparaît à gauche de la scène réellement diffusée et **se déplace** quand la réalisation change de plan.
 - **Le plan large** figure dans la liste (sans vu-mètre), pour le voir s'allumer lui aussi.

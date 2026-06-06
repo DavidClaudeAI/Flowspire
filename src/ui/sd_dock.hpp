@@ -99,6 +99,8 @@ private:
     void updateProfileBar();    // rafraichit le nom du profil actif (selecteur du dock)
     void showProfileMenu();     // menu du selecteur : liste des profils + "Gerer..."
     void switchProfile(int id); // bascule le profil actif (1 clic) puis recharge
+    void updateStyleBar();      // rafraichit le nom du style actif + visibilite (selecteur dock)
+    void showStyleMenu();       // menu groupe : styles fournis + separateur "Mes styles" + persos
     void applyDecision(const sd::core::Decision& decision, const std::string& currentOnAir);
     // Detecte et traite un changement de la scene programme NON initie par nous (clic
     // dans le dock natif d'OBS, hotkey OBS, transition externe). Appelee EN DEBUT de
@@ -142,6 +144,9 @@ private:
     QWidget* welcomeCard_ = nullptr;       // carte d'accueil (etat sans config), nullptr sinon
     QPushButton* profileButton_ = nullptr; // selecteur de profil (en-tete du dock)
     QLabel* profileNameLabel_ = nullptr;   // nom du profil actif (dans le selecteur)
+    QWidget* styleBar_ = nullptr;          // barre "Realisation : [style v]" (masquee sans config)
+    QPushButton* styleButton_ = nullptr;   // selecteur de style de realisation (en-tete du dock)
+    QLabel* styleNameLabel_ = nullptr;     // nom du style actif (dans le selecteur)
     QLabel* scenesSectionLabel_ = nullptr; // en-tete "SCENES" (masque en etat d'accueil)
     QLabel* statusDot_ = nullptr;
     QLabel* statusText_ = nullptr;

@@ -30,10 +30,12 @@
 #include <unordered_set>
 #include <utility>
 
-#include "plugin-support.h"       // PLUGIN_VERSION (derive de buildspec.json par CMake)
-#include "core/audio_util.hpp"    // source de verite du plancher (kDbFloor)
-#include "core/profiles.hpp"      // catalogue de profils (modele pur)
-#include "obs/profiles_store.hpp" // magasin de profils (profil actif = source de verite)
+#include "plugin-support.h"        // PLUGIN_VERSION (derive de buildspec.json par CMake)
+#include "core/audio_util.hpp"     // source de verite du plancher (kDbFloor)
+#include "core/profiles.hpp"       // catalogue de profils (modele pur)
+#include "core/rhythm_style.hpp"   // styles de realisation (built-ins, applyRhythmStyle)
+#include "obs/profiles_store.hpp"  // magasin de profils (profil actif = source de verite)
+#include "obs/style_store.hpp"     // bibliotheque globale de styles (sd::styles::loadLibrary)
 #include "ui/sd_assistant.hpp"    // assistant de configuration (modale)
 #include "ui/sd_prefs.hpp"        // preferences globales (verif MAJ, scene hors regie)
 #include "ui/sd_settings.hpp"     // parametres avances (modale)
@@ -304,6 +306,42 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     profileBar->addWidget(profileButton_, 1);
     profileBar->addWidget(profileEdit);
     root->addLayout(profileBar);
+
+    // --- Selecteur de STYLE de realisation (Etape 4) : "Realisation : [ style v ]" ---
+    // Change le style EN DIRECT (applique + sauve le profil actif + recharge le moteur).
+    // Menu groupe : styles FOURNIS (Chill/Cool/Speed) + separateur "Mes styles" + persos.
+    // Masque en etat d'accueil (pas de style a regler sans config). Calque le selecteur de profil.
+    styleBar_ = new QWidget();
+    auto* styleBarLay = new QHBoxLayout(styleBar_);
+    styleBarLay->setContentsMargins(0, 0, 0, 0);
+    styleBarLay->setSpacing(8);
+    auto* styleLabel = new QLabel(i18n("Dock.Style"));
+    styleLabel->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontLabel));
+    styleButton_ = new QPushButton();
+    styleButton_->setCursor(Qt::PointingHandCursor);
+    styleButton_->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px; }"
+                                        "QPushButton:hover { border-color:%4; }")
+                                    .arg(th::kSurface3)
+                                    .arg(th::kBorder)
+                                    .arg(th::kRadiusButton)
+                                    .arg(rgba(th::kAccent, 0.6)));
+    auto* sbLay = new QHBoxLayout(styleButton_);
+    sbLay->setContentsMargins(10, 7, 8, 7);
+    sbLay->setSpacing(8);
+    styleNameLabel_ = new QLabel();
+    styleNameLabel_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    styleNameLabel_->setStyleSheet(
+        QString("color:%1; font-size:12px; font-weight:600; background:transparent;").arg(th::kTextPrimary));
+    auto* sbChevron = new QLabel();
+    sbChevron->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+    sbChevron->setPixmap(icon(Icon::ChevronDown, th::kTextSecondary, 14));
+    sbLay->addWidget(styleNameLabel_);
+    sbLay->addStretch();
+    sbLay->addWidget(sbChevron);
+    connect(styleButton_, &QPushButton::clicked, this, [this]() { showStyleMenu(); });
+    styleBarLay->addWidget(styleLabel);
+    styleBarLay->addWidget(styleButton_, 1);
+    root->addWidget(styleBar_);
 
     modeLabel_ = new QLabel();
     modeLabel_->setWordWrap(true);
@@ -719,6 +757,7 @@ void SdDock::reload() {
     shownStatus_ = -1;
     updateStatusBadge();
     updateProfileBar();
+    updateStyleBar();
 
     // Apres un rechargement, la scene actuellement a l'antenne est l'etat de REFERENCE :
     // on ne la traitera pas comme un forcage manuel au prochain tick (le moteur vient
@@ -999,6 +1038,109 @@ void SdDock::switchProfile(int id) {
         return; // best-effort : un echec laisse le profil courant inchange
     }
     reload();
+}
+
+void SdDock::updateStyleBar() {
+    if (!styleButton_ || !styleNameLabel_) {
+        return;
+    }
+    if (styleBar_) {
+        styleBar_->setVisible(configMode_); // pas de style a regler sans config (etat d'accueil)
+    }
+    // Libelle du bouton = nom du style actif S'IL est connu (fourni OU perso), sinon "Perso"
+    // (reglage manuel, ou nom perime d'un style supprime -> robuste).
+    const std::string& sn = activeConfig_.styleName;
+    QString label;
+    if (!sn.empty()) {
+        bool known = false;
+        for (const auto& b : sd::core::builtinRhythmStyles()) {
+            if (b.name == sn) {
+                known = true;
+                break;
+            }
+        }
+        if (!known) {
+            for (const auto& s : sd::styles::loadLibrary().styles) {
+                if (s.name == sn) {
+                    known = true;
+                    break;
+                }
+            }
+        }
+        if (known) {
+            label = QString::fromStdString(sn);
+        }
+    }
+    if (label.isEmpty()) {
+        label = i18n("Rhythm.StyleCustom"); // "Perso"
+    }
+    styleNameLabel_->setText(label);
+}
+
+void SdDock::showStyleMenu() {
+    QMenu menu;
+    menu.setStyleSheet(QString("QMenu { background:%1; border:1px solid %2; border-radius:6px; padding:4px; }"
+                               "QMenu::item { color:%3; padding:6px 22px 6px 12px; border-radius:4px; }"
+                               "QMenu::item:selected { background:%4; }")
+                           .arg(th::kSurface2)
+                           .arg(th::kBorder)
+                           .arg(th::kTextPrimary)
+                           .arg(rgba(th::kAccent, 0.25)));
+    menu.setMinimumWidth(styleButton_->width());
+    const std::string active = activeConfig_.styleName;
+    // Styles FOURNIS (Chill/Cool/Speed) en haut.
+    for (const auto& b : sd::core::builtinRhythmStyles()) {
+        QAction* a = menu.addAction(QString::fromStdString(b.name));
+        a->setCheckable(true);
+        a->setChecked(b.name == active);
+        a->setData(QString::fromStdString(b.name));
+    }
+    // Styles PERSO : separateur + section "Mes styles", puis la liste (seulement s'il y en a).
+    const std::vector<sd::core::RhythmStyle> lib = sd::styles::loadLibrary().styles;
+    if (!lib.empty()) {
+        menu.addSeparator();
+        menu.addSection(i18n("Rhythm.StyleMineSection")); // "MES STYLES"
+        for (const auto& s : lib) {
+            QAction* a = menu.addAction(QString::fromStdString(s.name));
+            a->setCheckable(true);
+            a->setChecked(s.name == active);
+            a->setData(QString::fromStdString(s.name));
+        }
+    }
+
+    QAction* chosen = menu.exec(styleButton_->mapToGlobal(QPoint(0, styleButton_->height() + 2)));
+    if (chosen == nullptr) {
+        return;
+    }
+    const std::string name = chosen->data().toString().toStdString();
+    if (name.empty() || name == active) {
+        return; // section (sans data) ou style deja actif : rien a faire
+    }
+    // Retrouve le style choisi (fourni ou perso) et l'applique EN DIRECT.
+    sd::core::RhythmStyle picked;
+    bool found = false;
+    for (const auto& b : sd::core::builtinRhythmStyles()) {
+        if (b.name == name) {
+            picked = b;
+            found = true;
+            break;
+        }
+    }
+    if (!found) {
+        for (const auto& s : lib) {
+            if (s.name == name) {
+                picked = s;
+                found = true;
+                break;
+            }
+        }
+    }
+    if (!found) {
+        return;
+    }
+    sd::core::applyRhythmStyle(activeConfig_, picked);
+    saveActiveProfileNow();
+    reload(); // recree le moteur (nouveau style applique) + rafraichit le selecteur du dock
 }
 
 void SdDock::runOnUiThread(std::function<void()> fn) {
