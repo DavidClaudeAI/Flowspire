@@ -1382,3 +1382,20 @@ TEST_CASE("Calibration : finalizeNow sans ecart suffisant -> echoue, reste non c
     CHECK_FALSE(cal.finalizeNow());
     CHECK_FALSE(cal.done());
 }
+
+TEST_CASE("Calibration : le seuil reste sous la voix (garde-fou de securite)") {
+    // Placement volontairement tres haut (fraction 0.95) : sans le clamp, le seuil serait
+    // quasi au niveau de la voix. Le garde-fou doit le maintenir a >= safetyDb sous la voix.
+    sd::core::CalibrationParams p;
+    p.fraction = 0.95;
+    p.minFrames = 20;
+    ThresholdCalibrator cal(p);
+    for (int i = 0; i < 14; ++i) {
+        cal.addSample(-40.0); // plancher
+    }
+    for (int i = 0; i < 10; ++i) {
+        cal.addSample(-20.0); // voix (ecart 20 dB)
+    }
+    REQUIRE(cal.done());
+    CHECK(cal.thresholdDb() <= -20.0 - p.safetyDb + 1e-9); // jamais au-dessus de (voix - securite)
+}

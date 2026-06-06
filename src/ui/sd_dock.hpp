@@ -120,11 +120,12 @@ private:
     void pushStatusIfEnabled(bool force = false);
     void styleSpeakerCard(Row& row, bool speaking);
     // --- Calibration auto du seuil (#3) ---
-    void onCalibrateClicked(const std::string& speakerId);       // bouton carte : (re)demarre / annule
-    void startCalibrationAll();                                  // bouton global : arme tout le monde
-    void finishCalibration();                                    // "Terminer" : fige ce qui peut l'etre, ferme
-    void updateCalibrateButton(Row& row);                        // icone selon l'etat (repos / en cours / cale)
-    void updateCalibrationBanner();                              // libelle "N/M cales" + visibilite du bandeau
+    void onCalibrateClicked(const std::string& speakerId); // bouton carte : (re)demarre / annule
+    void startCalibrationAll();                            // bouton global : arme tout le monde
+    void finishCalibration();                              // "Terminer" : fige ce qui peut l'etre, ferme
+    void updateCalibrateButton(Row& row);                  // icone selon l'etat (repos / en cours / cale)
+    void updateCalibrationBanner();                        // libelle "N/M cales" + visibilite du bandeau
+    void refreshCalibrationUi(); // MAJ icones + bandeau + fin AUTO de session (a chaque changement d'etat)
     void applyCalibratedThreshold(Row& row, double thresholdDb); // ecrit le seuil VIA le slider (reuse cablage)
     // Construit la carte d'accueil (etat sans config) dans rowsLayout_ : titre, rappel
     // des prerequis OBS, nombre d'entrees audio detectees, bouton "Lancer l'assistant".

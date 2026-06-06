@@ -608,12 +608,9 @@ void SdDock::onCalibrateClicked(const std::string& speakerId) {
     } else {
         calibrators_[speakerId] = sd::core::ThresholdCalibrator{}; // repos ou deja cale -> (re)demarre.
     }
-    for (auto& row : rows_) {
-        if (row.id == speakerId) {
-            updateCalibrateButton(row);
-            break;
-        }
-    }
+    // refreshCalibrationUi (et PAS juste l'icone de cette carte) : annuler la derniere carte
+    // "en cours" d'une session globale doit pouvoir la conclure (fin auto reevaluee).
+    refreshCalibrationUi();
 }
 
 void SdDock::startCalibrationAll() {
@@ -625,10 +622,7 @@ void SdDock::startCalibrationAll() {
         calibrators_[ds.id] = sd::core::ThresholdCalibrator{};
     }
     calibrationBannerActive_ = !calibrators_.empty();
-    for (auto& row : rows_) {
-        updateCalibrateButton(row);
-    }
-    updateCalibrationBanner();
+    refreshCalibrationUi();
 }
 
 void SdDock::finishCalibration() {
@@ -644,10 +638,7 @@ void SdDock::finishCalibration() {
         }
     }
     calibrationBannerActive_ = false;
-    for (auto& row : rows_) {
-        updateCalibrateButton(row);
-    }
-    updateCalibrationBanner();
+    refreshCalibrationUi();
 }
 
 void SdDock::applyCalibratedThreshold(Row& row, double thresholdDb) {
@@ -662,9 +653,12 @@ void SdDock::applyCalibratedThreshold(Row& row, double thresholdDb) {
         t = 0;
     }
     // setValue declenche valueChanged -> director.setSpeakerThreshold + marqueur vumetre +
-    // memorisation (cablage EXISTANT du slider). On force ensuite une ecriture immediate du
-    // profil (le calibrateur a deja fige : pas la peine d'attendre le debounce).
+    // memorisation (cablage EXISTANT du slider). valueChanged arme aussi le timer d'ecriture
+    // differee : on l'annule et on ecrit UNE fois tout de suite (pas de double ecriture).
     row.threshold->setValue(t);
+    if (thresholdSaveTimer_) {
+        thresholdSaveTimer_->stop();
+    }
     saveActiveProfileNow();
 }
 
@@ -703,6 +697,29 @@ void SdDock::updateCalibrationBanner() {
         }
     }
     calibrationBannerLabel_->setText(i18n("Calibrate.Progress").arg(done).arg(static_cast<int>(calibrators_.size())));
+}
+
+void SdDock::refreshCalibrationUi() {
+    // MAJ de toutes les icones de carte + du bandeau. La fin AUTO de la session globale est
+    // reevaluee ICI (a chaque changement d'etat), pas seulement sur une transition "cale" du
+    // tick : ainsi annuler la derniere carte "en cours" (ou tout autre changement) conclut
+    // bien la session au lieu de laisser le bandeau fige.
+    for (auto& row : rows_) {
+        updateCalibrateButton(row);
+    }
+    if (calibrationBannerActive_ && !calibrators_.empty()) {
+        bool allDone = true;
+        for (const auto& kv : calibrators_) {
+            if (!kv.second.done()) {
+                allDone = false;
+                break;
+            }
+        }
+        if (allDone) {
+            calibrationBannerActive_ = false;
+        }
+    }
+    updateCalibrationBanner();
 }
 
 void SdDock::rememberSpeakerThreshold(const std::string& speakerId, int db) {
@@ -1493,22 +1510,7 @@ void SdDock::tick() {
                 calIt->second.addSample(db);
                 if (calIt->second.done()) {
                     applyCalibratedThreshold(row, calIt->second.thresholdDb());
-                    updateCalibrateButton(row);
-                    if (calibrationBannerActive_) {
-                        updateCalibrationBanner();
-                        // Fin AUTO de la session globale quand tout le monde est cale.
-                        bool allDone = true;
-                        for (const auto& kv : calibrators_) {
-                            if (!kv.second.done()) {
-                                allDone = false;
-                                break;
-                            }
-                        }
-                        if (allDone) {
-                            calibrationBannerActive_ = false;
-                            updateCalibrationBanner();
-                        }
-                    }
+                    refreshCalibrationUi(); // MAJ icones + bandeau N/M + fin auto de session
                 }
             }
 
