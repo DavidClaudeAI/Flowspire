@@ -183,12 +183,20 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         desiredWide = false;
         key = "S:" + activeId;
     } else if (ctx == Context::Multiple) {
-        // Contexte B : tirage { le plus fort / rester / plan large }.
-        const std::string& loudest = speakingSorted_.front();
-        key = "M:" + loudest;
+        // Contexte B : tirage { rester sur le plan courant / plan large }. Le VOLUME n'est
+        // pas un critere de bascule -> pas d'option "le plus fort". Mettre en avant une
+        // personne se fait naturellement quand elle "gagne" la parole (-> contexte Single).
+        // La cle inclut currentOwner_ tant qu'il parle ; des qu'il se tait (mais 2+ parlent
+        // toujours), la cle bascule -> RE-TIRAGE (sinon on resterait fige sur lui jusqu'au
+        // temps-max). Ce re-tirage RESPECTE les poids : il ne saute JAMAIS "au plus fort"
+        // (option supprimee), et il ne FORCE PAS le plan large -> si son poids vaut 0
+        // ("jamais de plan large"), on reste sur le locuteur ; s'il vaut > 0, le plan large
+        // recoit sa chance des qu'il se tait.
+        const bool ownerSpeaking = !currentOwner_.empty() && std::find(speakingSorted_.begin(), speakingSorted_.end(),
+                                                                       currentOwner_) != speakingSorted_.end();
+        key = ownerSpeaking ? ("M:" + currentOwner_) : "M";
         if (key != decisionKey_) {
             std::vector<std::pair<std::string, int>> opts;
-            opts.emplace_back("loudest", cfg_.whenMultiple.loudestSpeaker);
             if (!currentScene_.empty()) {
                 opts.emplace_back("current", cfg_.whenMultiple.currentSpeaker);
             }
@@ -196,31 +204,23 @@ Decision Director::update(double now, const std::map<std::string, double>& level
                 opts.emplace_back("wide", cfg_.whenMultiple.wideShot);
             }
             const std::string* tag = weightedPick(opts, rngValue());
-            const std::string choice = tag ? *tag : std::string("loudest");
+            const std::string choice = tag ? *tag : std::string("current");
             if (choice == "wide") {
                 cachedOwner_.clear();
                 cachedWide_ = true;
-            } else if (choice == "current") {
-                // "Rester sur le plan courant". Le modele cible ne sait exprimer
-                // qu'un owner OU le plan large : on mappe selon ce qu'est vraiment
-                // le plan courant.
-                if (!currentOwner_.empty()) {
-                    cachedOwner_ = currentOwner_; // plan d'un locuteur : on le garde
-                    cachedWide_ = false;
-                } else if (!currentScene_.empty() && currentScene_ == cfg_.wideShotScene) {
-                    cachedOwner_.clear(); // le plan courant EST le plan large
-                    cachedWide_ = true;
-                } else {
-                    // Plan courant non representable (scene forcee sans owner, non
-                    // wide) : on ne peut pas "rester" fidelement -> defaut sur le
-                    // plus fort, qui est un choix sur en contexte Multiple (evite de
-                    // partir par erreur sur le plan large).
-                    cachedOwner_ = loudest;
-                    cachedWide_ = false;
-                }
             } else {
-                cachedOwner_ = loudest;
-                cachedWide_ = false;
+                // "Rester sur le plan courant". On RESPECTE le poids plan large : poids 0 =>
+                // on ne le force JAMAIS, meme si le locuteur courant s'est tu -> on garde son
+                // plan (le vrai changement viendra quand quelqu'un reprend seul la parole =>
+                // contexte Single). Si le plan courant n'est pas un locuteur (plan large ou
+                // scene forcee sans owner), "rester" revient au plan large s'il existe.
+                if (!currentOwner_.empty()) {
+                    cachedOwner_ = currentOwner_;
+                    cachedWide_ = false;
+                } else {
+                    cachedOwner_.clear();
+                    cachedWide_ = !cfg_.wideShotScene.empty();
+                }
             }
         }
         desiredOwner = cachedOwner_;
@@ -254,16 +254,20 @@ Decision Director::update(double now, const std::map<std::string, double>& level
     }
     decisionKey_ = key;
 
-    // 2bis) ANTI PING-PONG, re-evalue a CHAQUE tick (deterministe, donc hors
-    //   memoisation -> la fenetre est une VRAIE borne de temps, pas couplee au
-    //   temps-max). En contexte MULTIPLE, si la cible memoisee est le plus fort qu'on
-    //   vient de quitter (navette < pingPongWindowSeconds) et qu'on a un plan de
-    //   locuteur a tenir, on RESTE dessus. On vise directement currentOwner_ (pas via
-    //   "current") -> jamais de repli accidentel sur le plus fort.
-    if (ctx == Context::Multiple && !desiredWide && !currentOwner_.empty() && !speakingSorted_.empty() &&
-        desiredOwner == speakingSorted_.front() && desiredOwner != currentOwner_ &&
+    // 2bis) ANTI PING-PONG = "retour au plan large sur echange rapide". Re-evalue a CHAQUE
+    //   tick (deterministe, hors memoisation -> la fenetre est une VRAIE borne de temps, pas
+    //   couplee au temps-max). Quand on s'apprete a (re)couper sur un locuteur qu'on vient de
+    //   QUITTER il y a moins de pingPongWindowSeconds (navette : deux personnes qui se relaient
+    //   comme seuls locuteurs), on se RECULE sur le plan large le temps que ca respire, puis on
+    //   repart (la fenetre ecoulee, la cible n'est plus "recemment quittee"). N'agit QUE si un
+    //   plan large existe : sinon il n'y a nulle part ou se reculer -> on laisse la navette, le
+    //   temps-mini gere (l'amortir sans plan large reviendrait juste a allonger le temps-mini).
+    //   En multi normal la cible est currentOwner_ (on "reste", il parle encore) ou le plan
+    //   large -> desiredOwner != currentOwner_ n'y est pas vraie : pas de navette en multi.
+    if (!desiredWide && !desiredOwner.empty() && desiredOwner != currentOwner_ && !cfg_.wideShotScene.empty() &&
         isPingPongBounce(now, desiredOwner)) {
-        desiredOwner = currentOwner_;
+        desiredOwner.clear();
+        desiredWide = true;
     }
 
     // 3) Comparer la cible a l'etat courant et decider de basculer (ou non).
@@ -361,9 +365,13 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
 void Director::commit(double now, const std::string& scene, const std::string& owner, bool hold, Decision& out,
                       bool recordLeave) {
     // Anti ping-pong : on note l'instant ou l'on QUITTE le proprietaire courant (pour
-    // detecter ensuite un retour trop rapide vers lui = navette). PAS sur un forcage
-    // (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto suivant.
-    if (recordLeave && !currentOwner_.empty() && currentOwner_ != owner) {
+    // detecter ensuite un retour trop rapide vers lui = navette). On n'arme QUE si l'on part
+    // vers UN AUTRE LOCUTEUR (owner non vide) : c'est le signal d'un echange A<->B. Quitter
+    // un locuteur pour le PLAN LARGE (owner vide : sa propre pause -> silence -> plan large)
+    // n'est PAS une navette -> ne pas armer, sinon sa reprise resterait bloquee sur le plan
+    // large (revue : faux declenchement sur un orateur seul qui fait des pauses). PAS non plus
+    // sur un forcage (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto.
+    if (recordLeave && !currentOwner_.empty() && !owner.empty() && currentOwner_ != owner) {
         ownerLeftAt_[currentOwner_] = now;
     }
     out.switched = (scene != currentScene_);

@@ -30,10 +30,12 @@ add_library(
   ${SD_ROOT}/src/core/config.cpp
   ${SD_ROOT}/src/core/director.cpp
   ${SD_ROOT}/src/core/profiles.cpp
+  ${SD_ROOT}/src/core/rhythm_style.cpp
   ${SD_ROOT}/src/core/version.cpp
   # OBS-free : la LOGIQUE de gestion des profils parle a un FileStore injecte
   # (cf. src/obs/file_store.hpp) -> testable hors OBS avec un FakeFileStore.
   ${SD_ROOT}/src/obs/profiles_store.cpp
+  ${SD_ROOT}/src/obs/style_store.cpp
 )
 target_include_directories(sd_core PUBLIC ${SD_ROOT}/src)
 target_include_directories(sd_core SYSTEM PUBLIC ${SD_ROOT}/vendor)

@@ -5,8 +5,10 @@
 #include "ui/sd_config_panels.hpp"
 
 #include <QHBoxLayout>
+#include <QInputDialog>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QSlider>
 #include <QString>
@@ -17,7 +19,10 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <utility>
 
+#include "core/rhythm_style.hpp"
+#include "obs/style_store.hpp"
 #include "ui/sd_i18n.hpp"
 #include "ui/sd_icons.hpp"
 #include "ui/sd_style.hpp"
@@ -401,26 +406,26 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     g1l->setContentsMargins(14, 12, 14, 12);
     g1l->setSpacing(10);
     g1l->addWidget(makeGroupHeader(i18n("Wide.Multiple")));
-    auto* r1 = new SliderRow(i18n("Wide.Loudest"), 0, 100, cfg_.whenMultiple.loudestSpeaker, nullptr, true);
-    r1->setOnChange([this, multRows, recompute](int v) {
-        cfg_.whenMultiple.loudestSpeaker = v;
-        recompute(multRows);
-    });
+    // "Le plus fort" RETIRE (le volume ne decide pas qui on montre) -> en multi il reste
+    // { rester sur le plan courant / plan large }.
+    // Toucher un poids = quitter le style nomme actif -> "Perso" (la politique plan large fait
+    // partie du temperament). Coherent avec mountRhythm. Pas de pastille/menu ici (assistant),
+    // donc on se contente d'effacer styleName (l'etape Realisation refletera "Perso").
     auto* r2 = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr, true);
     r2->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.currentSpeaker = v;
+        cfg_.styleName.clear();
         recompute(multRows);
     });
     auto* r3 = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenMultiple.wideShot, nullptr, true);
     r3->setOnChange([this, multRows, recompute](int v) {
         cfg_.whenMultiple.wideShot = v;
+        cfg_.styleName.clear();
         recompute(multRows);
     });
-    r1->setInfo(i18n("Tip.Wide.Loudest"));
     r2->setInfo(i18n("Tip.Wide.Current"));
     r3->setInfo(i18n("Tip.Wide.WideShot"));
-    *multRows = {r1, r2, r3};
-    g1l->addWidget(r1);
+    *multRows = {r2, r3};
     g1l->addWidget(r2);
     g1l->addWidget(r3);
     host->addWidget(g1);
@@ -433,11 +438,13 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
     auto* s1 = new SliderRow(i18n("Wide.LastSpeaker"), 0, 100, cfg_.whenSilence.lastSpeaker, nullptr, true);
     s1->setOnChange([this, silRows, recompute](int v) {
         cfg_.whenSilence.lastSpeaker = v;
+        cfg_.styleName.clear();
         recompute(silRows);
     });
     auto* s2 = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenSilence.wideShot, nullptr, true);
     s2->setOnChange([this, silRows, recompute](int v) {
         cfg_.whenSilence.wideShot = v;
+        cfg_.styleName.clear();
         recompute(silRows);
     });
     s1->setInfo(i18n("Tip.Wide.LastSpeaker"));
@@ -452,47 +459,330 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
 }
 
 // === Panneau Rythme & sensibilite ===========================================
-void ConfigPanels::mountRhythm(QVBoxLayout* host) {
+void ConfigPanels::mountRhythm(QVBoxLayout* host, bool includeWidePolicy) {
     clearLayout(host);
 
+    // Pointeurs croises vers les 4 curseurs de rythme : servent (a) au couplage min<=max
+    // (min et max se bornent mutuellement) et (b) au selecteur de style pour faire GLISSER
+    // les curseurs. shared_ptr (holders) car les lambdas (refresh/onPick) sont definies
+    // AVANT les sliders : elles capturent ces holders, peuples apres la creation des rows.
+    auto minRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto ppRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto silRowPtr = std::make_shared<SliderRow*>(nullptr);
+    // Holders des 4 curseurs de "politique plan large" (eux aussi pilotes par le style, avec
+    // badges %). Restent nullptr quand includeWidePolicy == false (panneau de l'assistant).
+    auto mCurRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto mWideRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto sLastRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto sWideRowPtr = std::make_shared<SliderRow*>(nullptr);
+    // Recompute des badges % (part de chaque poids dans la somme du groupe). Gardes par les
+    // holders -> no-op tant que les curseurs n'existent pas (ou en mode assistant).
+    auto recomputeMulti = [mCurRowPtr, mWideRowPtr]() {
+        const int sum = (*mCurRowPtr ? (*mCurRowPtr)->value() : 0) + (*mWideRowPtr ? (*mWideRowPtr)->value() : 0);
+        if (*mCurRowPtr) {
+            (*mCurRowPtr)->setBadge(pctOf((*mCurRowPtr)->value(), sum));
+        }
+        if (*mWideRowPtr) {
+            (*mWideRowPtr)->setBadge(pctOf((*mWideRowPtr)->value(), sum));
+        }
+    };
+    auto recomputeSil = [sLastRowPtr, sWideRowPtr]() {
+        const int sum = (*sLastRowPtr ? (*sLastRowPtr)->value() : 0) + (*sWideRowPtr ? (*sWideRowPtr)->value() : 0);
+        if (*sLastRowPtr) {
+            (*sLastRowPtr)->setBadge(pctOf((*sLastRowPtr)->value(), sum));
+        }
+        if (*sWideRowPtr) {
+            (*sWideRowPtr)->setBadge(pctOf((*sWideRowPtr)->value(), sum));
+        }
+    };
+
+    // === Selecteur de style de realisation (Chill / Cool / Speed / Perso) ============
+    // Un style = un bundle nomme de parametres de RYTHME (cf. core/rhythm_style). Le
+    // choisir fait glisser les 4 curseurs ci-dessous ; toucher un curseur repasse en
+    // "Perso". `applying` neutralise ce basculement pendant l'application programmee.
+    auto applying = std::make_shared<bool>(false);
+    auto chips = std::make_shared<std::vector<std::pair<std::string, ClickButton*>>>(); // nom -> chip ("" = Perso)
+    // Bibliotheque GLOBALE des styles PERSO (chargee seulement en reglages avances). Les
+    // actions enregistrer/renommer/supprimer la modifient puis re-montent le panneau.
+    auto libStyles = std::make_shared<std::vector<sd::core::RhythmStyle>>();
+    if (includeWidePolicy) {
+        *libStyles = sd::styles::loadLibrary().styles;
+    }
+    auto userComboPtr = std::make_shared<ComboField*>(nullptr); // menu "Mes styles" (persos)
+    auto manageRowPtr = std::make_shared<QWidget*>(nullptr);    // ligne renommer/supprimer
+
+    auto paintChip = [](ClickButton* b, const QString& label, bool selected) {
+        const QString base = QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
+        if (selected) {
+            const QString box = base.arg(rgba(th::kAccent, 0.15)).arg(rgba(th::kAccent, 0.7));
+            b->setBox(box, box); // etat actif stable (pas de variation au survol)
+            b->setLabel(label, th::kAccent, 13, 700);
+        } else {
+            b->setBox(base.arg(th::kSurface3).arg(th::kBorder), base.arg(th::kSurface3).arg(rgba(th::kAccent, 0.5)));
+            b->setLabel(label, th::kTextSecondary, 13, 600);
+        }
+    };
+    // Repeint l'etat du selecteur selon le style actif (cfg_.styleName) :
+    //  - pastille livree (Chill/Cool/Speed) allumee si elle correspond ;
+    //  - "Perso" allumee si AUCUN style (livre OU perso) n'est actif ;
+    //  - le menu "Mes styles" pointe sur le style perso actif (sinon "—") ;
+    //  - la ligne renommer/supprimer n'apparait que sur un style perso.
+    auto refresh = [this, chips, paintChip, libStyles, userComboPtr, manageRowPtr]() {
+        const bool userActive = !cfg_.styleName.empty() && sd::core::styleNameExists(*libStyles, cfg_.styleName);
+        bool builtinActive = false;
+        for (const auto& pr : *chips) {
+            if (!pr.first.empty() && pr.first == cfg_.styleName) {
+                builtinActive = true;
+            }
+        }
+        for (const auto& pr : *chips) {
+            const bool isPerso = pr.first.empty();
+            const bool selected = isPerso ? (!builtinActive && !userActive) : (pr.first == cfg_.styleName);
+            const QString label = isPerso ? i18n("Rhythm.StyleCustom") : QString::fromStdString(pr.first);
+            paintChip(pr.second, label, selected);
+        }
+        if (*userComboPtr) {
+            (*userComboPtr)->setValue(userActive ? QString::fromStdString(cfg_.styleName) : QString());
+        }
+        if (*manageRowPtr) {
+            (*manageRowPtr)->setVisible(userActive);
+        }
+    };
+    // Applique un style : copie ses valeurs (coeur) PUIS fait glisser les curseurs. Le
+    // garde `applying` empeche ces setValue de repasser le style en "Perso".
+    auto onPick = [this, applying, refresh, minRowPtr, maxRowPtr, ppRowPtr, silRowPtr, mCurRowPtr, mWideRowPtr,
+                   sLastRowPtr, sWideRowPtr, recomputeMulti, recomputeSil](const sd::core::RhythmStyle& st) {
+        *applying = true;
+        sd::core::applyRhythmStyle(cfg_, st);
+        if (*minRowPtr) {
+            (*minRowPtr)->setValue(static_cast<int>(std::lround(st.minShotSeconds)));
+        }
+        if (*maxRowPtr) {
+            (*maxRowPtr)->setValue(static_cast<int>(std::lround(st.maxShotSeconds)));
+        }
+        if (*ppRowPtr) {
+            (*ppRowPtr)->setValue(static_cast<int>(std::lround(st.pingPongWindowSeconds)));
+        }
+        if (*silRowPtr) {
+            (*silRowPtr)->setValue(static_cast<int>(std::lround(st.silenceReactionSeconds * 2.0))); // demi-secondes
+        }
+        // Politique plan large (presente seulement si includeWidePolicy ; sinon holders nuls).
+        if (*mCurRowPtr) {
+            (*mCurRowPtr)->setValue(st.whenMultiple.currentSpeaker);
+        }
+        if (*mWideRowPtr) {
+            (*mWideRowPtr)->setValue(st.whenMultiple.wideShot);
+        }
+        if (*sLastRowPtr) {
+            (*sLastRowPtr)->setValue(st.whenSilence.lastSpeaker);
+        }
+        if (*sWideRowPtr) {
+            (*sWideRowPtr)->setValue(st.whenSilence.wideShot);
+        }
+        *applying = false;
+        recomputeMulti();
+        recomputeSil();
+        refresh();
+    };
+
+    auto* styleCard = makeCard(QStringLiteral("rhyStyle"));
+    auto* slay = new QVBoxLayout(styleCard);
+    slay->setContentsMargins(14, 12, 14, 12);
+    slay->setSpacing(10);
+    slay->addWidget(makeGroupHeader(i18n("Rhythm.StyleSection")));
+    auto* chipRow = new QWidget();
+    auto* chipLay = new QHBoxLayout(chipRow);
+    chipLay->setContentsMargins(0, 0, 0, 0);
+    chipLay->setSpacing(8);
+    // Styles livres : noms propres affiches tels quels (non traduits, comme "Flowspire").
+    for (const auto& st : sd::core::builtinRhythmStyles()) {
+        auto* chip = new ClickButton();
+        chip->setOnClick([onPick, st]() { onPick(st); });
+        chips->push_back({st.name, chip});
+        chipLay->addWidget(chip);
+    }
+    // "Perso" : indicateur d'etat (reglage manuel), pas un bouton d'action -> aucun
+    // onClick, curseur fleche pour le distinguer des styles cliquables.
+    auto* persoChip = new ClickButton();
+    persoChip->setCursor(Qt::ArrowCursor);
+    chips->push_back({std::string{}, persoChip});
+    chipLay->addWidget(persoChip);
+    chipLay->addStretch();
+    slay->addWidget(chipRow);
+
+    // === "Mes styles" : bibliotheque GLOBALE des persos (menu deroulant), reglages avances ===
+    // Separation claire (decidee avec David) : pastilles = styles FOURNIS ; menu = TES styles.
+    if (includeWidePolicy) {
+        // Petit bouton secondaire (fond surface, liseré accent au survol).
+        auto smallBtn = [](const QString& text) {
+            auto* b = new ClickButton();
+            b->setMargins(11, 8);
+            const QString base = QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
+            b->setBox(base.arg(th::kSurface3).arg(th::kBorder), base.arg(th::kSurface3).arg(rgba(th::kAccent, 0.5)));
+            b->setLabel(text, th::kTextSecondary, 13, 600);
+            return b;
+        };
+
+        slay->addWidget(makeSectionLabel(i18n("Rhythm.StyleMineSection")));
+        auto* mineRow = new QWidget();
+        auto* mineLay = new QHBoxLayout(mineRow);
+        mineLay->setContentsMargins(0, 0, 0, 0);
+        mineLay->setSpacing(8);
+        auto* userCombo = new ComboField();
+        // PAS de setAllowEmpty : on ne propose pas d'entree "—" selectionnable (un no-op qui
+        // desynchroniserait l'affichage du menu de l'etat reel). Le placeholder "— selectionner —"
+        // s'affiche quand aucun style perso n'est actif ; pour quitter un style on en choisit un
+        // autre, on touche un curseur (-> Perso) ou on clique un fourni.
+        userCombo->setPlaceholder(i18n("Rhythm.StyleSelectNone"));
+        userCombo->setEmptyHint(i18n("Rhythm.StyleNoneSaved"));
+        QStringList userNames;
+        for (const auto& s : *libStyles) {
+            userNames << QString::fromStdString(s.name);
+        }
+        userCombo->setOptions(userNames, QString());
+        userCombo->setOnChange([this, libStyles, onPick](const QString& v) {
+            const std::string name = v.toStdString();
+            for (const auto& s : *libStyles) {
+                if (s.name == name) {
+                    onPick(s); // applique le style perso (glisse les curseurs + marque actif)
+                    return;
+                }
+            }
+        });
+        *userComboPtr = userCombo;
+        mineLay->addWidget(userCombo, 1);
+
+        // "Enregistrer sous..." : capture le reglage courant comme nouveau style nomme.
+        auto* saveBtn = smallBtn(i18n("Rhythm.StyleSaveAs"));
+        saveBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
+            bool ok = false;
+            const QString name = QInputDialog::getText(styleCard, i18n("Rhythm.StyleSaveAsTitle"),
+                                                       i18n("Rhythm.StyleSaveAsPrompt"), QLineEdit::Normal, QString(),
+                                                       &ok);
+            const std::string trimmed = name.trimmed().toStdString();
+            if (!ok || trimmed.empty()) {
+                return;
+            }
+            const std::string unique = sd::core::makeUniqueStyleName(*libStyles, trimmed);
+            libStyles->push_back(sd::core::styleFromConfig(cfg_, unique));
+            sd::styles::saveLibrary(*libStyles);
+            cfg_.styleName = unique;              // on est desormais "sur" ce style enregistre
+            mountRhythm(host, includeWidePolicy); // re-monte : le nouveau style apparait + selectionne
+        });
+        mineLay->addWidget(saveBtn);
+        slay->addWidget(mineRow);
+
+        // Ligne renommer / supprimer (affichee seulement quand un style PERSO est actif).
+        auto* manageRow = new QWidget();
+        auto* manageLay = new QHBoxLayout(manageRow);
+        manageLay->setContentsMargins(0, 0, 0, 0);
+        manageLay->setSpacing(8);
+        auto* renameBtn = smallBtn(i18n("Rhythm.StyleRename"));
+        renameBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
+            const std::string cur = cfg_.styleName;
+            if (cur.empty() || !sd::core::styleNameExists(*libStyles, cur)) {
+                return;
+            }
+            bool ok = false;
+            const QString name = QInputDialog::getText(styleCard, i18n("Rhythm.StyleRenameTitle"),
+                                                       i18n("Rhythm.StyleSaveAsPrompt"), QLineEdit::Normal,
+                                                       QString::fromStdString(cur), &ok);
+            const std::string trimmed = name.trimmed().toStdString();
+            if (!ok || trimmed.empty() || trimmed == cur) {
+                return;
+            }
+            std::vector<sd::core::RhythmStyle> others; // unicite EXCLUANT l'entree renommee
+            for (const auto& s : *libStyles) {
+                if (s.name != cur) {
+                    others.push_back(s);
+                }
+            }
+            const std::string unique = sd::core::makeUniqueStyleName(others, trimmed);
+            for (auto& s : *libStyles) {
+                if (s.name == cur) {
+                    s.name = unique;
+                }
+            }
+            sd::styles::saveLibrary(*libStyles);
+            cfg_.styleName = unique;
+            mountRhythm(host, includeWidePolicy);
+        });
+        auto* deleteBtn = smallBtn(i18n("Rhythm.StyleDelete"));
+        deleteBtn->setOnClick([this, styleCard, host, libStyles, includeWidePolicy]() {
+            const std::string cur = cfg_.styleName;
+            if (cur.empty() || !sd::core::styleNameExists(*libStyles, cur)) {
+                return;
+            }
+            const QMessageBox::StandardButton b =
+                QMessageBox::question(styleCard, i18n("Rhythm.StyleDeleteTitle"),
+                                      i18n("Rhythm.StyleDeleteConfirm").arg(QString::fromStdString(cur)));
+            if (b != QMessageBox::Yes) {
+                return;
+            }
+            libStyles->erase(std::remove_if(libStyles->begin(), libStyles->end(),
+                                            [&](const sd::core::RhythmStyle& s) { return s.name == cur; }),
+                             libStyles->end());
+            sd::styles::saveLibrary(*libStyles);
+            cfg_.styleName.clear(); // le style actif n'existe plus -> Perso (valeurs gardees)
+            mountRhythm(host, includeWidePolicy);
+        });
+        manageLay->addWidget(renameBtn);
+        manageLay->addWidget(deleteBtn);
+        manageLay->addStretch();
+        *manageRowPtr = manageRow;
+        slay->addWidget(manageRow);
+    }
+
+    slay->addWidget(makeHint(i18n("Rhythm.StyleHint")));
+    host->addWidget(styleCard);
+    refresh(); // etat initial du selecteur (chips + menu + ligne renommer/supprimer)
+
+    // === Curseurs de rythme (pilotes par le style, ou ajustes a la main = "Perso") ===
     auto* timing = makeCard(QStringLiteral("rhyTiming"));
     auto* tlay = new QVBoxLayout(timing);
     tlay->setContentsMargins(14, 12, 14, 12);
     tlay->setSpacing(10);
 
-    // Couplage min<=max : pointeur croise pour borner l'autre slider quand l'un
-    // bouge (evite une config min>max insauvable). shared_ptr car les deux lambdas
-    // se referencent mutuellement.
-    auto minRowPtr = std::make_shared<SliderRow*>(nullptr);
-    auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
-
     auto* minR = new SliderRow(i18n("Rhythm.MinShot"), 0, 30, static_cast<int>(std::lround(cfg_.timing.minShotSeconds)),
                                fmtSeconds, false);
-    minR->setOnChange([this, minRowPtr, maxRowPtr](int v) {
+    minR->setOnChange([this, maxRowPtr, applying, refresh](int v) {
         cfg_.timing.minShotSeconds = v;
         if (*maxRowPtr && (*maxRowPtr)->value() < v) {
             (*maxRowPtr)->setValue(v); // remonte le max au niveau du min
         }
+        if (!*applying) {
+            cfg_.styleName.clear(); // ajustement manuel -> on quitte le style livre
+            refresh();
+        }
     });
     auto* maxR = new SliderRow(i18n("Rhythm.MaxShot"), 0, 60, static_cast<int>(std::lround(cfg_.timing.maxShotSeconds)),
                                fmtSeconds, false);
-    maxR->setOnChange([this, minRowPtr, maxRowPtr](int v) {
+    maxR->setOnChange([this, minRowPtr, applying, refresh](int v) {
         cfg_.timing.maxShotSeconds = v;
         if (*minRowPtr && (*minRowPtr)->value() > v) {
             (*minRowPtr)->setValue(v); // redescend le min au niveau du max
         }
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
     });
     minR->setInfo(i18n("Tip.Rhythm.MinShot"));
     maxR->setInfo(i18n("Tip.Rhythm.MaxShot"));
-    *minRowPtr = minR;
-    *maxRowPtr = maxR;
 
     // Formateur special : a 0 (curseur tout a gauche), l'anti ping-pong est coupe
     // -> on affiche "Desactive" au lieu de "0 s" pour que ce soit explicite.
     auto* ppR = new SliderRow(
         i18n("Rhythm.PingPong"), 0, 30, static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
         [](int v) { return v == 0 ? i18n("Rhythm.PingPongOff") : fmtSeconds(v); }, false);
-    ppR->setOnChange([this](int v) { cfg_.timing.pingPongWindowSeconds = v; });
+    ppR->setOnChange([this, applying, refresh](int v) {
+        cfg_.timing.pingPongWindowSeconds = v;
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
+    });
     ppR->setInfo(i18n("Tip.Rhythm.PingPong"));
 
     // Delai avant reaction au silence : pas de 0,5 s -> curseur en DEMI-SECONDES (0..10 =>
@@ -507,14 +797,111 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
                           : QString::number(v * 0.5, 'g', 3) + QStringLiteral(" s");
         },
         false);
-    silReactR->setOnChange([this](int v) { cfg_.timing.silenceReactionSeconds = v * 0.5; });
+    silReactR->setOnChange([this, applying, refresh](int v) {
+        cfg_.timing.silenceReactionSeconds = v * 0.5;
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
+    });
     silReactR->setInfo(i18n("Tip.Rhythm.SilenceReaction"));
+
+    *minRowPtr = minR;
+    *maxRowPtr = maxR;
+    *ppRowPtr = ppR;
+    *silRowPtr = silReactR;
 
     tlay->addWidget(minR);
     tlay->addWidget(maxR);
     tlay->addWidget(ppR);
     tlay->addWidget(silReactR);
     host->addWidget(timing);
+
+    // === Politique plan large (fusion de l'ancien onglet) : scene de groupe (SETUP) +
+    //     "quand 2+ parlent" / "quand silence" (poids PILOTES PAR LE STYLE). ============
+    if (includeWidePolicy) {
+        // -- Scene de groupe : SETUP (depend des cameras), hors style --
+        auto* sceneCard = makeCard(QStringLiteral("rhyWideScene"));
+        auto* scLay = new QVBoxLayout(sceneCard);
+        scLay->setContentsMargins(14, 12, 14, 12);
+        scLay->setSpacing(8);
+        scLay->addWidget(makeGroupHeader(i18n("Wide.SceneLabel")));
+        auto* wideCombo = new ComboField();
+        wideCombo->setAllowEmpty(true, i18n("Wide.ScenePlaceholder"));
+        wideCombo->setPlaceholder(i18n("Wide.ScenePlaceholder"));
+        wideCombo->setEmptyHint(i18n("Cameras.NoSceneAvail"));
+        wideCombo->setOptions(toOptions(scenes_), QString::fromStdString(cfg_.wideShotScene));
+        wideCombo->setOnChange([this](const QString& v) { cfg_.wideShotScene = v.toStdString(); });
+        scLay->addWidget(withInfo(wideCombo, i18n("Tip.Wide.Scene")));
+        host->addWidget(sceneCard);
+
+        // -- Quand 2+ parlent : { rester / plan large } (pilote par le style) --
+        auto* g1 = makeCard(QStringLiteral("rhyMul"));
+        auto* g1l = new QVBoxLayout(g1);
+        g1l->setContentsMargins(14, 12, 14, 12);
+        g1l->setSpacing(10);
+        g1l->addWidget(makeGroupHeader(i18n("Wide.Multiple")));
+        auto* mCurR = new SliderRow(i18n("Wide.Current"), 0, 100, cfg_.whenMultiple.currentSpeaker, nullptr, true);
+        mCurR->setOnChange([this, recomputeMulti, applying, refresh](int v) {
+            cfg_.whenMultiple.currentSpeaker = v;
+            recomputeMulti();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        auto* mWideR = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenMultiple.wideShot, nullptr, true);
+        mWideR->setOnChange([this, recomputeMulti, applying, refresh](int v) {
+            cfg_.whenMultiple.wideShot = v;
+            recomputeMulti();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        mCurR->setInfo(i18n("Tip.Wide.Current"));
+        mWideR->setInfo(i18n("Tip.Wide.WideShot"));
+        *mCurRowPtr = mCurR;
+        *mWideRowPtr = mWideR;
+        g1l->addWidget(mCurR);
+        g1l->addWidget(mWideR);
+        host->addWidget(g1);
+
+        // -- Quand personne ne parle : { dernier locuteur / plan large } (pilote par le style) --
+        auto* g2 = makeCard(QStringLiteral("rhySil"));
+        auto* g2l = new QVBoxLayout(g2);
+        g2l->setContentsMargins(14, 12, 14, 12);
+        g2l->setSpacing(10);
+        g2l->addWidget(makeGroupHeader(i18n("Wide.Silence")));
+        auto* sLastR = new SliderRow(i18n("Wide.LastSpeaker"), 0, 100, cfg_.whenSilence.lastSpeaker, nullptr, true);
+        sLastR->setOnChange([this, recomputeSil, applying, refresh](int v) {
+            cfg_.whenSilence.lastSpeaker = v;
+            recomputeSil();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        auto* sWideR = new SliderRow(i18n("Wide.WideShot"), 0, 100, cfg_.whenSilence.wideShot, nullptr, true);
+        sWideR->setOnChange([this, recomputeSil, applying, refresh](int v) {
+            cfg_.whenSilence.wideShot = v;
+            recomputeSil();
+            if (!*applying) {
+                cfg_.styleName.clear();
+                refresh();
+            }
+        });
+        sLastR->setInfo(i18n("Tip.Wide.LastSpeaker"));
+        sWideR->setInfo(i18n("Tip.Wide.WideShot"));
+        *sLastRowPtr = sLastR;
+        *sWideRowPtr = sWideR;
+        g2l->addWidget(sLastR);
+        g2l->addWidget(sWideR);
+        host->addWidget(g2);
+
+        recomputeMulti(); // badges initiaux
+        recomputeSil();
+    }
 
     host->addWidget(makeSectionLabel(i18n("Rhythm.AudioSection")));
     auto* audio = makeCard(QStringLiteral("rhyAudio"));

@@ -54,6 +54,7 @@ target_sources(
     src/core/config.cpp
     src/core/director.cpp
     src/core/profiles.cpp
+    src/core/rhythm_style.cpp
     src/core/version.cpp
     src/obs/audio_level_monitor.cpp
     src/obs/fs_atomic.cpp
@@ -61,6 +62,8 @@ target_sources(
     src/obs/obs_inventory.cpp
     src/obs/profiles_store.cpp
     src/obs/profiles_store_obs.cpp
+    src/obs/style_store.cpp
+    src/obs/style_store_obs.cpp
     src/obs/scene_switcher.cpp
     src/ui/sd_assistant.cpp
     src/ui/sd_config_panels.cpp

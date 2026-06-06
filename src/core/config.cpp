@@ -34,6 +34,7 @@ std::string toJson(const Config& cfg) {
         {"version", cfg.version},
         {"speakers", speakers},
         {"wideShotScene", cfg.wideShotScene},
+        {"styleName", cfg.styleName},
         {"audio",
          {{"voiceThresholdDb", cfg.audio.voiceThresholdDb},
           {"volumeFloorDb", cfg.audio.volumeFloorDb},
@@ -45,9 +46,7 @@ std::string toJson(const Config& cfg) {
           {"pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds},
           {"silenceReactionSeconds", cfg.timing.silenceReactionSeconds}}},
         {"whenMultiple",
-         {{"loudestSpeaker", cfg.whenMultiple.loudestSpeaker},
-          {"currentSpeaker", cfg.whenMultiple.currentSpeaker},
-          {"wideShot", cfg.whenMultiple.wideShot}}},
+         {{"currentSpeaker", cfg.whenMultiple.currentSpeaker}, {"wideShot", cfg.whenMultiple.wideShot}}},
         {"whenSilence", {{"lastSpeaker", cfg.whenSilence.lastSpeaker}, {"wideShot", cfg.whenSilence.wideShot}}},
     };
     return j.dump(2);
@@ -59,6 +58,9 @@ Config fromJson(const std::string& text) {
 
     cfg.version = j.value("version", cfg.version);
     cfg.wideShotScene = j.value("wideShotScene", cfg.wideShotScene);
+    // Style de realisation actif. Cle absente (profil anterieur a la feature) => vide = "Perso",
+    // retrocompatible : on ne presume pas un style nomme pour un profil qui n'en avait pas.
+    cfg.styleName = j.value("styleName", cfg.styleName);
 
     if (j.contains("speakers") && j.at("speakers").is_array()) {
         for (const auto& js : j.at("speakers")) {
@@ -105,7 +107,8 @@ Config fromJson(const std::string& text) {
 
     if (j.contains("whenMultiple")) {
         const auto& m = j.at("whenMultiple");
-        cfg.whenMultiple.loudestSpeaker = m.value("loudestSpeaker", cfg.whenMultiple.loudestSpeaker);
+        // "loudestSpeaker" (ancienne option "le plus fort") : cle volontairement IGNOREE a la
+        // lecture (retrocompat) -> les profils anterieurs perdent ce poids, sans erreur.
         cfg.whenMultiple.currentSpeaker = m.value("currentSpeaker", cfg.whenMultiple.currentSpeaker);
         cfg.whenMultiple.wideShot = m.value("wideShot", cfg.whenMultiple.wideShot);
     }

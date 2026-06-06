@@ -57,10 +57,12 @@ struct TimingSettings {
     double silenceReactionSeconds = 1.5;
 };
 
-// Contexte B : plusieurs parlent en meme temps (poids relatifs). Defauts tunes en reel
-// (profil "Cyp Live" de David) : forte preference pour le plan large des que 2+ parlent.
+// Contexte B : plusieurs parlent en meme temps (poids relatifs : rester sur le plan courant
+// / plan large). Le VOLUME n'est PAS un critere de bascule -> pas d'option "le plus fort"
+// (le fait de parler fort ne doit pas decider qu'on vous montre). Mettre en avant une
+// personne se fait naturellement quand elle "gagne" la parole (contexte Single). Defauts
+// tunes en reel (profil "Cyp Live") : forte preference pour le plan large des que 2+ parlent.
 struct MultiWeights {
-    int loudestSpeaker = 0;
     int currentSpeaker = 5;
     int wideShot = 100;
 };
@@ -80,6 +82,12 @@ struct Config {
     TimingSettings timing;
     MultiWeights whenMultiple;
     SilenceWeights whenSilence;
+    // Nom du "style de realisation" actif (cf. rhythm_style.hpp) : un style est un bundle
+    // nomme de parametres de RYTHME (mini/maxi/grace silence/anti ping-pong). Vide => "Perso"
+    // (reglage manuel). Purement INFORMATIF : ce sont les valeurs de `timing` qui font foi ; ce
+    // champ ne sert qu'a reafficher le bon style selectionne a la reouverture. Pose par
+    // applyRhythmStyle ; remis a vide par l'UI des qu'un curseur de rythme est touche.
+    std::string styleName;
 };
 
 // Serialise la config en JSON (texte indente).

@@ -8,7 +8,9 @@
 
 #include "core/config.hpp"
 #include "core/profiles.hpp"
+#include "core/rhythm_style.hpp"
 #include "obs/profiles_store.hpp"
+#include "obs/style_store.hpp"
 #include "fake_file_store.hpp"
 
 using namespace sd::core;
@@ -174,4 +176,48 @@ TEST_CASE("profiles_store : le scan ignore les noms de fichier non canoniques") 
     // id=7 dont profiles/7.json n'existe pas (qui ferait echouer loadProfile).
     REQUIRE(l.index.profiles.size() == 1);
     CHECK(l.index.profiles[0].id == 2);
+}
+
+// --- StyleStore : bibliotheque GLOBALE de styles (styles.json) ----------------------------
+
+TEST_CASE("style_store : fichier absent -> bibliotheque vide (premiere utilisation, ok)") {
+    sdtest::FakeFileStore fs;
+    sd::styles::StyleStore store(fs);
+    const sd::styles::LibraryResult r = store.load();
+    CHECK(r.ok);
+    CHECK(r.styles.empty());
+    CHECK_FALSE(fs.hasRaw("styles.json")); // load n'ecrit rien
+}
+
+TEST_CASE("style_store : save puis load round-trip (1 seul fichier global)") {
+    sdtest::FakeFileStore fs;
+    sd::styles::StyleStore store(fs);
+    sd::core::RhythmStyle a;
+    a.name = "Mon debat";
+    a.minShotSeconds = 2.0;
+    a.whenMultiple = {65, 10};
+    const sd::styles::SaveResult sv = store.save({a});
+    REQUIRE(sv.ok);
+    CHECK(fs.hasRaw("styles.json"));
+    const sd::styles::LibraryResult r = store.load();
+    REQUIRE(r.ok);
+    REQUIRE(r.styles.size() == 1);
+    CHECK(r.styles[0].name == "Mon debat");
+    CHECK(r.styles[0].whenMultiple.currentSpeaker == 65);
+}
+
+TEST_CASE("style_store : fichier corrompu recupere depuis son .bak") {
+    sdtest::FakeFileStore fs;
+    sd::styles::StyleStore store(fs);
+    sd::core::RhythmStyle a;
+    a.name = "Talk pose";
+    store.save({a}); // styles.json v1 (pas encore de .bak)
+    sd::core::RhythmStyle b = a;
+    b.name = "Talk pose 2";
+    store.save({a, b});                        // styles.json v2 ; .bak = v1
+    fs.setRaw("styles.json", "{ pas du JSON"); // corruption du fichier courant
+    const sd::styles::LibraryResult r = store.load();
+    REQUIRE(r.ok);
+    REQUIRE(r.styles.size() == 1); // recupere depuis le .bak (v1)
+    CHECK(r.styles[0].name == "Talk pose");
 }

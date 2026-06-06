@@ -410,11 +410,8 @@ void SdAssistant::Impl::populateSummary() {
     wideLines << i18n("Summary.WideScene") + QStringLiteral(" : ") +
                      (working.wideShotScene.empty() ? i18n("Summary.WideSceneNone")
                                                     : QString::fromStdString(working.wideShotScene));
-    const int mSum =
-        working.whenMultiple.loudestSpeaker + working.whenMultiple.currentSpeaker + working.whenMultiple.wideShot;
-    wideLines << i18n("Summary.Multiple") + QStringLiteral(" : ") + i18n("Wide.Loudest") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenMultiple.loudestSpeaker, mSum)) + QStringLiteral("% · ") +
-                     i18n("Wide.Current") + QStringLiteral(" ") +
+    const int mSum = working.whenMultiple.currentSpeaker + working.whenMultiple.wideShot;
+    wideLines << i18n("Summary.Multiple") + QStringLiteral(" : ") + i18n("Wide.Current") + QStringLiteral(" ") +
                      QString::number(pctOf(working.whenMultiple.currentSpeaker, mSum)) + QStringLiteral("% · ") +
                      i18n("Wide.WideShot") + QStringLiteral(" ") +
                      QString::number(pctOf(working.whenMultiple.wideShot, mSum)) + QStringLiteral("%");

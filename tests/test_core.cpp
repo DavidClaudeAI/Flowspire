@@ -11,6 +11,7 @@
 #include "core/config.hpp"
 #include "core/director.hpp"
 #include "core/profiles.hpp"
+#include "core/rhythm_style.hpp"
 #include "core/speaker_detector.hpp"
 #include "core/version.hpp"
 #include "core/weighted_pick.hpp"
@@ -41,8 +42,9 @@ Config twoSpeakerConfig() {
     // ces tests verifient la LOGIQUE de tirage/hysteresis, pas la config par defaut du produit.
     // Les defauts livres ont change (profil "Cyp Live") -> sans ce verrouillage, les tests
     // B/C/silence casseraient.
+    c.audio.attackFrames = 2; // EPINGLE (sinon depend du defaut struct -> timing des tests fragile)
     c.audio.releaseFrames = 8;
-    c.whenMultiple = {45, 30, 25};
+    c.whenMultiple = {30, 25}; // {rester, plan large} (plus de "le plus fort")
     c.whenSilence = {80, 20};
     c.timing.silenceReactionSeconds = 0.0; // reaction immediate (la grace a ses propres tests)
     Speaker a;
@@ -122,7 +124,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     in.version = 7;
     in.audio = {-28.0, -55.0, 3, 11}; // voiceThr, volFloor, attack, release
     in.timing = {2.5, 9.0, 7.0, 4.0}; // min, max, pingPong, silenceReaction
-    in.whenMultiple = {40, 35, 25};
+    in.whenMultiple = {40, 35};       // {rester, plan large}
     in.whenSilence = {70, 30};
     const Config out = fromJson(toJson(in));
 
@@ -143,9 +145,8 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     CHECK(out.timing.pingPongWindowSeconds == doctest::Approx(7.0));
     CHECK(out.timing.silenceReactionSeconds == doctest::Approx(4.0));
 
-    CHECK(out.whenMultiple.loudestSpeaker == 40);
-    CHECK(out.whenMultiple.currentSpeaker == 35);
-    CHECK(out.whenMultiple.wideShot == 25);
+    CHECK(out.whenMultiple.currentSpeaker == 40);
+    CHECK(out.whenMultiple.wideShot == 35);
     CHECK(out.whenSilence.lastSpeaker == 70);
     CHECK(out.whenSilence.wideShot == 30);
 }
@@ -155,6 +156,17 @@ TEST_CASE("config : JSON tolerant aux cles absentes") {
     CHECK(c.speakers.empty());
     CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0)); // defaut
     CHECK(c.whenMultiple.wideShot == 100);                     // defaut (tune "Cyp Live")
+}
+
+TEST_CASE("config : retrocompat - ancienne cle whenMultiple.loudestSpeaker ignoree sans erreur") {
+    // Un profil ecrit par v0.5.0 contient "loudestSpeaker" (option "le plus fort" retiree). Il
+    // doit se charger SANS erreur, la cle etant simplement ignoree, currentSpeaker/wideShot
+    // preserves, et styleName a vide (=Perso) faute de cle.
+    const Config c =
+        fromJson(R"({"version":1,"whenMultiple":{"loudestSpeaker":45,"currentSpeaker":30,"wideShot":25}})");
+    CHECK(c.whenMultiple.currentSpeaker == 30);
+    CHECK(c.whenMultiple.wideShot == 25);
+    CHECK(c.styleName.empty());
 }
 
 TEST_CASE("config : JSON invalide leve une exception") {
@@ -224,22 +236,169 @@ TEST_CASE("director : apres le verrou, bascule sur le nouveau locuteur") {
     CHECK(d.switched == true);
 }
 
-TEST_CASE("director : contexte B (plusieurs) — le plus fort gagne avec rng=0") {
-    // opts B = loudest(45)/current(30)/wide(25) ; rng=0 -> 'loudest'
-    // puis tirage scene du plus fort. On rend B plus fort que A.
+TEST_CASE("director : contexte B (plusieurs) — 'rester' garde le plan du locuteur courant (rng=0)") {
+    // On etablit d'abord un plan courant (A seul -> A_close), puis A+B parlent. opts =
+    // {rester(30)/plan large(25)} ; rng=0 -> 'rester' -> on GARDE A (plus de "le plus fort").
     Director dir(twoSpeakerConfig(), seq({0.0}));
-    // amorcage : faire parler les deux (attaque 2 frames)
-    dir.update(0.0, {{"A", mulToDb(0.4)}, {"B", mulToDb(0.8)}});
-    Decision d = dir.update(0.1, {{"A", mulToDb(0.4)}, {"B", mulToDb(0.8)}});
+    dir.update(0.0, {{"A", mulToDb(0.8)}});
+    dir.update(0.1, {{"A", mulToDb(0.8)}}); // A_close (Single A)
+    for (int i = 0; i < 8; ++i) {           // depasser le verrou mini avant d'autoriser une bascule
+        dir.update(0.2 + i * 0.05, {{"A", mulToDb(0.8)}, {"B", mulToDb(0.7)}});
+    }
+    Decision d = dir.update(4.0, {{"A", mulToDb(0.8)}, {"B", mulToDb(0.7)}});
     CHECK(d.context == Context::Multiple);
-    CHECK(d.owner == "B"); // B plus fort
-    CHECK(d.scene == "B_close");
+    CHECK(d.owner == "A"); // on reste sur le locuteur courant, pas de bascule "au plus fort"
+    CHECK(d.scene == "A_close");
+}
+
+TEST_CASE("director : multi — plan large a 0, un locuteur qui se tait NE force PAS le plan large") {
+    // David : plan large a 0 = "jamais de plan large". Quand le locuteur sur lequel on reste se
+    // tait (mais 2+ parlent encore), on RESPECTE ce 0 -> on garde son plan (le vrai changement
+    // se fera quand quelqu'un reprend SEUL la parole = contexte Single). On ne va au plan large
+    // que si son poids est > 0. (NB : la cle suit le locuteur -> il y a bien re-tirage quand il
+    // se tait, mais ce re-tirage respecte le poids 0.)
+    Config c;
+    c.wideShotScene = "Plateau";
+    c.timing.minShotSeconds = 3.0;
+    c.timing.maxShotSeconds = 30.0; // grand : ne doit PAS gouverner la decision
+    c.whenMultiple = {100, 0};      // "rester" seul possible (plan large interdit)
+    c.audio.attackFrames = 2;       // EPINGLE (timing deterministe, independant du defaut struct)
+    c.audio.releaseFrames = 2;
+    Speaker a;
+    a.id = "A";
+    a.name = "A";
+    a.audioSource = "sA";
+    a.scenes = {{"A_close", 100}};
+    Speaker b;
+    b.id = "B";
+    b.name = "B";
+    b.audioSource = "sB";
+    b.scenes = {{"B_close", 100}};
+    Speaker cc;
+    cc.id = "C";
+    cc.name = "C";
+    cc.audioSource = "sC";
+    cc.scenes = {{"C_close", 100}};
+    c.speakers = {a, b, cc};
+    Director dir(c, seq({0.0}));
+    const double hi = mulToDb(0.9);
+    dir.update(0.0, {{"A", hi}, {"B", kDbFloor}, {"C", kDbFloor}});
+    dir.update(0.1, {{"A", hi}, {"B", kDbFloor}, {"C", kDbFloor}}); // -> A_close (Single A)
+    for (int i = 0; i < 6; ++i) {
+        dir.update(0.2 + i * 0.1, {{"A", hi}, {"B", hi}, {"C", kDbFloor}}); // A+B multi -> on reste sur A
+    }
+    REQUIRE(dir.currentScene() == "A_close");
+    // A SE TAIT ; B et C parlent (toujours multi). Plan large interdit (poids 0) -> on RESTE
+    // sur A (on ne force pas le plan large, on ne saute pas "au plus fort").
+    Decision d;
+    for (int i = 0; i < 10; ++i) {
+        d = dir.update(4.0 + i * 0.1, {{"A", kDbFloor}, {"B", hi}, {"C", hi}});
+    }
+    CHECK(d.context == Context::Multiple);
+    CHECK(d.owner == "A"); // plan large a 0 respecte : on garde le plan courant
+    CHECK(d.scene == "A_close");
+}
+
+TEST_CASE("director : anti ping-pong NE se declenche PAS sur la pause d'un orateur seul") {
+    // Regression (revue) : l'anti ping-pong ("retour au plan large") vise la navette A<->B.
+    // Un orateur SEUL qui marque une pause (-> plan large au silence) puis reprend ne doit PAS
+    // rester bloque sur le plan large : ce n'est pas une navette. Corrige en n'armant la navette
+    // que lorsqu'on quitte un locuteur POUR UN AUTRE LOCUTEUR (pas pour le plan large).
+    Config c;
+    c.wideShotScene = "Plateau";
+    c.timing.minShotSeconds = 1.0;
+    c.timing.maxShotSeconds = 30.0;
+    c.timing.pingPongWindowSeconds = 5.0;  // anti ping-pong arme
+    c.timing.silenceReactionSeconds = 0.0; // reaction au silence immediate (isole l'effet)
+    c.whenSilence = {0, 100};              // silence -> plan large a coup sur
+    c.audio.attackFrames = 2;
+    c.audio.releaseFrames = 2;
+    Speaker a;
+    a.id = "A";
+    a.name = "A";
+    a.audioSource = "sA";
+    a.scenes = {{"A_close", 100}};
+    c.speakers = {a};
+    Director dir(c, seq({0.0}));
+    const double hi = mulToDb(0.9);
+    dir.update(0.0, {{"A", hi}});
+    dir.update(0.1, {{"A", hi}}); // A seul -> A_close
+    REQUIRE(dir.currentScene() == "A_close");
+    // A se tait : apres le verrou mini, on bascule au plan large (silence).
+    for (int i = 0; i < 30 && dir.currentScene() != "Plateau"; ++i) {
+        dir.update(1.2 + i * 0.1, {{"A", kDbFloor}});
+    }
+    REQUIRE(dir.currentScene() == "Plateau");
+    // A REPREND la parole DANS la fenetre (5 s) -> on doit RECOUPER SUR A (ce n'etait pas une navette).
+    Decision d;
+    double t = 5.0;
+    for (int i = 0; i < 20; ++i) {
+        d = dir.update(t, {{"A", hi}});
+        t += 0.1;
+    }
+    CHECK(d.owner == "A");
+    CHECK(d.scene == "A_close");
+}
+
+TEST_CASE("config : un style applique (tempo + poids plan large) survit a un aller-retour JSON") {
+    Config c = twoSpeakerConfig();
+    applyRhythmStyle(c, builtinRhythmStyles()[2]); // Speed {65,10}/{30,70}, pingPong 5, mini 2
+    const Config back = fromJson(toJson(c));
+    CHECK(back.styleName == "Speed");
+    CHECK(back.timing.minShotSeconds == doctest::Approx(2.0));
+    CHECK(back.timing.pingPongWindowSeconds == doctest::Approx(5.0));
+    CHECK(back.whenMultiple.currentSpeaker == 65);
+    CHECK(back.whenMultiple.wideShot == 10);
+    CHECK(back.whenSilence.lastSpeaker == 30);
+    CHECK(back.whenSilence.wideShot == 70);
+}
+
+TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
+    Config speedCfg;
+    applyRhythmStyle(speedCfg, builtinRhythmStyles()[2]); // Speed
+    std::vector<RhythmStyle> lib;
+    lib.push_back(styleFromConfig(speedCfg, "Mon debat")); // capture du reglage courant
+    RhythmStyle posed;
+    posed.name = "Talk pose";
+    posed.minShotSeconds = 7.0;
+    posed.maxShotSeconds = 14.0;
+    posed.whenMultiple = {0, 100};
+    posed.whenSilence = {0, 100};
+    lib.push_back(posed);
+
+    const auto round = rhythmStyleLibraryFromJson(rhythmStyleLibraryToJson(lib));
+    REQUIRE(round.size() == 2);
+    CHECK(round[0].name == "Mon debat");
+    CHECK(round[0].whenMultiple.currentSpeaker == 65); // hérité de Speed
+    CHECK(round[0].pingPongWindowSeconds == doctest::Approx(5.0));
+    CHECK(round[1].name == "Talk pose");
+    CHECK(round[1].maxShotSeconds == doctest::Approx(14.0));
+    CHECK(round[1].whenSilence.wideShot == 100);
+
+    // Tolerance : entree sans nom ignoree ; cles absentes -> defauts ; JSON minimal -> vide.
+    const auto partial = rhythmStyleLibraryFromJson(R"({"styles":[{"name":""},{"name":"X"}]})");
+    REQUIRE(partial.size() == 1);
+    CHECK(partial[0].name == "X");
+    CHECK(partial[0].minShotSeconds == doctest::Approx(3.0)); // defaut RhythmStyle
+    CHECK(rhythmStyleLibraryFromJson(R"({})").empty());
+}
+
+TEST_CASE("rhythm style : makeUniqueStyleName evite les doublons ET les noms livres") {
+    std::vector<RhythmStyle> lib;
+    RhythmStyle a;
+    a.name = "Debat";
+    lib.push_back(a);
+    CHECK(makeUniqueStyleName(lib, "Nouveau") == "Nouveau"); // libre
+    CHECK(makeUniqueStyleName(lib, "Debat") == "Debat (2)"); // deja dans la lib
+    CHECK(makeUniqueStyleName(lib, "Cool") == "Cool (2)");   // nom livre (built-in) -> evite
+    CHECK(styleNameExists(lib, "Debat"));
+    CHECK_FALSE(styleNameExists(lib, "Absent"));
 }
 
 TEST_CASE("director : contexte B — choix 'plan large' quand plusieurs parlent") {
     // B a une seule scene (B_close, 100). On installe d'abord un plan courant
-    // (A_close via A seul), puis on fait parler A+B : opts = loudest/current/wide.
-    // rng=0.999 -> derniere option = 'wide' (45+30+25 -> 0.999*100=99.9 dans [75,100[).
+    // (A_close via A seul), puis on fait parler A+B : opts = {rester(30)/plan large(25)}.
+    // rng=0.999 -> derniere option = 'wide' (plan large).
     Director dir(twoSpeakerConfig(), seq({0.999}));
     dir.update(0.0, {{"A", mulToDb(0.5)}});
     dir.update(0.1, {{"A", mulToDb(0.5)}}); // A_close affiche (hold)
@@ -578,11 +737,11 @@ TEST_CASE("director : forceSpeaker sans scene dans le pool ne change rien") {
     CHECK(dir.currentScene() == "A_close");
 }
 
-TEST_CASE("director : contexte B 'current' apres plan force sans owner ne part pas en plan large") {
-    // Regression (revue Run 3) : apres forceScene(scene, owner=""), le plan courant
-    // n'a pas d'owner et n'est PAS le plan large. Si le tirage Multiple donne
-    // 'current' (rng dans [45,75[ -> 0.5), on ne doit PAS basculer sur le plan
-    // large ; on retombe sur le plus fort (choix sur), jamais sur "Plateau".
+TEST_CASE("director : contexte B 'rester' apres plan force sans owner -> plan large (plus de repli 'le plus fort')") {
+    // Apres forceScene(scene, owner=""), le plan courant n'a pas d'owner. Si le tirage
+    // Multiple donne 'rester' (rng=0.5 sur {rester(30)/large(25)}), on ne peut pas "rester"
+    // comme owner -> on se recule sur le plan large. NB : avant le retrait du "plus fort",
+    // ce cas retombait sur le plus fort ; ce repli a disparu (le volume ne decide plus).
     Director dir(twoSpeakerConfig(), seq({0.5}));
     dir.forceScene(0.0, "A_close", ""); // plan courant sans owner, != wideShotScene
     // Laisser tomber le verrou (minShot 3s) puis faire parler A+B.
@@ -591,8 +750,8 @@ TEST_CASE("director : contexte B 'current' apres plan force sans owner ne part p
     }
     Decision d = dir.update(4.0, {{"A", mulToDb(0.6)}, {"B", mulToDb(0.9)}});
     CHECK(d.context == Context::Multiple);
-    CHECK(d.scene != "Plateau"); // surtout PAS le plan large par erreur
-    CHECK(d.owner == "B");       // retombe sur le plus fort
+    CHECK(d.scene == "Plateau"); // on se recule sur le plan large
+    CHECK(d.owner.empty());
 }
 
 TEST_CASE("director : forceSpeaker pose un hold (verrou temps-mini)") {
@@ -917,53 +1076,74 @@ TEST_CASE("director : grace de silence SANS plan large — reste sur le dernier 
     CHECK(d.scene == "A_close");
 }
 
-// --- Anti ping-pong (Run 12) : amortir la navette en contexte multiple ---
+// --- Anti ping-pong reaffecte : "retour au plan large sur echange rapide" ---
+// A et B se relaient comme SEULS locuteurs (navette). Quand on s'apprete a recouper sur
+// quelqu'un qu'on vient de quitter (dans la fenetre), on se recule sur le plan large.
 
-TEST_CASE("director : l'anti ping-pong amortit la navette (contexte multiple)") {
-    // Deux personnes se chevauchent (toujours au-dessus du seuil) ; le plus fort
-    // alterne. rng=0 => le tirage choisit toujours "le plus fort". On verifie que,
-    // fenetre active, le retour vers une personne qu'on vient de quitter est amorti.
-    auto run = [](double window) -> std::string {
-        Config c = twoSpeakerConfig();
-        c.timing.minShotSeconds = 3.0;
-        c.timing.pingPongWindowSeconds = window;
-        Director dir(c, seq({0.0}));
-        const double hi = mulToDb(0.9); // ~ -0.9 dB (le plus fort)
-        const double lo = mulToDb(0.5); // ~ -6 dB
-        // Phase 1 : A le plus fort -> on finit par montrer A.
-        dir.update(0.0, {{"A", hi}, {"B", lo}});
-        dir.update(0.1, {{"A", hi}, {"B", lo}});
-        // Phase 2 : verrou ecoule, B devient le plus fort -> bascule A -> B.
-        dir.update(3.2, {{"A", lo}, {"B", hi}});
-        dir.update(3.3, {{"A", lo}, {"B", hi}});
-        // Phase 3 : verrou ecoule, A redevient le plus fort -> tentative de RETOUR.
-        dir.update(6.4, {{"A", hi}, {"B", lo}});
-        const Decision d = dir.update(6.5, {{"A", hi}, {"B", lo}});
-        return d.owner;
+namespace {
+// Joue une navette A-seul -> B-seul -> A-revient, et renvoie la decision quand A revient.
+// `wide` vide => config SANS plan large (test de degradation gracieuse).
+Decision runBounce(double window, const std::string& wide) {
+    Config c = twoSpeakerConfig();
+    c.wideShotScene = wide;
+    c.timing.minShotSeconds = 3.0;
+    c.timing.maxShotSeconds = 30.0;
+    c.timing.pingPongWindowSeconds = window;
+    c.audio.releaseFrames = 2; // relachement court -> transitions Single nettes
+    Director dir(c, seq({0.0}));
+    const double hi = mulToDb(0.9);
+    auto solo = [&](double t0, const std::string& who, int n) {
+        for (int i = 0; i < n; ++i) {
+            std::map<std::string, double> lv = {{"A", kDbFloor}, {"B", kDbFloor}};
+            lv[who] = hi;
+            dir.update(t0 + i * 0.1, lv);
+        }
     };
-    CHECK(run(12.0) == "B"); // fenetre active : on RESTE sur B (navette amortie)
-    CHECK(run(0.0) == "A");  // anti ping-pong off : on suit le plus fort -> retour A
+    solo(0.0, "A", 6); // A seul -> A_close (verrou s'arme)
+    solo(3.5, "B", 6); // apres le verrou : B seul -> cut B (on quitte A)
+    solo(7.0, "A", 5); // A revient (le verrou de B est ecoule) -> retour amorti ?
+    return dir.update(7.6, {{"A", hi}, {"B", kDbFloor}});
+}
+} // namespace
+
+TEST_CASE("director : anti ping-pong = retour au plan large sur navette (echange rapide)") {
+    // Fenetre active + plan large -> on s'est recule sur le plan large.
+    const Decision withWide = runBounce(12.0, "Plateau");
+    CHECK(withWide.scene == "Plateau");
+    CHECK(withWide.owner.empty());
+    // Fenetre off -> on suit la parole : retour sur A.
+    CHECK(runBounce(0.0, "Plateau").owner == "A");
+    // SANS plan large -> nulle part ou se reculer : on suit la parole (retour A), le
+    // temps-mini gere (degradation gracieuse, conforme au principe de perimetre).
+    CHECK(runBounce(12.0, "").owner == "A");
 }
 
-TEST_CASE("director : l'anti ping-pong relache APRES la fenetre (vraie borne de temps)") {
-    // Prouve que c'est la FENETRE qui borne le maintien, pas le temps-max (regression :
-    // si l'override etait fige dans la memoisation, on resterait colle jusqu'au temps-max).
+TEST_CASE("director : anti ping-pong relache APRES la fenetre -> on repart sur le locuteur") {
+    // Prouve que c'est la FENETRE qui borne le retour au plan large, pas le temps-max.
     Config c = twoSpeakerConfig();
     c.timing.minShotSeconds = 3.0;
     c.timing.maxShotSeconds = 30.0; // grand expres : ne doit PAS gouverner le relachement
     c.timing.pingPongWindowSeconds = 5.0;
+    c.audio.releaseFrames = 2;
     Director dir(c, seq({0.0}));
     const double hi = mulToDb(0.9);
-    const double lo = mulToDb(0.5);
-    dir.update(0.0, {{"A", hi}, {"B", lo}});
-    dir.update(0.1, {{"A", hi}, {"B", lo}}); // -> A
-    dir.update(3.2, {{"A", lo}, {"B", hi}});
-    dir.update(3.3, {{"A", lo}, {"B", hi}}); // -> B (on a quitte A a 3.2)
-    // A redevient le plus fort, encore DANS la fenetre (3.2 + 5 = 8.2) -> on reste B.
-    CHECK(dir.update(6.0, {{"A", hi}, {"B", lo}}).owner == "B");
-    // Bien APRES la fenetre (et avant le temps-max=30) -> on bascule enfin sur A.
-    dir.update(9.0, {{"A", hi}, {"B", lo}});
-    CHECK(dir.update(9.1, {{"A", hi}, {"B", lo}}).owner == "A");
+    auto feedA = [&](double from, double to) {
+        for (double t = from; t <= to + 1e-9; t += 0.1) {
+            dir.update(t, {{"A", hi}, {"B", kDbFloor}});
+        }
+    };
+    auto soloB = [&](double from, double to) {
+        for (double t = from; t <= to + 1e-9; t += 0.1) {
+            dir.update(t, {{"A", kDbFloor}, {"B", hi}});
+        }
+    };
+    feedA(0.0, 0.5); // -> A
+    soloB(3.5, 4.0); // -> B (on quitte A ~3.6)
+    feedA(7.0, 7.5); // A revient DANS la fenetre (3.6 + 5 = 8.6) -> recule sur le plan large
+    CHECK(dir.currentScene() == "Plateau");
+    // A continue ; la fenetre est depassee (8.6) ET le verrou du plan large ecoule -> on repart sur A.
+    feedA(7.6, 11.0);
+    CHECK(dir.update(11.1, {{"A", hi}, {"B", kDbFloor}}).owner == "A");
 }
 
 // --- Versions semantiques (systeme de mise a jour) ------------------------------
@@ -1010,4 +1190,100 @@ TEST_CASE("version : isNewerVersion ne notifie que pour une version stable super
     CHECK_FALSE(isNewerVersion("garbage", "0.1.0"));
     CHECK_FALSE(isNewerVersion("0.2.0", ""));
     CHECK_FALSE(isNewerVersion("0.2.0-rc1", "0.1.0"));
+}
+
+// --- Styles de realisation (presets de rythme) -----------------------------
+TEST_CASE("rhythm style : les 3 built-ins, ordre et valeurs") {
+    const auto styles = builtinRhythmStyles();
+    REQUIRE(styles.size() == 3);
+    CHECK(styles[0].name == "Chill");
+    CHECK(styles[1].name == "Cool");
+    CHECK(styles[2].name == "Speed");
+
+    // "Cool" reprend EXACTEMENT les defauts livres -> un Config par defaut == style Cool.
+    const Config def;
+    const RhythmStyle& cool = styles[1];
+    CHECK(cool.minShotSeconds == doctest::Approx(def.timing.minShotSeconds));
+    CHECK(cool.maxShotSeconds == doctest::Approx(def.timing.maxShotSeconds));
+    CHECK(cool.silenceReactionSeconds == doctest::Approx(def.timing.silenceReactionSeconds));
+    CHECK(cool.pingPongWindowSeconds == doctest::Approx(def.timing.pingPongWindowSeconds));
+
+    // Speed est le seul a armer l'anti ping-pong ; Chill/Cool le laissent a 0.
+    CHECK(styles[0].pingPongWindowSeconds == doctest::Approx(0.0));
+    CHECK(styles[2].pingPongWindowSeconds > 0.0);
+    // Du plus pose au plus vif : temps maxi strictement decroissant.
+    CHECK(styles[0].maxShotSeconds > styles[1].maxShotSeconds);
+    CHECK(styles[1].maxShotSeconds > styles[2].maxShotSeconds);
+
+    // Invariants de TOUT built-in : maxi >= mini (sinon fromJson remonterait le maxi et le
+    // plan affiche divergerait du preset) et tous les delais >= 0. Garde-fou si un futur
+    // edit des valeurs casse un de ces invariants.
+    for (const auto& s : styles) {
+        CHECK(s.maxShotSeconds >= s.minShotSeconds);
+        CHECK(s.minShotSeconds >= 0.0);
+        CHECK(s.silenceReactionSeconds >= 0.0);
+        CHECK(s.pingPongWindowSeconds >= 0.0);
+        CHECK(s.whenMultiple.currentSpeaker >= 0);
+        CHECK(s.whenMultiple.wideShot >= 0);
+        CHECK(s.whenSilence.lastSpeaker >= 0);
+        CHECK(s.whenSilence.wideShot >= 0);
+    }
+    // La politique plan large fait partie du temperament : Speed reste bien plus "serre"
+    // quand 2+ parlent (moins de plan large, plus "rester") que Cool.
+    CHECK(styles[2].whenMultiple.wideShot < styles[1].whenMultiple.wideShot); // Speed < Cool en large
+    CHECK(styles[2].whenMultiple.currentSpeaker >
+          styles[1].whenMultiple.currentSpeaker); // Speed reste + sur le locuteur
+}
+
+TEST_CASE("rhythm style : appliquer un style a 0 DESARME l'anti ping-pong (pas seulement laisse)") {
+    Config c;
+    c.timing.pingPongWindowSeconds = 12.0; // anti ping-pong arme au prealable
+    const RhythmStyle chill = builtinRhythmStyles()[0];
+    REQUIRE(chill.pingPongWindowSeconds == doctest::Approx(0.0));
+    applyRhythmStyle(c, chill);
+    // La valeur DOIT etre ecrasee a 0 (et pas conservee) : un style "calme" coupe bien
+    // l'anti ping-pong herite d'un style precedent.
+    CHECK(c.timing.pingPongWindowSeconds == doctest::Approx(0.0));
+    CHECK(c.styleName == "Chill");
+}
+
+TEST_CASE("rhythm style : applyRhythmStyle copie le tempo ET la politique plan large, marque le style") {
+    Config c;
+    // Hors perimetre du style -> doivent rester intacts (calibration) :
+    c.audio.voiceThresholdDb = -42.0;
+    c.audio.attackFrames = 3;
+    c.audio.releaseFrames = 9;
+    // Politique plan large de depart, differente du style applique :
+    c.whenMultiple = {20, 70};
+    c.whenSilence = {30, 70};
+
+    const RhythmStyle speed = builtinRhythmStyles()[2];
+    applyRhythmStyle(c, speed);
+
+    CHECK(c.styleName == "Speed");
+    // Tempo copie.
+    CHECK(c.timing.minShotSeconds == doctest::Approx(speed.minShotSeconds));
+    CHECK(c.timing.maxShotSeconds == doctest::Approx(speed.maxShotSeconds));
+    CHECK(c.timing.silenceReactionSeconds == doctest::Approx(speed.silenceReactionSeconds));
+    CHECK(c.timing.pingPongWindowSeconds == doctest::Approx(speed.pingPongWindowSeconds));
+    // Politique plan large copiee (fait partie du temperament depuis le recentrage).
+    CHECK(c.whenMultiple.currentSpeaker == speed.whenMultiple.currentSpeaker);
+    CHECK(c.whenMultiple.wideShot == speed.whenMultiple.wideShot);
+    CHECK(c.whenSilence.lastSpeaker == speed.whenSilence.lastSpeaker);
+    CHECK(c.whenSilence.wideShot == speed.whenSilence.wideShot);
+    // Seuil + attaque/relache INTACTS (calibration, hors style).
+    CHECK(c.audio.voiceThresholdDb == doctest::Approx(-42.0));
+    CHECK(c.audio.attackFrames == 3);
+    CHECK(c.audio.releaseFrames == 9);
+}
+
+TEST_CASE("config : styleName survit a un aller-retour JSON et est retrocompatible") {
+    Config c;
+    c.styleName = "Chill";
+    const Config back = fromJson(toJson(c));
+    CHECK(back.styleName == "Chill");
+
+    // Cle absente (profil anterieur a la feature) -> vide = "Perso".
+    const Config legacy = fromJson(R"({"version":1})");
+    CHECK(legacy.styleName.empty());
 }

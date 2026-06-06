@@ -51,7 +51,11 @@ public:
     void mountSpeakers(QVBoxLayout* host);
     void mountCameras(QVBoxLayout* host);
     void mountWide(QVBoxLayout* host);
-    void mountRhythm(QVBoxLayout* host);
+    // Panneau "Realisation" : style + tempo (+ sensibilite). `includeWidePolicy` true =>
+    // intercale AUSSI la politique plan large (scene de groupe + poids "quand 2+ parlent" /
+    // "quand silence"), pilotee par le style. Les reglages avances l'activent (onglet unique
+    // fusionne) ; l'assistant garde son etape Plan large dediee, donc l'omet (false).
+    void mountRhythm(QVBoxLayout* host, bool includeWidePolicy = false);
 
 private:
     // Construit le contenu (sans vider) — appeles par mountX et les rebuilds.

@@ -84,11 +84,11 @@ Il distingue **trois situations**, chacune avec son propre tirage :
 flowchart TD
     Q{"Qui parle<br/>en ce moment ?"}
     Q -->|Une personne| P1["Tirage parmi <b>ses</b> scènes<br/>gros plan · plan d'écoute · plan large"]
-    Q -->|Plusieurs| P2["Tirage entre<br/>le plus fort · rester sur l'actuel · plan large"]
+    Q -->|Plusieurs| P2["Tirage entre<br/>rester sur l'actuel · plan large"]
     Q -->|Personne| P3["Tirage entre<br/>dernier orateur · plan large"]
 ```
 
-Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan (pas de coupe sur un rire), **délai de silence** (pas de coupe sur une respiration), **temps maxi** (on rafraîchit pour varier), **anti ping-pong** (pas d'aller-retour quand deux personnes s'interrompent).
+Le **style de réalisation** (Chill / Cool / Speed, ou le vôtre) règle d'un coup le tempo **et** la tendance au plan large de ces trois situations. Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan (pas de coupe sur un rire), **délai de silence** (pas de coupe sur une respiration), **temps maxi** (on rafraîchit pour varier), **retour au plan large sur échange rapide** (quand deux personnes se répondent du tac au tac, on se recule un instant sur le groupe).
 
 > **Les poids sont des proportions, pas des pourcentages.** *Gros plan 90* + *plan large 10* → vous verrez le gros plan ~90 % du temps. Le plugin calcule le % tout seul.
 

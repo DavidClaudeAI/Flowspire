@@ -85,7 +85,7 @@ struct SdSettings::Impl {
 
     // Le bouton "Reinitialiser aux defauts" ne concerne que les REGLAGES FINS
     // (Rythme + Plan large) -> visible uniquement la (retour David Run 6).
-    static bool panelHasDefaults(int p) { return p == SdSettings::TabWide || p == SdSettings::TabRhythm; }
+    static bool panelHasDefaults(int p) { return p == SdSettings::TabRhythm; }
 
     QString panelTitle(int p) const;
     QWidget* makeNavItem(Icon ic, const QString& label, bool active, std::function<void()> onClick,
@@ -113,8 +113,6 @@ QString SdSettings::Impl::panelTitle(int p) const {
         return i18n("Settings.Nav.Speakers");
     case SdSettings::TabCameras:
         return i18n("Settings.Nav.Cameras");
-    case SdSettings::TabWide:
-        return i18n("Settings.Nav.Wide");
     case SdSettings::TabRhythm:
         return i18n("Settings.Nav.Rhythm");
     case SdSettings::TabProfiles:
@@ -149,8 +147,9 @@ void SdSettings::Impl::rebuildNav() {
         Icon ic;
         int panel;
     } items[] = {
-        {Icon::Users, SdSettings::TabSpeakers},    {Icon::Video, SdSettings::TabCameras},
-        {Icon::LayoutGrid, SdSettings::TabWide},   {Icon::Clock, SdSettings::TabRhythm},
+        {Icon::Users, SdSettings::TabSpeakers},
+        {Icon::Video, SdSettings::TabCameras},
+        {Icon::Clock, SdSettings::TabRhythm}, // onglet "Realisation" (ex-Rythme + ex-Plan large fusionnes)
         {Icon::Bookmark, SdSettings::TabProfiles},
     };
     for (const auto& it : items) {
@@ -201,11 +200,9 @@ void SdSettings::Impl::showPanel(int p) {
     case SdSettings::TabCameras:
         panels->mountCameras(host);
         break;
-    case SdSettings::TabWide:
-        panels->mountWide(host);
-        break;
     case SdSettings::TabRhythm:
-        panels->mountRhythm(host);
+        // Onglet "Realisation" : tempo + politique plan large fusionnes (includeWidePolicy).
+        panels->mountRhythm(host, /*includeWidePolicy=*/true);
         break;
     case SdSettings::TabProfiles:
         profilesPanel->mount(host);
@@ -232,11 +229,14 @@ void SdSettings::Impl::resetToDefaults() {
     // defauts. Modele "tout-sur-Enregistrer" : on remet a l'ecran, on n'ecrit pas ici.
     const sd::core::Config def;
     if (selPanel == SdSettings::TabRhythm) {
+        // L'onglet "Realisation" couvre desormais tempo + politique plan large : on remet TOUT
+        // le perimetre du style (+ sensibilite) au defaut, styleName compris (champ couple :
+        // sinon la pastille resterait sur un style dont les curseurs ne refletent plus rien).
         working.timing = def.timing;
         working.audio = def.audio;
-    } else if (selPanel == SdSettings::TabWide) {
         working.whenMultiple = def.whenMultiple;
         working.whenSilence = def.whenSilence;
+        working.styleName = def.styleName; // "" = Perso (reglage manuel)
     } else {
         return;
     }
