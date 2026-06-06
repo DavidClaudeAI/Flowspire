@@ -34,6 +34,7 @@ std::string toJson(const Config& cfg) {
         {"version", cfg.version},
         {"speakers", speakers},
         {"wideShotScene", cfg.wideShotScene},
+        {"styleName", cfg.styleName},
         {"audio",
          {{"voiceThresholdDb", cfg.audio.voiceThresholdDb},
           {"volumeFloorDb", cfg.audio.volumeFloorDb},
@@ -59,6 +60,9 @@ Config fromJson(const std::string& text) {
 
     cfg.version = j.value("version", cfg.version);
     cfg.wideShotScene = j.value("wideShotScene", cfg.wideShotScene);
+    // Style de realisation actif. Cle absente (profil anterieur a la feature) => vide = "Perso",
+    // retrocompatible : on ne presume pas un style nomme pour un profil qui n'en avait pas.
+    cfg.styleName = j.value("styleName", cfg.styleName);
 
     if (j.contains("speakers") && j.at("speakers").is_array()) {
         for (const auto& js : j.at("speakers")) {

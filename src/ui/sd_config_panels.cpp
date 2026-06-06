@@ -17,7 +17,9 @@
 #include <algorithm>
 #include <cmath>
 #include <memory>
+#include <utility>
 
+#include "core/rhythm_style.hpp"
 #include "ui/sd_i18n.hpp"
 #include "ui/sd_icons.hpp"
 #include "ui/sd_style.hpp"
@@ -455,44 +457,143 @@ void ConfigPanels::mountWide(QVBoxLayout* host) {
 void ConfigPanels::mountRhythm(QVBoxLayout* host) {
     clearLayout(host);
 
+    // Pointeurs croises vers les 4 curseurs de rythme : servent (a) au couplage min<=max
+    // (min et max se bornent mutuellement) et (b) au selecteur de style pour faire GLISSER
+    // les curseurs. shared_ptr (holders) car les lambdas (refresh/onPick) sont definies
+    // AVANT les sliders : elles capturent ces holders, peuples apres la creation des rows.
+    auto minRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto ppRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto silRowPtr = std::make_shared<SliderRow*>(nullptr);
+
+    // === Selecteur de style de realisation (Chill / Cool / Speed / Perso) ============
+    // Un style = un bundle nomme de parametres de RYTHME (cf. core/rhythm_style). Le
+    // choisir fait glisser les 4 curseurs ci-dessous ; toucher un curseur repasse en
+    // "Perso". `applying` neutralise ce basculement pendant l'application programmee.
+    auto applying = std::make_shared<bool>(false);
+    auto chips = std::make_shared<std::vector<std::pair<std::string, ClickButton*>>>(); // nom -> chip ("" = Perso)
+
+    auto paintChip = [](ClickButton* b, const QString& label, bool selected) {
+        const QString base = QStringLiteral("#clickbtn { background:%1; border:1px solid %2; border-radius:8px; }");
+        if (selected) {
+            const QString box = base.arg(rgba(th::kAccent, 0.15)).arg(rgba(th::kAccent, 0.7));
+            b->setBox(box, box); // etat actif stable (pas de variation au survol)
+            b->setLabel(label, th::kAccent, 13, 700);
+        } else {
+            b->setBox(base.arg(th::kSurface3).arg(th::kBorder), base.arg(th::kSurface3).arg(rgba(th::kAccent, 0.5)));
+            b->setLabel(label, th::kTextSecondary, 13, 600);
+        }
+    };
+    // Repeint tous les chips selon le style actif (cfg_.styleName). "Perso" s'allume des
+    // qu'aucun style livre ne correspond (y compris un nom inconnu -> robuste).
+    auto refresh = [this, chips, paintChip]() {
+        bool builtinActive = false;
+        for (const auto& pr : *chips) {
+            if (!pr.first.empty() && pr.first == cfg_.styleName) {
+                builtinActive = true;
+            }
+        }
+        for (const auto& pr : *chips) {
+            const bool isPerso = pr.first.empty();
+            const bool selected = isPerso ? !builtinActive : (pr.first == cfg_.styleName);
+            const QString label = isPerso ? i18n("Rhythm.StyleCustom") : QString::fromStdString(pr.first);
+            paintChip(pr.second, label, selected);
+        }
+    };
+    // Applique un style : copie ses valeurs (coeur) PUIS fait glisser les curseurs. Le
+    // garde `applying` empeche ces setValue de repasser le style en "Perso".
+    auto onPick = [this, applying, refresh, minRowPtr, maxRowPtr, ppRowPtr, silRowPtr](const sd::core::RhythmStyle& st) {
+        *applying = true;
+        sd::core::applyRhythmStyle(cfg_, st);
+        if (*minRowPtr) {
+            (*minRowPtr)->setValue(static_cast<int>(std::lround(st.minShotSeconds)));
+        }
+        if (*maxRowPtr) {
+            (*maxRowPtr)->setValue(static_cast<int>(std::lround(st.maxShotSeconds)));
+        }
+        if (*ppRowPtr) {
+            (*ppRowPtr)->setValue(static_cast<int>(std::lround(st.pingPongWindowSeconds)));
+        }
+        if (*silRowPtr) {
+            (*silRowPtr)->setValue(static_cast<int>(std::lround(st.silenceReactionSeconds * 2.0))); // demi-secondes
+        }
+        *applying = false;
+        refresh();
+    };
+
+    auto* styleCard = makeCard(QStringLiteral("rhyStyle"));
+    auto* slay = new QVBoxLayout(styleCard);
+    slay->setContentsMargins(14, 12, 14, 12);
+    slay->setSpacing(10);
+    slay->addWidget(makeGroupHeader(i18n("Rhythm.StyleSection")));
+    auto* chipRow = new QWidget();
+    auto* chipLay = new QHBoxLayout(chipRow);
+    chipLay->setContentsMargins(0, 0, 0, 0);
+    chipLay->setSpacing(8);
+    // Styles livres : noms propres affiches tels quels (non traduits, comme "Flowspire").
+    for (const auto& st : sd::core::builtinRhythmStyles()) {
+        auto* chip = new ClickButton();
+        chip->setOnClick([onPick, st]() { onPick(st); });
+        chips->push_back({st.name, chip});
+        chipLay->addWidget(chip);
+    }
+    // "Perso" : indicateur d'etat (reglage manuel), pas un bouton d'action -> aucun
+    // onClick, curseur fleche pour le distinguer des styles cliquables.
+    auto* persoChip = new ClickButton();
+    persoChip->setCursor(Qt::ArrowCursor);
+    chips->push_back({std::string{}, persoChip});
+    chipLay->addWidget(persoChip);
+    chipLay->addStretch();
+    slay->addWidget(chipRow);
+    slay->addWidget(makeHint(i18n("Rhythm.StyleHint")));
+    host->addWidget(styleCard);
+    refresh(); // etat initial des chips (les chips existent ; sliders pas encore necessaires)
+
+    // === Curseurs de rythme (pilotes par le style, ou ajustes a la main = "Perso") ===
     auto* timing = makeCard(QStringLiteral("rhyTiming"));
     auto* tlay = new QVBoxLayout(timing);
     tlay->setContentsMargins(14, 12, 14, 12);
     tlay->setSpacing(10);
 
-    // Couplage min<=max : pointeur croise pour borner l'autre slider quand l'un
-    // bouge (evite une config min>max insauvable). shared_ptr car les deux lambdas
-    // se referencent mutuellement.
-    auto minRowPtr = std::make_shared<SliderRow*>(nullptr);
-    auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
-
     auto* minR = new SliderRow(i18n("Rhythm.MinShot"), 0, 30, static_cast<int>(std::lround(cfg_.timing.minShotSeconds)),
                                fmtSeconds, false);
-    minR->setOnChange([this, minRowPtr, maxRowPtr](int v) {
+    minR->setOnChange([this, maxRowPtr, applying, refresh](int v) {
         cfg_.timing.minShotSeconds = v;
         if (*maxRowPtr && (*maxRowPtr)->value() < v) {
             (*maxRowPtr)->setValue(v); // remonte le max au niveau du min
         }
+        if (!*applying) {
+            cfg_.styleName.clear(); // ajustement manuel -> on quitte le style livre
+            refresh();
+        }
     });
     auto* maxR = new SliderRow(i18n("Rhythm.MaxShot"), 0, 60, static_cast<int>(std::lround(cfg_.timing.maxShotSeconds)),
                                fmtSeconds, false);
-    maxR->setOnChange([this, minRowPtr, maxRowPtr](int v) {
+    maxR->setOnChange([this, minRowPtr, applying, refresh](int v) {
         cfg_.timing.maxShotSeconds = v;
         if (*minRowPtr && (*minRowPtr)->value() > v) {
             (*minRowPtr)->setValue(v); // redescend le min au niveau du max
         }
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
     });
     minR->setInfo(i18n("Tip.Rhythm.MinShot"));
     maxR->setInfo(i18n("Tip.Rhythm.MaxShot"));
-    *minRowPtr = minR;
-    *maxRowPtr = maxR;
 
     // Formateur special : a 0 (curseur tout a gauche), l'anti ping-pong est coupe
     // -> on affiche "Desactive" au lieu de "0 s" pour que ce soit explicite.
     auto* ppR = new SliderRow(
         i18n("Rhythm.PingPong"), 0, 30, static_cast<int>(std::lround(cfg_.timing.pingPongWindowSeconds)),
         [](int v) { return v == 0 ? i18n("Rhythm.PingPongOff") : fmtSeconds(v); }, false);
-    ppR->setOnChange([this](int v) { cfg_.timing.pingPongWindowSeconds = v; });
+    ppR->setOnChange([this, applying, refresh](int v) {
+        cfg_.timing.pingPongWindowSeconds = v;
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
+    });
     ppR->setInfo(i18n("Tip.Rhythm.PingPong"));
 
     // Delai avant reaction au silence : pas de 0,5 s -> curseur en DEMI-SECONDES (0..10 =>
@@ -507,8 +608,19 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host) {
                           : QString::number(v * 0.5, 'g', 3) + QStringLiteral(" s");
         },
         false);
-    silReactR->setOnChange([this](int v) { cfg_.timing.silenceReactionSeconds = v * 0.5; });
+    silReactR->setOnChange([this, applying, refresh](int v) {
+        cfg_.timing.silenceReactionSeconds = v * 0.5;
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
+    });
     silReactR->setInfo(i18n("Tip.Rhythm.SilenceReaction"));
+
+    *minRowPtr = minR;
+    *maxRowPtr = maxR;
+    *ppRowPtr = ppR;
+    *silRowPtr = silReactR;
 
     tlay->addWidget(minR);
     tlay->addWidget(maxR);

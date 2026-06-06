@@ -191,6 +191,8 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 
 ![Settings — rhythm and sensitivity](img/setting-rythm.png)
 
+**At the top of this page, the directing-style selector.** Pick a **temperament** in one click — **Chill** (calm, long shots), **Cool** (balanced, the default), **Speed** (snappy, clean cuts) — and the rhythm sliders below **move into place on their own**. As soon as you nudge a slider by hand, the style switches to **Custom** (your values, kept). A style only affects **rhythm** (the first 4 settings below): it **never** changes your voice threshold or your wide-shot tendency.
+
 | Setting | Effect | Default |
 | --- | --- | --- |
 | **Minimum shot time** | Minimum time a shot is shown before a change is allowed (avoids jittery cuts). | 3 s |

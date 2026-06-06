@@ -11,6 +11,7 @@
 #include "core/config.hpp"
 #include "core/director.hpp"
 #include "core/profiles.hpp"
+#include "core/rhythm_style.hpp"
 #include "core/speaker_detector.hpp"
 #include "core/version.hpp"
 #include "core/weighted_pick.hpp"
@@ -1010,4 +1011,87 @@ TEST_CASE("version : isNewerVersion ne notifie que pour une version stable super
     CHECK_FALSE(isNewerVersion("garbage", "0.1.0"));
     CHECK_FALSE(isNewerVersion("0.2.0", ""));
     CHECK_FALSE(isNewerVersion("0.2.0-rc1", "0.1.0"));
+}
+
+// --- Styles de realisation (presets de rythme) -----------------------------
+TEST_CASE("rhythm style : les 3 built-ins, ordre et valeurs") {
+    const auto styles = builtinRhythmStyles();
+    REQUIRE(styles.size() == 3);
+    CHECK(styles[0].name == "Chill");
+    CHECK(styles[1].name == "Cool");
+    CHECK(styles[2].name == "Speed");
+
+    // "Cool" reprend EXACTEMENT les defauts livres -> un Config par defaut == style Cool.
+    const Config def;
+    const RhythmStyle& cool = styles[1];
+    CHECK(cool.minShotSeconds == doctest::Approx(def.timing.minShotSeconds));
+    CHECK(cool.maxShotSeconds == doctest::Approx(def.timing.maxShotSeconds));
+    CHECK(cool.silenceReactionSeconds == doctest::Approx(def.timing.silenceReactionSeconds));
+    CHECK(cool.pingPongWindowSeconds == doctest::Approx(def.timing.pingPongWindowSeconds));
+
+    // Speed est le seul a armer l'anti ping-pong ; Chill/Cool le laissent a 0.
+    CHECK(styles[0].pingPongWindowSeconds == doctest::Approx(0.0));
+    CHECK(styles[2].pingPongWindowSeconds > 0.0);
+    // Du plus pose au plus vif : temps maxi strictement decroissant.
+    CHECK(styles[0].maxShotSeconds > styles[1].maxShotSeconds);
+    CHECK(styles[1].maxShotSeconds > styles[2].maxShotSeconds);
+
+    // Invariants de TOUT built-in : maxi >= mini (sinon fromJson remonterait le maxi et le
+    // plan affiche divergerait du preset) et tous les delais >= 0. Garde-fou si un futur
+    // edit des valeurs casse un de ces invariants.
+    for (const auto& s : styles) {
+        CHECK(s.maxShotSeconds >= s.minShotSeconds);
+        CHECK(s.minShotSeconds >= 0.0);
+        CHECK(s.silenceReactionSeconds >= 0.0);
+        CHECK(s.pingPongWindowSeconds >= 0.0);
+    }
+}
+
+TEST_CASE("rhythm style : appliquer un style a 0 DESARME l'anti ping-pong (pas seulement laisse)") {
+    Config c;
+    c.timing.pingPongWindowSeconds = 12.0; // anti ping-pong arme au prealable
+    const RhythmStyle chill = builtinRhythmStyles()[0];
+    REQUIRE(chill.pingPongWindowSeconds == doctest::Approx(0.0));
+    applyRhythmStyle(c, chill);
+    // La valeur DOIT etre ecrasee a 0 (et pas conservee) : un style "calme" coupe bien
+    // l'anti ping-pong herite d'un style precedent.
+    CHECK(c.timing.pingPongWindowSeconds == doctest::Approx(0.0));
+    CHECK(c.styleName == "Chill");
+}
+
+TEST_CASE("rhythm style : applyRhythmStyle copie le rythme et marque le style") {
+    Config c;
+    // Reglages NON-rythme volontairement non-defaut -> on verifie qu'ils restent intacts.
+    c.audio.voiceThresholdDb = -42.0;
+    c.audio.attackFrames = 3;
+    c.audio.releaseFrames = 9;
+    c.whenMultiple = {10, 20, 70};
+    c.whenSilence = {30, 70};
+
+    const RhythmStyle speed = builtinRhythmStyles()[2];
+    applyRhythmStyle(c, speed);
+
+    // Rythme copie + style memorise.
+    CHECK(c.styleName == "Speed");
+    CHECK(c.timing.minShotSeconds == doctest::Approx(speed.minShotSeconds));
+    CHECK(c.timing.maxShotSeconds == doctest::Approx(speed.maxShotSeconds));
+    CHECK(c.timing.silenceReactionSeconds == doctest::Approx(speed.silenceReactionSeconds));
+    CHECK(c.timing.pingPongWindowSeconds == doctest::Approx(speed.pingPongWindowSeconds));
+    // Seuil, attaque/relache et poids plan large INTACTS (hors perimetre du style).
+    CHECK(c.audio.voiceThresholdDb == doctest::Approx(-42.0));
+    CHECK(c.audio.attackFrames == 3);
+    CHECK(c.audio.releaseFrames == 9);
+    CHECK(c.whenMultiple.wideShot == 70);
+    CHECK(c.whenSilence.wideShot == 70);
+}
+
+TEST_CASE("config : styleName survit a un aller-retour JSON et est retrocompatible") {
+    Config c;
+    c.styleName = "Chill";
+    const Config back = fromJson(toJson(c));
+    CHECK(back.styleName == "Chill");
+
+    // Cle absente (profil anterieur a la feature) -> vide = "Perso".
+    const Config legacy = fromJson(R"({"version":1})");
+    CHECK(legacy.styleName.empty());
 }

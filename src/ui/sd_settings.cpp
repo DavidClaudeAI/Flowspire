@@ -234,6 +234,10 @@ void SdSettings::Impl::resetToDefaults() {
     if (selPanel == SdSettings::TabRhythm) {
         working.timing = def.timing;
         working.audio = def.audio;
+        // styleName est COUPLE a timing (cf. rhythm_style) : le remettre au defaut aussi,
+        // sinon la pastille de style resterait allumee sur un style dont les curseurs ne
+        // refletent plus les valeurs (incoherence d'affichage + nom perime ecrit au profil).
+        working.styleName = def.styleName; // "" = Perso (reglage manuel)
     } else if (selPanel == SdSettings::TabWide) {
         working.whenMultiple = def.whenMultiple;
         working.whenSilence = def.whenSilence;

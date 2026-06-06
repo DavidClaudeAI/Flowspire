@@ -191,6 +191,8 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 
 ![Réglages — rythme et sensibilité](img/setting-rythm.png)
 
+**En haut de cette page, le sélecteur de style de réalisation.** Choisissez un **tempérament** d'un clic — **Chill** (posé, plans longs), **Cool** (équilibré, le réglage par défaut), **Speed** (vif, coupes nettes) — et les curseurs de rythme ci-dessous **se positionnent tout seuls**. Dès que vous bougez un curseur à la main, le style passe sur **Perso** (vos valeurs, conservées). Un style ne touche **que le rythme** (les 4 premiers réglages ci-dessous) : il **ne change jamais** votre seuil de voix ni votre tendance au plan large.
+
 | Réglage | Effet | Défaut |
 | --- | --- | --- |
 | **Temps mini de plan** | Durée minimale d'affichage d'un plan avant qu'un changement soit permis (évite les coupes nerveuses). | 3 s |

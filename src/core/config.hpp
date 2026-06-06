@@ -80,6 +80,12 @@ struct Config {
     TimingSettings timing;
     MultiWeights whenMultiple;
     SilenceWeights whenSilence;
+    // Nom du "style de realisation" actif (cf. rhythm_style.hpp) : un style est un bundle
+    // nomme de parametres de RYTHME (mini/maxi/grace silence/anti ping-pong). Vide => "Perso"
+    // (reglage manuel). Purement INFORMATIF : ce sont les valeurs de `timing` qui font foi ; ce
+    // champ ne sert qu'a reafficher le bon style selectionne a la reouverture. Pose par
+    // applyRhythmStyle ; remis a vide par l'UI des qu'un curseur de rythme est touche.
+    std::string styleName;
 };
 
 // Serialise la config en JSON (texte indente).
