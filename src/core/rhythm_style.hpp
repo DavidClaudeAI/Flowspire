@@ -46,4 +46,28 @@ std::vector<RhythmStyle> builtinRhythmStyles();
 // (cfg.wideShotScene) NI aux intervenants -> un changement de style ne casse pas la calibration.
 void applyRhythmStyle(Config& cfg, const RhythmStyle& style);
 
+// Construit un RhythmStyle a partir des valeurs ACTUELLES d'une config (tempo + tendance plan
+// large), avec le nom donne. Sert a "Enregistrer sous..." : on capture le reglage courant.
+RhythmStyle styleFromConfig(const Config& cfg, const std::string& name);
+
+// --- Bibliotheque GLOBALE de styles utilisateur ("Enregistrer sous...") ---------------------
+// Liste de styles NOMMES par l'utilisateur (RhythmStyle complets), INDEPENDANTE des profils :
+// un style enregistre est reutilisable sur n'importe quel show. Les built-ins (Chill/Cool/
+// Speed) n'y figurent PAS (fournis a part, en lecture seule). Stockee dans un unique fichier
+// global (cf. couche obs : styles.json), contenu inline (pas d'index ni de fichiers separes).
+
+// Serialise la bibliotheque (texte indente, pas de BOM).
+std::string rhythmStyleLibraryToJson(const std::vector<RhythmStyle>& styles);
+
+// Parse une bibliotheque. Tolerant : cles absentes -> defauts du RhythmStyle ; ignore les
+// entrees sans nom. Leve std::exception si le JSON lui-meme est invalide.
+std::vector<RhythmStyle> rhythmStyleLibraryFromJson(const std::string& text);
+
+// Un nom est-il deja pris dans `styles` (comparaison exacte) ?
+bool styleNameExists(const std::vector<RhythmStyle>& styles, const std::string& name);
+
+// Rend `desired` unique en suffixant " (2)", " (3)"... au besoin. Evite AUSSI les noms des
+// built-ins (un style perso ne doit pas s'appeler "Cool" et preter a confusion).
+std::string makeUniqueStyleName(const std::vector<RhythmStyle>& styles, const std::string& desired);
+
 } // namespace sd::core

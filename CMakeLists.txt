@@ -62,6 +62,8 @@ target_sources(
     src/obs/obs_inventory.cpp
     src/obs/profiles_store.cpp
     src/obs/profiles_store_obs.cpp
+    src/obs/style_store.cpp
+    src/obs/style_store_obs.cpp
     src/obs/scene_switcher.cpp
     src/ui/sd_assistant.cpp
     src/ui/sd_config_panels.cpp

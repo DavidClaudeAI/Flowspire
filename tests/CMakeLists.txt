@@ -35,6 +35,7 @@ add_library(
   # OBS-free : la LOGIQUE de gestion des profils parle a un FileStore injecte
   # (cf. src/obs/file_store.hpp) -> testable hors OBS avec un FakeFileStore.
   ${SD_ROOT}/src/obs/profiles_store.cpp
+  ${SD_ROOT}/src/obs/style_store.cpp
 )
 target_include_directories(sd_core PUBLIC ${SD_ROOT}/src)
 target_include_directories(sd_core SYSTEM PUBLIC ${SD_ROOT}/vendor)

@@ -342,6 +342,48 @@ TEST_CASE("config : un style applique (tempo + poids plan large) survit a un all
     CHECK(back.whenSilence.wideShot == 70);
 }
 
+TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
+    Config speedCfg;
+    applyRhythmStyle(speedCfg, builtinRhythmStyles()[2]); // Speed
+    std::vector<RhythmStyle> lib;
+    lib.push_back(styleFromConfig(speedCfg, "Mon debat")); // capture du reglage courant
+    RhythmStyle posed;
+    posed.name = "Talk pose";
+    posed.minShotSeconds = 7.0;
+    posed.maxShotSeconds = 14.0;
+    posed.whenMultiple = {0, 100};
+    posed.whenSilence = {0, 100};
+    lib.push_back(posed);
+
+    const auto round = rhythmStyleLibraryFromJson(rhythmStyleLibraryToJson(lib));
+    REQUIRE(round.size() == 2);
+    CHECK(round[0].name == "Mon debat");
+    CHECK(round[0].whenMultiple.currentSpeaker == 65); // hérité de Speed
+    CHECK(round[0].pingPongWindowSeconds == doctest::Approx(5.0));
+    CHECK(round[1].name == "Talk pose");
+    CHECK(round[1].maxShotSeconds == doctest::Approx(14.0));
+    CHECK(round[1].whenSilence.wideShot == 100);
+
+    // Tolerance : entree sans nom ignoree ; cles absentes -> defauts ; JSON minimal -> vide.
+    const auto partial = rhythmStyleLibraryFromJson(R"({"styles":[{"name":""},{"name":"X"}]})");
+    REQUIRE(partial.size() == 1);
+    CHECK(partial[0].name == "X");
+    CHECK(partial[0].minShotSeconds == doctest::Approx(3.0)); // defaut RhythmStyle
+    CHECK(rhythmStyleLibraryFromJson(R"({})").empty());
+}
+
+TEST_CASE("rhythm style : makeUniqueStyleName evite les doublons ET les noms livres") {
+    std::vector<RhythmStyle> lib;
+    RhythmStyle a;
+    a.name = "Debat";
+    lib.push_back(a);
+    CHECK(makeUniqueStyleName(lib, "Nouveau") == "Nouveau"); // libre
+    CHECK(makeUniqueStyleName(lib, "Debat") == "Debat (2)"); // deja dans la lib
+    CHECK(makeUniqueStyleName(lib, "Cool") == "Cool (2)");   // nom livre (built-in) -> evite
+    CHECK(styleNameExists(lib, "Debat"));
+    CHECK_FALSE(styleNameExists(lib, "Absent"));
+}
+
 TEST_CASE("director : contexte B — choix 'plan large' quand plusieurs parlent") {
     // B a une seule scene (B_close, 100). On installe d'abord un plan courant
     // (A_close via A seul), puis on fait parler A+B : opts = {rester(30)/plan large(25)}.
