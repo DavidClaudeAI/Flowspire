@@ -139,6 +139,7 @@ The dock is your real-time dashboard:
 - **The "on-air" indicator (tally)**: a **red bar** appears to the left of the scene actually being broadcast and **moves** when the directing changes shot.
 - **The wide shot** appears in the list (without an audio meter), so you can see it light up too.
 - **Click a card to force that shot**: clicking a speaker's card puts **them** on air, clicking the wide-shot card switches to the **wide shot** — a **temporary force** (auto resumes after the minimum time), just like a hotkey. Dragging the **threshold slider** stays independent (it doesn't force).
+- **Auto-calibrate thresholds**: the **wand button** on each card sets that person's threshold automatically — speak normally and it finds the right level (between your silence and your voice), then freezes (no drift). **Calibrate all thresholds** (button in the SCENES header) arms everyone at once: a progress bar shows who's done; click **Finish** when you're happy. Works with a noise-gated mic too (the level is placed proportionally in the gap, never glued to the floor).
 
 You can also drive it through your **OBS scenes** and your **hotkeys**: the dock stays deliberately uncluttered.
 

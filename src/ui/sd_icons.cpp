@@ -107,6 +107,15 @@ const char* iconBody(Icon which) {
                "<line x1='21' x2='16' y1='20' y2='20'/><line x1='12' x2='3' y1='20' y2='20'/>"
                "<line x1='14' x2='14' y1='2' y2='6'/><line x1='8' x2='8' y1='10' y2='14'/>"
                "<line x1='16' x2='16' y1='18' y2='22'/>";
+    case Icon::Wand:
+        // lucide "wand-sparkles" : baguette magique (metaphore "reglage automatique").
+        return "<path d='m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72"
+               "l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72'/>"
+               "<path d='m14 7 3 3'/><path d='M5 6v4'/><path d='M19 14v4'/><path d='M10 2v2'/>"
+               "<path d='M7 8H3'/><path d='M21 16h-4'/><path d='M11 3H9'/>";
+    case Icon::Check:
+        // lucide "check" : etat "cale".
+        return "<path d='M20 6 9 17l-5-5'/>";
     }
     return "";
 }

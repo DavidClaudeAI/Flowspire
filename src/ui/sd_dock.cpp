@@ -372,9 +372,60 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     root->addWidget(modeLabel_);
 
     // --- Section scenes (intervenants + plan large) ---
+    // En-tete "SCENES" a gauche + bouton "Calibrer tous les seuils" (#3) a droite.
+    auto* scenesHeader = new QHBoxLayout();
+    scenesHeader->setSpacing(8);
     scenesSectionLabel_ = new QLabel(i18n("Section.Scenes"));
     scenesSectionLabel_->setStyleSheet(sectionLabelQss());
-    root->addWidget(scenesSectionLabel_);
+    calibrateAllButton_ = new QPushButton(i18n("Calibrate.All"));
+    calibrateAllButton_->setIcon(icon(Icon::Wand, th::kAccent, 13));
+    calibrateAllButton_->setCursor(Qt::PointingHandCursor);
+    calibrateAllButton_->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                                               " color:%4; font-size:%5px; font-weight:600; padding:4px 9px; }"
+                                               "QPushButton:hover { border-color:%4; }")
+                                           .arg(th::kSurface3)
+                                           .arg(rgba(th::kAccent, 0.4))
+                                           .arg(th::kRadiusButton)
+                                           .arg(th::kAccent)
+                                           .arg(th::kFontButton));
+    connect(calibrateAllButton_, &QPushButton::clicked, this, [this]() { startCalibrationAll(); });
+    scenesHeader->addWidget(scenesSectionLabel_);
+    scenesHeader->addStretch();
+    scenesHeader->addWidget(calibrateAllButton_);
+    root->addLayout(scenesHeader);
+
+    // Bandeau de progression de la calibration globale (masque ; revele par startCalibrationAll).
+    // Reutilise le langage visuel du bandeau "MAJ dispo" (#updateBanner).
+    calibrationBanner_ = new QWidget();
+    calibrationBanner_->setObjectName(QStringLiteral("calibrationBanner"));
+    calibrationBanner_->setStyleSheet(
+        QString("#calibrationBanner { background:%1; border:1px solid %2; border-radius:%3px; }")
+            .arg(rgba(th::kAccent, 0.15))
+            .arg(rgba(th::kAccent, 0.5))
+            .arg(th::kRadiusButton));
+    auto* calBanLay = new QHBoxLayout(calibrationBanner_);
+    calBanLay->setContentsMargins(10, 6, 10, 6);
+    calBanLay->setSpacing(8);
+    calibrationBannerLabel_ = new QLabel();
+    calibrationBannerLabel_->setWordWrap(true);
+    calibrationBannerLabel_->setStyleSheet(
+        QString("color:%1; font-size:%2px; background:transparent;").arg(th::kTextPrimary).arg(th::kFontLabel));
+    calibrationFinishButton_ = new QPushButton(i18n("Calibrate.Finish"));
+    calibrationFinishButton_->setCursor(Qt::PointingHandCursor);
+    calibrationFinishButton_->setStyleSheet(
+        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                " color:%4; font-size:%5px; font-weight:600; padding:5px 10px; }"
+                "QPushButton:hover { border-color:%4; }")
+            .arg(th::kSurface3)
+            .arg(rgba(th::kAccent, 0.4))
+            .arg(th::kRadiusButton)
+            .arg(th::kAccent)
+            .arg(th::kFontButton));
+    connect(calibrationFinishButton_, &QPushButton::clicked, this, [this]() { finishCalibration(); });
+    calBanLay->addWidget(calibrationBannerLabel_, 1);
+    calBanLay->addWidget(calibrationFinishButton_);
+    calibrationBanner_->setVisible(false);
+    root->addWidget(calibrationBanner_);
 
     rowsLayout_ = new QVBoxLayout();
     rowsLayout_->setSpacing(8);
@@ -548,6 +599,112 @@ void SdDock::styleSpeakerCard(Row& row, bool speaking) {
     }
 }
 
+// --- Calibration auto du seuil (#3) ----------------------------------------------------
+
+void SdDock::onCalibrateClicked(const std::string& speakerId) {
+    auto it = calibrators_.find(speakerId);
+    if (it != calibrators_.end() && !it->second.done()) {
+        calibrators_.erase(it); // en cours -> un clic annule.
+    } else {
+        calibrators_[speakerId] = sd::core::ThresholdCalibrator{}; // repos ou deja cale -> (re)demarre.
+    }
+    for (auto& row : rows_) {
+        if (row.id == speakerId) {
+            updateCalibrateButton(row);
+            break;
+        }
+    }
+}
+
+void SdDock::startCalibrationAll() {
+    if (!configMode_) {
+        return;
+    }
+    calibrators_.clear();
+    for (const auto& ds : displaySpeakers_) {
+        calibrators_[ds.id] = sd::core::ThresholdCalibrator{};
+    }
+    calibrationBannerActive_ = !calibrators_.empty();
+    for (auto& row : rows_) {
+        updateCalibrateButton(row);
+    }
+    updateCalibrationBanner();
+}
+
+void SdDock::finishCalibration() {
+    // Bouton "Terminer" : fige tout ce qui peut l'etre (assez de donnees + ecart franc),
+    // laisse les autres seuils inchanges.
+    for (auto& row : rows_) {
+        auto it = calibrators_.find(row.id);
+        if (it == calibrators_.end() || it->second.done()) {
+            continue;
+        }
+        if (it->second.finalizeNow()) {
+            applyCalibratedThreshold(row, it->second.thresholdDb());
+        }
+    }
+    calibrationBannerActive_ = false;
+    for (auto& row : rows_) {
+        updateCalibrateButton(row);
+    }
+    updateCalibrationBanner();
+}
+
+void SdDock::applyCalibratedThreshold(Row& row, double thresholdDb) {
+    if (!row.threshold) {
+        return;
+    }
+    int t = static_cast<int>(std::lround(thresholdDb));
+    if (t < kFloorDb + 1) {
+        t = kFloorDb + 1;
+    }
+    if (t > 0) {
+        t = 0;
+    }
+    // setValue declenche valueChanged -> director.setSpeakerThreshold + marqueur vumetre +
+    // memorisation (cablage EXISTANT du slider). On force ensuite une ecriture immediate du
+    // profil (le calibrateur a deja fige : pas la peine d'attendre le debounce).
+    row.threshold->setValue(t);
+    saveActiveProfileNow();
+}
+
+void SdDock::updateCalibrateButton(Row& row) {
+    if (!row.calibrateBtn) {
+        return; // carte "Plan large" : pas de seuil, pas de bouton.
+    }
+    const auto it = calibrators_.find(row.id);
+    if (it == calibrators_.end()) {
+        row.calibrateBtn->setIcon(icon(Icon::Wand, th::kTextTertiary, 15));
+        row.calibrateBtn->setToolTip(i18n("Calibrate.Tooltip"));
+    } else if (!it->second.done()) {
+        row.calibrateBtn->setIcon(icon(Icon::Wand, th::kAccent, 15));
+        row.calibrateBtn->setToolTip(i18n("Calibrate.InProgress"));
+    } else {
+        row.calibrateBtn->setIcon(icon(Icon::Check, th::kSuccess, 15));
+        row.calibrateBtn->setToolTip(i18n("Calibrate.Done"));
+    }
+}
+
+void SdDock::updateCalibrationBanner() {
+    if (calibrationBanner_) {
+        calibrationBanner_->setVisible(calibrationBannerActive_);
+    }
+    if (calibrateAllButton_) {
+        // Cache pendant une session globale (le bandeau prend le relais) et hors config.
+        calibrateAllButton_->setVisible(configMode_ && !calibrationBannerActive_);
+    }
+    if (!calibrationBannerActive_ || !calibrationBannerLabel_) {
+        return;
+    }
+    int done = 0;
+    for (const auto& kv : calibrators_) {
+        if (kv.second.done()) {
+            ++done;
+        }
+    }
+    calibrationBannerLabel_->setText(i18n("Calibrate.Progress").arg(done).arg(static_cast<int>(calibrators_.size())));
+}
+
 void SdDock::rememberSpeakerThreshold(const std::string& speakerId, int db) {
     // Mode profil uniquement : en mode auto (sans config), il n'y a pas de profil
     // ou ecrire. Les ids affiches y sont des noms de sources, absents du profil.
@@ -639,6 +796,10 @@ void SdDock::reload() {
         delete row.card;
     }
     rows_.clear();
+    // Une reconfiguration annule toute session de calibration en cours (les intervenants
+    // peuvent changer) : on repart au repos. Les seuils deja ecrits restent dans le profil.
+    calibrators_.clear();
+    calibrationBannerActive_ = false;
     // Carte d'accueil : suppression DIFFEREE (hide + deleteLater). Son bouton "Lancer
     // l'assistant" declenche reload() (donc CE bloc) alors que son propre clic est encore
     // en cours de traitement -> un delete immediat serait un use-after-free (meme piege
@@ -746,6 +907,20 @@ void SdDock::reload() {
         lay->addWidget(center, 1);
         lay->addWidget(threshBlock);
 
+        // Bouton "calibrer ce seuil" (#3) : colonne tout a droite, centree verticalement.
+        // Place dans le HBox de la carte (PAS dans le bloc nom/vumetre) -> n'affecte pas
+        // l'alignement vumetre/seuil. L'icone PORTE l'etat (repos / en cours / cale). Comme
+        // c'est un QPushButton, il consomme son clic -> exempt du clic-carte (forcage).
+        auto* calBtn = new QPushButton();
+        calBtn->setCursor(Qt::PointingHandCursor);
+        calBtn->setFixedSize(28, 28);
+        calBtn->setStyleSheet(QString("QPushButton { background:transparent; border:none; border-radius:%1px; }"
+                                      "QPushButton:hover { background:%2; }")
+                                  .arg(th::kRadiusButton)
+                                  .arg(QString::fromUtf8(th::kSurface3)));
+        connect(calBtn, &QPushButton::clicked, this, [this, sid]() { onCalibrateClicked(sid); });
+        lay->addWidget(calBtn, 0, Qt::AlignVCenter);
+
         // Clic-carte : on ne pose PAS WA_TransparentForMouseEvents sur les enfants -> il
         // desactiverait AUSSI leurs propres enfants (doc Qt : "the widget and its children"),
         // ce qui casserait le slider de seuil et le bouton de calibration. Inutile de toute
@@ -764,9 +939,11 @@ void SdDock::reload() {
         row.nameLabel = nameLabel;
         row.meter = meter;
         row.threshold = threshold;
+        row.calibrateBtn = calBtn;
         row.stateLabel = stateLabel;
         row.tally = tally;
         styleSpeakerCard(row, /*speaking=*/false);
+        updateCalibrateButton(row); // icone initiale (repos)
         rows_.push_back(row);
     }
 
@@ -823,6 +1000,7 @@ void SdDock::reload() {
     updateStatusBadge();
     updateProfileBar();
     updateStyleBar();
+    updateCalibrationBanner(); // bandeau masque + visibilite du bouton "Calibrer tous"
 
     // Apres un rechargement, la scene actuellement a l'antenne est l'etat de REFERENCE :
     // on ne la traitera pas comme un forcage manuel au prochain tick (le moteur vient
@@ -1306,6 +1484,33 @@ void SdDock::tick() {
         if (row.meter) {
             const auto it = levelsBySource.find(row.audioSource);
             const double db = (it != levelsBySource.end()) ? it->second : static_cast<double>(kFloorDb);
+
+            // Calibration en cours pour cet intervenant : on alimente le calibrateur avec le
+            // niveau du tick ; des qu'il a "cale" -> on ecrit le seuil (via le slider, qui
+            // recable director + marqueur + memorisation) et on fige.
+            const auto calIt = calibrators_.find(row.id);
+            if (calIt != calibrators_.end() && !calIt->second.done()) {
+                calIt->second.addSample(db);
+                if (calIt->second.done()) {
+                    applyCalibratedThreshold(row, calIt->second.thresholdDb());
+                    updateCalibrateButton(row);
+                    if (calibrationBannerActive_) {
+                        updateCalibrationBanner();
+                        // Fin AUTO de la session globale quand tout le monde est cale.
+                        bool allDone = true;
+                        for (const auto& kv : calibrators_) {
+                            if (!kv.second.done()) {
+                                allDone = false;
+                                break;
+                            }
+                        }
+                        if (allDone) {
+                            calibrationBannerActive_ = false;
+                            updateCalibrationBanner();
+                        }
+                    }
+                }
+            }
 
             const int dbInt = dbToInt(db);
             if (dbInt != row.shownDb) {
