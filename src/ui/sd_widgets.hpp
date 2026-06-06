@@ -117,6 +117,21 @@ inline QString secondaryBtnQss() {
         .arg(theme::kTextPrimary);
 }
 
+// Bouton "pilule" a contour accent : fond surface, bordure + texte bleus (accent), bordure
+// qui s'eclaire au survol. Mutualise les boutons accent du dock (bandeau MAJ, footer, et la
+// calibration #3). `padding` au format QSS, ex "5px 10px".
+inline QString accentOutlineBtnQss(const QString& padding) {
+    return QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
+                   " color:%4; font-size:%5px; font-weight:600; padding:%6; }"
+                   "QPushButton:hover { border-color:%4; }")
+        .arg(theme::kSurface3)
+        .arg(rgba(theme::kAccent, 0.4))
+        .arg(theme::kRadiusButton)
+        .arg(theme::kAccent)
+        .arg(theme::kFontButton)
+        .arg(padding);
+}
+
 // Onglet "dossier" (assistant etape Scenes + parametres avances) : coins arrondis
 // EN HAUT seulement, actif = couleur de la carte (effet rattache), inactif plus
 // sombre. Contour present (demande David). Selecteur #clickbtn (ClickButton).

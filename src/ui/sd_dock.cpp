@@ -184,6 +184,7 @@ double SdDock::nowSeconds() {
 }
 
 SdDock::SdDock(QWidget* parent) : QWidget(parent) {
+    namespace w = sd::ui::widgets; // briques d'UI partagees (QSS de boutons, etc.)
     setStyleSheet(dockQss());
 
     // Zone scrollable : quand le dock est reduit en hauteur, on fait DEFILER le
@@ -254,14 +255,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
         QString("color:%1; font-size:%2px; background:transparent;").arg(th::kTextPrimary).arg(th::kFontLabel));
     updateBannerButton_ = new QPushButton(i18n("Update.Get"));
     updateBannerButton_->setCursor(Qt::PointingHandCursor);
-    updateBannerButton_->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                                               " color:%4; font-size:%5px; font-weight:600; padding:5px 10px; }"
-                                               "QPushButton:hover { border-color:%4; }")
-                                           .arg(th::kSurface3)
-                                           .arg(rgba(th::kAccent, 0.4))
-                                           .arg(th::kRadiusButton)
-                                           .arg(th::kAccent)
-                                           .arg(th::kFontButton));
+    updateBannerButton_->setStyleSheet(w::accentOutlineBtnQss(QStringLiteral("5px 10px")));
     updateLay->addWidget(updateBannerLabel_, 1);
     updateLay->addWidget(updateBannerButton_);
     updateBanner_->setVisible(false);
@@ -380,14 +374,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     calibrateAllButton_ = new QPushButton(i18n("Calibrate.All"));
     calibrateAllButton_->setIcon(icon(Icon::Wand, th::kAccent, 13));
     calibrateAllButton_->setCursor(Qt::PointingHandCursor);
-    calibrateAllButton_->setStyleSheet(QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                                               " color:%4; font-size:%5px; font-weight:600; padding:4px 9px; }"
-                                               "QPushButton:hover { border-color:%4; }")
-                                           .arg(th::kSurface3)
-                                           .arg(rgba(th::kAccent, 0.4))
-                                           .arg(th::kRadiusButton)
-                                           .arg(th::kAccent)
-                                           .arg(th::kFontButton));
+    calibrateAllButton_->setStyleSheet(w::accentOutlineBtnQss(QStringLiteral("4px 9px")));
     connect(calibrateAllButton_, &QPushButton::clicked, this, [this]() { startCalibrationAll(); });
     scenesHeader->addWidget(scenesSectionLabel_);
     scenesHeader->addStretch();
@@ -412,15 +399,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
         QString("color:%1; font-size:%2px; background:transparent;").arg(th::kTextPrimary).arg(th::kFontLabel));
     calibrationFinishButton_ = new QPushButton(i18n("Calibrate.Finish"));
     calibrationFinishButton_->setCursor(Qt::PointingHandCursor);
-    calibrationFinishButton_->setStyleSheet(
-        QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                " color:%4; font-size:%5px; font-weight:600; padding:5px 10px; }"
-                "QPushButton:hover { border-color:%4; }")
-            .arg(th::kSurface3)
-            .arg(rgba(th::kAccent, 0.4))
-            .arg(th::kRadiusButton)
-            .arg(th::kAccent)
-            .arg(th::kFontButton));
+    calibrationFinishButton_->setStyleSheet(w::accentOutlineBtnQss(QStringLiteral("5px 10px")));
     connect(calibrationFinishButton_, &QPushButton::clicked, this, [this]() { finishCalibration(); });
     calBanLay->addWidget(calibrationBannerLabel_, 1);
     calBanLay->addWidget(calibrationFinishButton_);
@@ -453,13 +432,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     // Footer : deux acces ACTIFS (Run 5/6), accent pour inviter au clic. Meme style.
     auto* footer = new QHBoxLayout();
     footer->setSpacing(8);
-    const QString footerBtnQss = QString("QPushButton { background:%1; border:1px solid %2; border-radius:%3px;"
-                                         " color:%4; font-size:12px; font-weight:600; padding:8px 10px; }"
-                                         "QPushButton:hover { border-color:%4; }")
-                                     .arg(th::kSurface3)
-                                     .arg(rgba(th::kAccent, 0.4))
-                                     .arg(th::kRadiusButton)
-                                     .arg(th::kAccent);
+    const QString footerBtnQss = w::accentOutlineBtnQss(QStringLiteral("8px 10px"));
 
     // Parametres avances (Run 6) : ouvre la fenetre de reglages fins.
     auto* settingsBtn = new QPushButton(i18n("Footer.AdvancedSettings"));
@@ -854,36 +827,49 @@ void SdDock::reload() {
         avatar->setFixedSize(th::kAvatarSize, th::kAvatarSize);
         avatar->setAlignment(Qt::AlignCenter);
 
-        // Centre : nom + etat (ligne) puis vumetre (custom + marqueur de seuil).
-        auto* center = new QWidget();
-        auto* centerLay = new QVBoxLayout(center);
-        centerLay->setContentsMargins(0, 0, 0, 0);
-        centerLay->setSpacing(6);
-        auto* nameRow = new QWidget();
-        auto* nameRowLay = new QHBoxLayout(nameRow);
-        nameRowLay->setContentsMargins(0, 0, 0, 0);
-        nameRowLay->setSpacing(6);
+        // Colonne droite : ligne du HAUT (nom + etat + label "Seuil") au-dessus de la ligne du
+        // BAS (vumetre + slider de seuil). Le vumetre et le slider sont dans le MEME HBox ->
+        // centres verticalement ensemble = leurs deux lignes sont alignees PAR CONSTRUCTION.
+        // (Avant : vumetre et slider vivaient dans deux colonnes de hauteurs differentes -> leger
+        // decalage. C'est le fix du polish.)
+        constexpr int kThreshWidth = 96; // largeur commune au label "Seuil" et au slider
+        constexpr int kCalBtnSize = 28;  // bouton calibration (carre), dans la rangee du bas
+        auto* rightCol = new QWidget();
+        auto* rightColLay = new QVBoxLayout(rightCol);
+        rightColLay->setContentsMargins(0, 0, 0, 0);
+        rightColLay->setSpacing(6);
+
+        auto* topRow = new QWidget();
+        auto* topRowLay = new QHBoxLayout(topRow);
+        topRowLay->setContentsMargins(0, 0, 0, 0);
+        topRowLay->setSpacing(6);
         auto* nameLabel = new QLabel(QString::fromStdString(ds.name));
         auto* stateLabel = new QLabel(i18n("Speaker.State.Silent"));
         stateLabel->setStyleSheet(
             QString("color:%1; font-size:%2px; font-weight:700;").arg(th::kTextTertiary).arg(th::kFontSmall));
-        nameRowLay->addWidget(nameLabel);
-        nameRowLay->addStretch();
-        nameRowLay->addWidget(stateLabel);
-        auto* meter = new LevelMeter();
-        centerLay->addWidget(nameRow);
-        centerLay->addWidget(meter);
-
-        // Droite : bloc "Seuil" (label + slider). Le slider regle EN DIRECT le
-        // seuil de cet intervenant ET deplace le marqueur sur le vumetre.
-        auto* threshBlock = new QWidget();
-        threshBlock->setFixedWidth(96);
-        auto* threshLay = new QVBoxLayout(threshBlock);
-        threshLay->setContentsMargins(0, 0, 0, 0);
-        threshLay->setSpacing(4);
         auto* threshLabel = new QLabel(i18n("Speaker.Threshold"));
         threshLabel->setStyleSheet(QString("color:%1; font-size:%2px;").arg(th::kTextTertiary).arg(th::kFontSmall));
+        threshLabel->setFixedWidth(kThreshWidth);
+        threshLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter); // pile au-dessus du slider
+        topRowLay->addWidget(nameLabel);
+        topRowLay->addStretch();
+        topRowLay->addWidget(stateLabel);
+        topRowLay->addWidget(threshLabel);
+        // Reserve la colonne du bouton calibration (qui vit dans la rangee du BAS) pour que le
+        // label "Seuil" reste pile au-dessus du slider et pas decale par le bouton. (+6 = espace
+        // entre slider et bouton dans la rangee du bas.)
+        topRowLay->addSpacing(kCalBtnSize + 6);
+
+        auto* bottomRow = new QWidget();
+        auto* bottomRowLay = new QHBoxLayout(bottomRow);
+        bottomRowLay->setContentsMargins(0, 0, 0, 0);
+        bottomRowLay->setSpacing(6);
+        auto* meter = new LevelMeter();
+
+        // Slider de seuil : regle EN DIRECT le seuil de cet intervenant ET deplace le marqueur
+        // sur le vumetre. Largeur fixe = celle du label "Seuil" pose juste au-dessus (topRow).
         auto* threshold = new QSlider(Qt::Horizontal);
+        threshold->setFixedWidth(kThreshWidth);
         // Borne basse = kFloorDb + 1 (et non kFloorDb) : tout en bas, le seuil
         // resterait AU plancher de silence -> avec le comparateur "niveau >= seuil"
         // une source muette (niveau == plancher) passerait pour "parle" en
@@ -917,26 +903,31 @@ void SdDock::reload() {
             }
             saveActiveProfileNow();
         });
-        threshLay->addWidget(threshLabel);
-        threshLay->addWidget(threshold);
+        // Vumetre + slider DANS LE MEME HBox : centres verticalement ensemble -> leurs lignes
+        // (barre du vumetre / glissiere du seuil) sont alignees, quelle que soit la hauteur du
+        // texte au-dessus.
+        bottomRowLay->addWidget(meter, 1);
+        bottomRowLay->addWidget(threshold);
+
+        rightColLay->addWidget(topRow);
+        rightColLay->addWidget(bottomRow);
 
         lay->addWidget(avatar);
-        lay->addWidget(center, 1);
-        lay->addWidget(threshBlock);
+        lay->addWidget(rightCol, 1);
 
-        // Bouton "calibrer ce seuil" (#3) : colonne tout a droite, centree verticalement.
-        // Place dans le HBox de la carte (PAS dans le bloc nom/vumetre) -> n'affecte pas
-        // l'alignement vumetre/seuil. L'icone PORTE l'etat (repos / en cours / cale). Comme
-        // c'est un QPushButton, il consomme son clic -> exempt du clic-carte (forcage).
+        // Bouton "calibrer ce seuil" (#3) : place dans la rangee du BAS, a droite du slider ->
+        // centre verticalement AVEC le vumetre et le slider = aligne sur leur ligne (sa colonne
+        // est reservee dans la rangee du haut via topRow). L'icone PORTE l'etat (repos / en
+        // cours / cale). QPushButton -> consomme son clic = exempt du clic-carte (forcage).
         auto* calBtn = new QPushButton();
         calBtn->setCursor(Qt::PointingHandCursor);
-        calBtn->setFixedSize(28, 28);
+        calBtn->setFixedSize(kCalBtnSize, kCalBtnSize);
         calBtn->setStyleSheet(QString("QPushButton { background:transparent; border:none; border-radius:%1px; }"
                                       "QPushButton:hover { background:%2; }")
                                   .arg(th::kRadiusButton)
                                   .arg(QString::fromUtf8(th::kSurface3)));
         connect(calBtn, &QPushButton::clicked, this, [this, sid]() { onCalibrateClicked(sid); });
-        lay->addWidget(calBtn, 0, Qt::AlignVCenter);
+        bottomRowLay->addWidget(calBtn, 0, Qt::AlignVCenter);
 
         // Clic-carte : on ne pose PAS WA_TransparentForMouseEvents sur les enfants -> il
         // desactiverait AUSSI leurs propres enfants (doc Qt : "the widget and its children"),
