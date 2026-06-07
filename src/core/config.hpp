@@ -34,14 +34,14 @@ struct AudioSettings {
     // (audio_util.hpp). Ce champ existe pour le rendre configurable plus tard ;
     // il n'est pas encore lu par le coeur.
     double volumeFloorDb = -60.0;
-    int attackFrames = 2;  // frames au-dessus du seuil -> "parle"
+    int attackFrames = 3;  // frames au-dessus du seuil -> "parle" (0.15 s ; defaut affine 2026-06-07)
     int releaseFrames = 8; // frames sous le seuil -> "ne parle plus"
 };
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
     double minShotSeconds = 3.0; // verrou anti-nervosite
-    double maxShotSeconds = 6.0; // rafraichissement du plan (tune en reel : rythme plus vif)
+    double maxShotSeconds = 8.0; // rafraichissement du plan (= style Cool ; affine en reel 2026-06-07)
     // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
     // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
@@ -63,15 +63,15 @@ struct TimingSettings {
 // personne se fait naturellement quand elle "gagne" la parole (contexte Single). Defauts
 // tunes en reel (profil "Cyp Live") : forte preference pour le plan large des que 2+ parlent.
 struct MultiWeights {
-    int currentSpeaker = 5;
-    int wideShot = 100;
+    int currentSpeaker = 10;
+    int wideShot = 94;
 };
 
 // Contexte C : personne ne parle (poids relatifs). Defauts tunes en reel ("Cyp Live") :
 // on revient quasi systematiquement au plan large quand le silence s'installe.
 struct SilenceWeights {
-    int lastSpeaker = 5;
-    int wideShot = 100;
+    int lastSpeaker = 10;
+    int wideShot = 94;
 };
 
 struct Config {

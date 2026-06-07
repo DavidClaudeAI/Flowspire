@@ -156,7 +156,7 @@ TEST_CASE("config : JSON tolerant aux cles absentes") {
     const Config c = fromJson(R"({"version":1,"speakers":[]})");
     CHECK(c.speakers.empty());
     CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0)); // defaut
-    CHECK(c.whenMultiple.wideShot == 100);                     // defaut (tune "Cyp Live")
+    CHECK(c.whenMultiple.wideShot == 94);                      // defaut (= Cool, affine 2026-06-07)
 }
 
 TEST_CASE("config : retrocompat - ancienne cle whenMultiple.loudestSpeaker ignoree sans erreur") {
@@ -343,15 +343,15 @@ TEST_CASE("director : anti ping-pong NE se declenche PAS sur la pause d'un orate
 
 TEST_CASE("config : un style applique (tempo + poids plan large) survit a un aller-retour JSON") {
     Config c = twoSpeakerConfig();
-    applyRhythmStyle(c, builtinRhythmStyles()[2]); // Speed {65,10}/{30,70}, pingPong 5, mini 2
+    applyRhythmStyle(c, builtinRhythmStyles()[2]); // Speed {40,60}/{25,75}, pingPong 3, mini 2
     const Config back = fromJson(toJson(c));
     CHECK(back.styleName == "Speed");
     CHECK(back.timing.minShotSeconds == doctest::Approx(2.0));
-    CHECK(back.timing.pingPongWindowSeconds == doctest::Approx(5.0));
-    CHECK(back.whenMultiple.currentSpeaker == 65);
-    CHECK(back.whenMultiple.wideShot == 10);
-    CHECK(back.whenSilence.lastSpeaker == 30);
-    CHECK(back.whenSilence.wideShot == 70);
+    CHECK(back.timing.pingPongWindowSeconds == doctest::Approx(3.0));
+    CHECK(back.whenMultiple.currentSpeaker == 40);
+    CHECK(back.whenMultiple.wideShot == 60);
+    CHECK(back.whenSilence.lastSpeaker == 25);
+    CHECK(back.whenSilence.wideShot == 75);
 }
 
 TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
@@ -370,8 +370,8 @@ TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
     const auto round = rhythmStyleLibraryFromJson(rhythmStyleLibraryToJson(lib));
     REQUIRE(round.size() == 2);
     CHECK(round[0].name == "Mon debat");
-    CHECK(round[0].whenMultiple.currentSpeaker == 65); // hérité de Speed
-    CHECK(round[0].pingPongWindowSeconds == doctest::Approx(5.0));
+    CHECK(round[0].whenMultiple.currentSpeaker == 40); // hérité de Speed
+    CHECK(round[0].pingPongWindowSeconds == doctest::Approx(3.0));
     CHECK(round[1].name == "Talk pose");
     CHECK(round[1].maxShotSeconds == doctest::Approx(14.0));
     CHECK(round[1].whenSilence.wideShot == 100);
@@ -607,6 +607,7 @@ TEST_CASE("director : fallback plan large quand le locuteur n'a aucune scene") {
     // Cause racine : un locuteur sans scene ne doit pas laisser l'ecran vide.
     Config c;
     c.wideShotScene = "Plateau";
+    c.audio.attackFrames = 1; // EPINGLE (detection immediate ; independant du defaut struct)
     Speaker a;
     a.id = "A";
     a.audioSource = "srcA";
