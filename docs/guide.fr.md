@@ -104,19 +104,26 @@ Donnez un **nom** à chaque personne et reliez-la à sa **source audio** OBS (le
 
 Pour chaque personne, choisissez **quelles scènes** montrer quand elle parle, et donnez un **poids** à chacune (sa chance d'apparaître par rapport aux autres scènes de la même personne). Le pourcentage est recalculé automatiquement.
 
-### Écran 3 — Plan large & priorités
+### Écran 3 — Réalisation
 
-![Assistant — plan large et priorités](img/assistant_4.png)
+Tout le réglage de **réalisation** sur un seul écran, volontairement simple :
 
-Désignez la **scène de plan large** (le plan de groupe) et réglez **quand y basculer** : la part du plan large quand **plusieurs** parlent, et quand **personne** ne parle.
+- **Plan large (vue de groupe)** : choisissez la scène de groupe. Un **conseil** vous invite fortement à en définir une — elle rend la réalisation bien plus vivante (Flowspire alterne avec la vue d'ensemble entre les prises de parole). Sans plan large, les coupes sont plus statiques.
+- **Style de réalisation** : choisissez un style **fourni** (Chill / Cool / Speed) ou l'un de **vos styles** enregistrés. Le style règle tout le tempérament d'un coup.
+- **Paramètres avancés de réalisation** *(repliés, « modifiables plus tard »)* : un **tiroir** qui déplie le tempo (temps mini/maxi, anti ping-pong, délai avant réaction au silence), les priorités quand **plusieurs** parlent / quand **personne** ne parle, et la **sensibilité**. Pas besoin d'y toucher pour démarrer — c'est exactement le même contenu que l'onglet **Réalisation** des Paramètres avancés (détail en section 6).
 
-### Écran 4 — Rythme & sensibilité
+> La gestion de vos styles enregistrés (créer / renommer / supprimer) se fait dans les **Paramètres avancés** ; dans l'assistant, vous ne faites que **choisir** un style.
 
-![Assistant — rythme et sensibilité](img/assistant_5.png)
+### Écran 4 — Caler les seuils
 
-Ajustez le **tempo** (temps mini/maxi d'un plan, délais) et la **détection** (seuil de voix). **Les valeurs par défaut marchent très bien** — laissez-les pour démarrer ; vous les affinerez peut-être plus tard à l'usage, on verra à ce moment-là.
+Un **pense-bête** : il n'y a rien à régler ici. Flowspire détecte qui parle grâce à un **seuil** par micro, et il sait le trouver **tout seul** en écoutant la voix.
 
-Le **seuil de voix** réglé ici est **général** : c'est le **point de départ** commun à tout le monde. Ensuite, si un micro est plus fort qu'un autre, vous pourrez **ajuster le seuil personne par personne directement dans le dock** (le curseur sous chaque intervenant). *(Détail de chaque réglage : [section 6](#rythme--sensibilité).)*
+Une fois l'assistant terminé, sur le **dock** :
+
+1. Demandez à chaque invité de **parler** dans son micro.
+2. Lancez la **calibration automatique** — **par personne** (le bouton baguette sur chaque carte) ou **tous les seuils d'un coup**.
+
+À refaire si vous changez de **lieu** ou de **micro**.
 
 ### Écran 5 — Résumé
 
