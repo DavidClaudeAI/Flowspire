@@ -107,8 +107,8 @@ struct SdAssistant::Impl {
     void populatePrereq();
     void populateSpeakers();
     void populateCameras();
-    void populateWide();
-    void populateRhythm();
+    void populateRealisation();
+    void populateCalibration();
     void populateSummary();
     QWidget* recapCard(Icon ic, const QString& title, int page, const QStringList& lines);
     QString stepName(int step) const;
@@ -134,9 +134,9 @@ QString SdAssistant::Impl::stepName(int step) const {
     case 2:
         return i18n("Assistant.Step.Cameras");
     case 3:
-        return i18n("Assistant.Step.Wide");
+        return i18n("Assistant.Step.Realisation");
     case 4:
-        return i18n("Assistant.Step.Rhythm");
+        return i18n("Assistant.Step.Calibration");
     case 5:
         return i18n("Assistant.Step.Summary");
     default:
@@ -176,10 +176,10 @@ void SdAssistant::Impl::populate(int i) {
         populateCameras();
         break;
     case 3:
-        populateWide();
+        populateRealisation();
         break;
     case 4:
-        populateRhythm();
+        populateCalibration();
         break;
     case 5:
         populateSummary();
@@ -296,36 +296,75 @@ void SdAssistant::Impl::populateCameras() {
     contentLay[2]->addStretch();
 }
 
-void SdAssistant::Impl::populateWide() {
+// --- Etape 3 : Realisation (style + plan large + tempo + sensibilite) --------
+// Panneau partage en disposition ASSISTANT : scene de plan large (+ conseil) et style
+// VISIBLES, le reste (tempo, poids, sensibilite) dans un tiroir repliable. MEME contenu
+// que l'onglet Realisation des reglages avances (zero divergence, cf. mountRhythm).
+void SdAssistant::Impl::populateRealisation() {
     clearLayout(contentLay[3]);
-    contentLay[3]->addWidget(makeTitle(i18n("Wide.Title")));
-    contentLay[3]->addWidget(makeSub(i18n("Wide.Intro")));
-    panels->mountWide(addPanelHost(contentLay[3], 14));
+    contentLay[3]->addWidget(makeTitle(i18n("Realisation.Title")));
+    contentLay[3]->addWidget(makeSub(i18n("Realisation.Intro")));
+    panels->mountRhythm(addPanelHost(contentLay[3], 14), RhythmLayout::Assistant);
     contentLay[3]->addStretch();
 }
 
-void SdAssistant::Impl::populateRhythm() {
+// --- Etape 4 : Caler les seuils (page PEDAGOGIQUE, pas de calibration live) ---
+// La calibration se fait sur le DOCK en condition reelle (les invites parlent vraiment).
+// Ici on explique seulement qu'elle existe et comment s'en servir une fois l'assistant
+// termine -> aucun moniteur audio dans la modale (plus simple, plus robuste).
+void SdAssistant::Impl::populateCalibration() {
     clearLayout(contentLay[4]);
-    contentLay[4]->addWidget(makeTitle(i18n("Rhythm.Title")));
-    contentLay[4]->addWidget(makeSub(i18n("Rhythm.Intro")));
-    panels->mountRhythm(addPanelHost(contentLay[4], 14));
+    auto* big = new QLabel();
+    big->setPixmap(icon(Icon::Wand, th::kAccent, 40));
+    contentLay[4]->addWidget(big);
+    contentLay[4]->addWidget(makeTitle(i18n("Calibration.Title")));
+    contentLay[4]->addWidget(makeSub(i18n("Calibration.Intro")));
 
-    // Banniere d'info accent (specifique a l'assistant ; voir maquette etape Rythme).
-    auto* banner = new QWidget();
-    banner->setObjectName(QStringLiteral("infoBanner"));
-    banner->setStyleSheet(QString("#infoBanner { background:%1; border-radius:6px; }").arg(rgba(th::kAccent, 0.10)));
-    auto* bl = new QHBoxLayout(banner);
-    bl->setContentsMargins(12, 10, 12, 10);
-    bl->setSpacing(8);
-    auto* bIcon = new QLabel();
-    bIcon->setPixmap(icon(Icon::Info, th::kAccent, 15));
-    bIcon->setAlignment(Qt::AlignTop);
-    auto* bText = new QLabel(i18n("Rhythm.Banner"));
-    bText->setWordWrap(true);
-    bText->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kAccent));
-    bl->addWidget(bIcon);
-    bl->addWidget(bText, 1);
-    contentLay[4]->addWidget(banner);
+    auto* card = makeCard(QStringLiteral("calibCard"));
+    auto* cl = new QVBoxLayout(card);
+    cl->setContentsMargins(14, 14, 14, 14);
+    cl->setSpacing(12);
+    cl->addWidget(makeGroupHeader(i18n("Calibration.HowTitle")));
+
+    // Deux etapes numerotees (pastille + texte).
+    const struct {
+        const char* num;
+        const char* text;
+    } steps[] = {
+        {"1", "Calibration.Step1"},
+        {"2", "Calibration.Step2"},
+    };
+    for (const auto& st : steps) {
+        auto* row = new QWidget();
+        auto* rl = new QHBoxLayout(row);
+        rl->setContentsMargins(0, 0, 0, 0);
+        rl->setSpacing(10);
+        auto* badge = new QLabel(QString::fromUtf8(st.num));
+        badge->setFixedSize(22, 22);
+        badge->setAlignment(Qt::AlignCenter);
+        badge->setStyleSheet(QString("background:%1; border-radius:11px; color:%2;"
+                                     " font-size:12px; font-weight:700;")
+                                 .arg(rgba(th::kAccent, 0.15))
+                                 .arg(th::kAccent));
+        auto* txt = new QLabel(i18n(st.text));
+        txt->setWordWrap(true);
+        txt->setStyleSheet(QString("color:%1; font-size:13px;").arg(th::kTextSecondary));
+        rl->addWidget(badge, 0, Qt::AlignTop);
+        rl->addWidget(txt, 1);
+        cl->addWidget(row);
+    }
+
+    // Rappel des deux facons : par personne (icone baguette) ou tout d'un coup.
+    auto* ways = new QLabel(i18n("Calibration.Ways"));
+    ways->setWordWrap(true);
+    ways->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kTextTertiary));
+    cl->addWidget(ways);
+    contentLay[4]->addWidget(card);
+
+    auto* tip = new QLabel(i18n("Calibration.Tip"));
+    tip->setWordWrap(true);
+    tip->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kAccent));
+    contentLay[4]->addWidget(tip);
     contentLay[4]->addStretch();
 }
 
@@ -405,31 +444,18 @@ void SdAssistant::Impl::populateSummary() {
     }
     contentLay[5]->addWidget(recapCard(Icon::Video, i18n("Summary.Cameras"), 2, camLines));
 
-    // Plan large & priorites
-    QStringList wideLines;
-    wideLines << i18n("Summary.WideScene") + QStringLiteral(" : ") +
-                     (working.wideShotScene.empty() ? i18n("Summary.WideSceneNone")
-                                                    : QString::fromStdString(working.wideShotScene));
-    const int mSum = working.whenMultiple.currentSpeaker + working.whenMultiple.wideShot;
-    wideLines << i18n("Summary.Multiple") + QStringLiteral(" : ") + i18n("Wide.Current") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenMultiple.currentSpeaker, mSum)) + QStringLiteral("% · ") +
-                     i18n("Wide.WideShot") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenMultiple.wideShot, mSum)) + QStringLiteral("%");
-    const int sSum = working.whenSilence.lastSpeaker + working.whenSilence.wideShot;
-    wideLines << i18n("Summary.Silence") + QStringLiteral(" : ") + i18n("Wide.LastSpeaker") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenSilence.lastSpeaker, sSum)) + QStringLiteral("% · ") +
-                     i18n("Wide.WideShot") + QStringLiteral(" ") +
-                     QString::number(pctOf(working.whenSilence.wideShot, sSum)) + QStringLiteral("%");
-    contentLay[5]->addWidget(recapCard(Icon::LayoutGrid, i18n("Summary.Wide"), 3, wideLines));
-
-    // Rythme
-    QStringList rhyLines;
-    rhyLines << i18n("Summary.RhythmLine")
-                    .arg(static_cast<int>(std::lround(working.timing.minShotSeconds)))
-                    .arg(static_cast<int>(std::lround(working.timing.maxShotSeconds)))
-                    .arg(static_cast<int>(std::lround(working.timing.pingPongWindowSeconds)))
-                    .arg(static_cast<int>(std::lround(working.audio.voiceThresholdDb)));
-    contentLay[5]->addWidget(recapCard(Icon::Clock, i18n("Summary.Rhythm"), 4, rhyLines));
+    // Realisation (fusion plan large + rythme -> etape 3) : style + plan large + tempo.
+    QStringList realiLines;
+    realiLines
+        << i18n("Summary.Style") + QStringLiteral(" : ") +
+               (working.styleName.empty() ? i18n("Rhythm.StyleCustom") : QString::fromStdString(working.styleName));
+    realiLines << i18n("Summary.WideScene") + QStringLiteral(" : ") +
+                      (working.wideShotScene.empty() ? i18n("Summary.WideSceneNone")
+                                                     : QString::fromStdString(working.wideShotScene));
+    realiLines << i18n("Summary.Tempo")
+                      .arg(static_cast<int>(std::lround(working.timing.minShotSeconds)))
+                      .arg(static_cast<int>(std::lround(working.timing.maxShotSeconds)));
+    contentLay[5]->addWidget(recapCard(Icon::Clock, i18n("Summary.Realisation"), 3, realiLines));
 
     summaryError = new QLabel();
     summaryError->setWordWrap(true);

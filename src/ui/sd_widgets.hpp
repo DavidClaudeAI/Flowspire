@@ -457,6 +457,100 @@ private:
 };
 
 // ===========================================================================
+// CollapsibleSection — section repliable : en-tete cliquable (chevron + titre +
+// mention discrete) qui montre/cache un corps. Sert au tiroir "Parametres avances
+// de realisation" de l'assistant. Header-only, sans Q_OBJECT (toggle interne, pas
+// de signal custom) -> coherent avec ClickButton/ComboField. Repliee par defaut.
+// ===========================================================================
+class CollapsibleSection : public QWidget {
+public:
+    explicit CollapsibleSection(const QString& title, const QString& note = QString(), QWidget* parent = nullptr)
+        : QWidget(parent) {
+        auto* outer = new QVBoxLayout(this);
+        outer->setContentsMargins(0, 0, 0, 0);
+        outer->setSpacing(10);
+
+        // En-tete cliquable (chevron ▸/▾ + titre + mention grise). Les enfants sont
+        // transparents a la souris -> le clic remonte au Header (comme ClickButton).
+        header_ = new Header(this, [this]() { setExpanded(!expanded_); });
+        auto* hl = new QHBoxLayout(header_);
+        hl->setContentsMargins(2, 4, 2, 4);
+        hl->setSpacing(8);
+        chevron_ = new QLabel(header_);
+        chevron_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        title_ = new QLabel(title, header_);
+        title_->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+        title_->setStyleSheet(QString("color:%1; font-size:13px; font-weight:600;").arg(theme::kTextPrimary));
+        hl->addWidget(chevron_);
+        hl->addWidget(title_);
+        if (!note.isEmpty()) {
+            auto* n = new QLabel(note, header_);
+            n->setAttribute(Qt::WA_TransparentForMouseEvents, true);
+            n->setStyleSheet(QString("color:%1; font-size:12px;").arg(theme::kTextTertiary));
+            hl->addSpacing(6);
+            hl->addWidget(n);
+        }
+        hl->addStretch();
+        outer->addWidget(header_);
+
+        body_ = new QWidget(this);
+        bodyLay_ = new QVBoxLayout(body_);
+        bodyLay_->setContentsMargins(0, 0, 0, 0);
+        bodyLay_->setSpacing(14);
+        body_->setVisible(expanded_);
+        outer->addWidget(body_);
+
+        updateChevron();
+    }
+
+    // Ajoute un widget au corps repliable (a appeler apres construction).
+    void addWidget(QWidget* w) { bodyLay_->addWidget(w); }
+    QVBoxLayout* body() { return bodyLay_; }
+
+    void setExpanded(bool on) {
+        expanded_ = on;
+        body_->setVisible(on);
+        updateChevron();
+    }
+    bool expanded() const { return expanded_; }
+
+private:
+    // En-tete cliquable a callback (meme pattern que ClickButton, sans Q_OBJECT).
+    class Header : public QFrame {
+    public:
+        Header(QWidget* parent, std::function<void()> cb) : QFrame(parent), cb_(std::move(cb)) {
+            setObjectName(QStringLiteral("collHeader"));
+            setAttribute(Qt::WA_StyledBackground, true);
+            setCursor(Qt::PointingHandCursor);
+            setStyleSheet(QString("#collHeader { background:transparent; border:none; border-radius:6px; }"
+                                  "#collHeader:hover { background:%1; }")
+                              .arg(rgba(theme::kAccent, 0.08)));
+        }
+
+    protected:
+        void mouseReleaseEvent(QMouseEvent* e) override {
+            if (e->button() == Qt::LeftButton && rect().contains(e->position().toPoint()) && cb_) {
+                cb_();
+            }
+        }
+
+    private:
+        std::function<void()> cb_;
+    };
+
+    void updateChevron() {
+        chevron_->setPixmap(icon(expanded_ ? Icon::ChevronDown : Icon::ChevronRight, theme::kTextSecondary, 16));
+    }
+
+    Header* header_ = nullptr;
+    QLabel* chevron_ = nullptr;
+    QLabel* title_ = nullptr;
+    QWidget* body_ = nullptr;
+    QVBoxLayout* bodyLay_ = nullptr;
+    bool expanded_ = false;
+};
+
+// ===========================================================================
 // Fabriques de petits widgets + helpers.
 // ===========================================================================
 inline QLabel* makeTitle(const QString& t) {

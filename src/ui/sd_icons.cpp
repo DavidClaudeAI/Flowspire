@@ -58,6 +58,8 @@ const char* iconBody(Icon which) {
         return "<path d='M5 12h14'/><path d='m12 5 7 7-7 7'/>";
     case Icon::ChevronDown:
         return "<path d='m6 9 6 6 6-6'/>";
+    case Icon::ChevronRight:
+        return "<path d='m9 18 6-6-6-6'/>";
     case Icon::Play:
         return "<polygon points='6 3 20 12 6 21 6 3'/>";
     case Icon::Pencil:

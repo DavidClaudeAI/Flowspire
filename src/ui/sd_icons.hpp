@@ -16,18 +16,19 @@ enum class Icon {
     Sparkles,     // footer : assistant
     LayoutGrid,   // bandeau Stream Deck + recap "plan large"
     // --- Assistant de configuration (Run 5) ---
-    X,           // fermer la fenetre
-    Trash2,      // supprimer (intervenant / scene)
-    Plus,        // ajouter (intervenant / scene)
-    ArrowRight,  // bouton Suivant
-    ChevronDown, // liste deroulante (source / scene)
-    Play,        // bouton "Activer la realisation auto"
-    Pencil,      // editer un bloc depuis le recap
-    Users,       // recap intervenants
-    Video,       // recap cameras
-    Clock,       // recap / etape rythme
-    Mic,         // sources audio (etape prerequis)
-    Info,        // bandeau d'info (etape rythme)
+    X,            // fermer la fenetre
+    Trash2,       // supprimer (intervenant / scene)
+    Plus,         // ajouter (intervenant / scene)
+    ArrowRight,   // bouton Suivant
+    ChevronDown,  // liste deroulante (source / scene) + section repliable ouverte
+    ChevronRight, // section repliable fermee (tiroir "parametres avances")
+    Play,         // bouton "Activer la realisation auto"
+    Pencil,       // editer un bloc depuis le recap
+    Users,        // recap intervenants
+    Video,        // recap cameras
+    Clock,        // recap / etape rythme
+    Mic,          // sources audio (etape prerequis)
+    Info,         // bandeau d'info (etape rythme)
     // --- Parametres avances + Soutenir (Run 6) ---
     Bookmark,          // sidebar : profils
     Heart,             // soutenir le projet

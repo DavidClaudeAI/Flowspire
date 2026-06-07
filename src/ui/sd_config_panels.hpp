@@ -41,6 +41,12 @@ namespace sd::ui {
 // remontee a l'UI (marquer les champs incomplets) reste a faire.
 sd::core::Config sanitizedConfig(const sd::core::Config& in);
 
+// Disposition du panneau "Realisation" (mountRhythm) : MEME contenu, deux rendus.
+enum class RhythmLayout {
+    Advanced,  // reglages avances : tout a plat, visible (style -> tempo -> plan large -> sensibilite)
+    Assistant, // assistant : plan large + style visibles ; le reste dans un tiroir repliable
+};
+
 class ConfigPanels {
 public:
     // `cfg` est edite PAR REFERENCE (doit survivre a ce ConfigPanels). `audioSources`
@@ -50,12 +56,14 @@ public:
     // Monte un panneau dans `host` (vide d'abord le host). Re-appelable.
     void mountSpeakers(QVBoxLayout* host);
     void mountCameras(QVBoxLayout* host);
-    void mountWide(QVBoxLayout* host);
-    // Panneau "Realisation" : style + tempo (+ sensibilite). `includeWidePolicy` true =>
-    // intercale AUSSI la politique plan large (scene de groupe + poids "quand 2+ parlent" /
-    // "quand silence"), pilotee par le style. Les reglages avances l'activent (onglet unique
-    // fusionne) ; l'assistant garde son etape Plan large dediee, donc l'omet (false).
-    void mountRhythm(QVBoxLayout* host, bool includeWidePolicy = false);
+    // Panneau "Realisation" : scene de plan large + style + tempo + politique plan large
+    // ("quand 2+" / "quand silence") + sensibilite. Deux DISPOSITIONS du MEME contenu
+    // (donc jamais de divergence entre les surfaces) :
+    //   - Advanced : tout a plat (ordre style -> tempo -> plan large -> sensibilite).
+    //   - Assistant : scene de plan large (+ conseil) et style VISIBLES ; tempo + poids +
+    //     sensibilite ranges dans un tiroir repliable ; la gestion des styles perso
+    //     (enregistrer / renommer / supprimer) reste reservee aux reglages avances.
+    void mountRhythm(QVBoxLayout* host, RhythmLayout layout = RhythmLayout::Advanced);
 
 private:
     // Construit le contenu (sans vider) — appeles par mountX et les rebuilds.

@@ -202,7 +202,7 @@ void SdSettings::Impl::showPanel(int p) {
         break;
     case SdSettings::TabRhythm:
         // Onglet "Realisation" : tempo + politique plan large fusionnes (includeWidePolicy).
-        panels->mountRhythm(host, /*includeWidePolicy=*/true);
+        panels->mountRhythm(host, RhythmLayout::Advanced);
         break;
     case SdSettings::TabProfiles:
         profilesPanel->mount(host);
