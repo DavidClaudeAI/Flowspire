@@ -10,7 +10,7 @@ It puts whoever is **speaking** front and center, in an **organic** way — with
 
 ## Watch it follow the conversation
 
-Several speakers, one rule: **show whoever is talking.** Flowspire listens to the audio inside OBS and switches on its own, smoothly.
+Several speakers, no fixed grid. Flowspire doesn't just "show whoever talks" — it **directs**: it follows who has the floor, but also varies the shots and pulls back to the group, **with the feel you chose** (Chill, Cool, Speed…). It listens to the audio inside OBS and switches on its own — smoothly, **never mechanically**.
 
 ![Wide shot — all speakers on screen](docs/img/C-wide.png)
 *At rest, the **wide shot**: everyone is there.*
@@ -61,13 +61,19 @@ A clean OBS panel: who is speaking, the scene **on air** (the red bar), the on/o
 ## What it does
 
 - **Detects who is speaking** through OBS's internal audio levels — no driver, no virtual cable.
-- **Switches the scene automatically** to the active person, in an organic way.
+- **Switches the scene automatically** to the active person, in an organic (weighted-random) way.
+- **Directing styles** — Chill / Cool / Speed in one click, or **save your own**, switchable **live on air**: a style sets the whole tempo *and* wide-shot tendency at once.
+- **Auto-calibrated thresholds** — one button finds each mic's right level by listening (per person, or **all at once**), then freezes it; works even with a noise-gated mic.
 - **Unlimited mapping**: as many *audio source → scene(s)* pairs as you want.
 - **Variety of shots**: several scenes for the same person (close-up, reaction shot…) → the plugin **alternates** to avoid monotony.
 - **Wide shot** as a fallback when several people speak or nobody speaks.
+- **Anti-jitter safeguards**: minimum/maximum shot time, silence reaction delay, anti ping-pong.
+- **Force a shot by hand**: click a card in the dock — or any scene in OBS's scene manager / a Stream Deck button.
 - **Native OBS hotkeys** (keyboard **and Stream Deck**): on/off, wide shot, force a person.
+- **Per-person sensitivity** slider, adjustable **live on air** and saved.
 - **Status on the Stream Deck**: reports the directing on/off state to **Bitfocus Companion** (the button changes color), with no module.
 - **Profiles**: one config per show type, switch with a single click.
+- **Update check** (optional): a banner tells you when a new version is available.
 - **Wizard** step by step — everything is set up without touching a single file.
 - **Multilingual** (French + English).
 - **Stable**: designed to never destabilize or crash OBS (priority #1).
@@ -82,10 +88,12 @@ It distinguishes **three situations**, each with its own pick:
 
 ```mermaid
 flowchart TD
-    Q{"Who is speaking<br/>right now?"}
-    Q -->|One person| P1["Pick among <b>their</b> scenes<br/>close-up · reaction shot · wide shot"]
-    Q -->|Several| P2["Pick between<br/>stay on the current one · wide shot"]
-    Q -->|Nobody| P3["Pick between<br/>last speaker · wide shot"]
+    A["🎙️ Audio inside OBS — who has the floor right now?"] --> Q{"Situation"}
+    Q -->|one person| O1["their shots: close-up · reaction · wide"]
+    Q -->|several talk| O2["stay on the speaker · wide shot"]
+    Q -->|nobody| O3["last speaker · wide shot"]
+    O1 & O2 & O3 --> S["🎬 Your directing style decides<br/>Chill · Cool · Speed · your own<br/>(weighted pick + tempo + wide-shot tendency)"]
+    S --> N["▶ next shot — organic, never the same twice"]
 ```
 
 The **directing style** (Chill / Cool / Speed, or your own) sets, in one click, the tempo **and** the wide-shot tendency across these three situations. On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on a laugh), **silence delay** (no cut on a breath), **maximum shot time** (we refresh to vary), **pull back to the wide shot on fast exchanges** (when two people trade lines back and forth, we step back to the group for a beat).
