@@ -10,7 +10,7 @@ Il met en grand la personne **qui parle**, de façon **organique** — sans aucu
 
 ## Regardez-le suivre la conversation
 
-Plusieurs intervenants, une seule règle : **on montre qui parle.** Flowspire écoute le son à l'intérieur d'OBS et bascule tout seul, en douceur.
+Plusieurs intervenants, pas de grille figée. Flowspire ne fait pas que « montrer qui parle » — il **réalise** : il suit qui a la parole, mais varie les plans et se recule sur le groupe, **avec le feeling que vous avez choisi** (Chill, Cool, Speed…). Il écoute le son à l'intérieur d'OBS et bascule tout seul — en douceur, **jamais mécaniquement**.
 
 ![Plan large — tous les intervenants à l'écran](docs/img/C-wide.png)
 *Au repos, le **plan large** : tout le monde est là.*
@@ -61,13 +61,19 @@ Un panneau OBS clair : qui parle, la scène **à l'antenne** (le trait rouge), l
 ## Ce que ça fait
 
 - **Détecte qui parle** via les niveaux audio internes d'OBS — sans driver ni câble virtuel.
-- **Bascule la scène automatiquement** sur la personne active, de façon organique.
+- **Bascule la scène automatiquement** sur la personne active, de façon organique (tirage pondéré).
+- **Styles de réalisation** — Chill / Cool / Speed en un clic, ou **enregistrez les vôtres**, changeables **en direct** : un style règle d'un coup le tempo *et* la tendance au plan large.
+- **Calibration auto des seuils** — un bouton trouve le bon niveau de chaque micro en écoutant (par personne, ou **tous d'un coup**), puis le fige ; fonctionne même avec un micro à noise gate.
 - **Mapping illimité** : autant de couples *source audio → scène(s)* que vous voulez.
 - **Variété des plans** : plusieurs scènes pour une même personne (gros plan, plan d'écoute…) → le plugin **alterne** pour éviter la monotonie.
 - **Plan large** de repli quand plusieurs parlent ou que personne ne parle.
+- **Garde-fous anti-saccade** : temps mini/maxi de plan, délai avant réaction au silence, anti ping-pong.
+- **Forcer un plan à la main** : cliquez une carte du dock — ou n'importe quelle scène dans OBS / un bouton Stream Deck.
 - **Raccourcis OBS natifs** (clavier **et Stream Deck**) : marche/arrêt, plan large, forcer une personne.
+- **Sensibilité par intervenant** : curseur réglable **en direct** et mémorisé.
 - **Statut sur le Stream Deck** : remonte l'état marche/arrêt de la régie vers **Bitfocus Companion** (le bouton change de couleur), sans aucun module.
 - **Profils** : une config par type d'émission, bascule en un clic.
+- **Vérification de mise à jour** (optionnelle) : un bandeau prévient quand une nouvelle version sort.
 - **Assistant** pas-à-pas — tout se règle sans toucher au moindre fichier.
 - **Multilingue** (français + anglais).
 - **Stable** : conçu pour ne jamais déstabiliser ni faire crasher OBS (priorité n°1).
@@ -82,10 +88,12 @@ Il distingue **trois situations**, chacune avec son propre tirage :
 
 ```mermaid
 flowchart TD
-    Q{"Qui parle<br/>en ce moment ?"}
-    Q -->|Une personne| P1["Tirage parmi <b>ses</b> scènes<br/>gros plan · plan d'écoute · plan large"]
-    Q -->|Plusieurs| P2["Tirage entre<br/>rester sur l'actuel · plan large"]
-    Q -->|Personne| P3["Tirage entre<br/>dernier orateur · plan large"]
+    A["🎙️ Le son dans OBS — qui a la parole en ce moment ?"] --> Q{"Situation"}
+    Q -->|une personne| O1["ses plans : gros plan · plan d'écoute · plan large"]
+    Q -->|plusieurs| O2["rester sur l'orateur · plan large"]
+    Q -->|personne| O3["dernier orateur · plan large"]
+    O1 & O2 & O3 --> S["🎬 Votre style de réalisation décide<br/>Chill · Cool · Speed · le vôtre<br/>(tirage pondéré + tempo + tendance plan large)"]
+    S --> N["▶ plan suivant — organique, jamais deux fois pareil"]
 ```
 
 Le **style de réalisation** (Chill / Cool / Speed, ou le vôtre) règle d'un coup le tempo **et** la tendance au plan large de ces trois situations. Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan (pas de coupe sur un rire), **délai de silence** (pas de coupe sur une respiration), **temps maxi** (on rafraîchit pour varier), **retour au plan large sur échange rapide** (quand deux personnes se répondent du tac au tac, on se recule un instant sur le groupe).
