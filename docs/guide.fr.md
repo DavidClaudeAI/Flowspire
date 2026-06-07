@@ -106,24 +106,26 @@ Pour chaque personne, choisissez **quelles scènes** montrer quand elle parle, e
 
 ### Écran 3 — Réalisation
 
-Tout le réglage de **réalisation** sur un seul écran, volontairement simple :
+![Assistant — Réalisation (réglages repliés)](img/assistant_realisation.png)
+
+Tout le réglage de **réalisation** tient sur un seul écran, volontairement simple. Deux choses à faire ; le reste est rangé dans un tiroir.
 
 - **Plan large (vue de groupe)** : choisissez la scène de groupe. Un **conseil** vous invite fortement à en définir une — elle rend la réalisation bien plus vivante (Flowspire alterne avec la vue d'ensemble entre les prises de parole). Sans plan large, les coupes sont plus statiques.
-- **Style de réalisation** : choisissez un style **fourni** (Chill / Cool / Speed) ou l'un de **vos styles** enregistrés. Le style règle tout le tempérament d'un coup.
-- **Paramètres avancés de réalisation** *(repliés, « modifiables plus tard »)* : un **tiroir** qui déplie le tempo (temps mini/maxi, anti ping-pong, délai avant réaction au silence), les priorités quand **plusieurs** parlent / quand **personne** ne parle, et la **sensibilité**. Pas besoin d'y toucher pour démarrer — c'est exactement le même contenu que l'onglet **Réalisation** des Paramètres avancés (détail en section 6).
+- **Style de réalisation** : choisissez un style **fourni** (Chill / Cool / Speed) ou l'un de **vos styles** enregistrés. Le style règle **tout le tempérament d'un coup**.
 
-> La gestion de vos styles enregistrés (créer / renommer / supprimer) se fait dans les **Paramètres avancés** ; dans l'assistant, vous ne faites que **choisir** un style.
+C'est suffisant pour démarrer. Pour aller plus loin, dépliez **« Paramètres avancés de réalisation »** *(modifiables plus tard)* :
+
+![Assistant — Réalisation (tiroir avancé déplié)](img/assistant_realisation_advanced.png)
+
+Le tiroir révèle le **tempo** (temps mini/maxi, anti ping-pong, délai avant réaction au silence), les priorités **quand plusieurs parlent** / **quand personne ne parle**, et la **sensibilité**. C'est exactement le même contenu que l'onglet **Réalisation** des Paramètres avancés ([section 6](#6-tous-les-réglages-en-détail)) — choisir un style positionne tous ces curseurs pour vous, et bouger un curseur à la main bascule sur **« Perso »**.
+
+> La gestion de vos styles enregistrés (enregistrer / renommer / supprimer) se fait dans les **Paramètres avancés** ; dans l'assistant, vous ne faites que **choisir** un style.
 
 ### Écran 4 — Caler les seuils
 
-Un **pense-bête** : il n'y a rien à régler ici. Flowspire détecte qui parle grâce à un **seuil** par micro, et il sait le trouver **tout seul** en écoutant la voix.
+![Assistant — Caler les seuils](img/assistant_calibration.png)
 
-Une fois l'assistant terminé, sur le **dock** :
-
-1. Demandez à chaque invité de **parler** dans son micro.
-2. Lancez la **calibration automatique** — **par personne** (le bouton baguette sur chaque carte) ou **tous les seuils d'un coup**.
-
-À refaire si vous changez de **lieu** ou de **micro**.
+Un simple **pense-bête** : il n'y a **rien à régler ici**. Flowspire détecte qui parle grâce à un **seuil** par micro, et il sait le trouver **tout seul** en écoutant la voix. Vous le ferez en deux clics **plus tard, une fois l'assistant terminé, depuis le dock** — c'est détaillé en [section 4](#4-le-dock-en-direct). Pour l'instant, passez à la suite.
 
 ### Écran 5 — Résumé
 
@@ -146,7 +148,11 @@ Le dock est votre tableau de bord en temps réel :
 - **Le témoin « à l'antenne » (tally)** : un **trait rouge** apparaît à gauche de la scène réellement diffusée et **se déplace** quand la réalisation change de plan.
 - **Le plan large** figure dans la liste (sans vu-mètre), pour le voir s'allumer lui aussi.
 - **Cliquez une carte pour forcer son plan** : cliquer la carte d'un intervenant le passe **à l'antenne**, cliquer la carte du plan large bascule sur le **plan large** — un **forçage temporaire** (l'auto reprend après le temps mini), exactement comme un raccourci. Le **curseur de seuil** reste indépendant (il ne force pas).
-- **Calibrer les seuils automatiquement** : le **bouton baguette** sur chaque carte règle le seuil de la personne tout seul — parlez normalement, il trouve le bon niveau (entre votre silence et votre voix) puis le fige (pas de dérive). **Calibrer tous les seuils** (bouton dans l'en-tête SCÈNES) arme tout le monde d'un coup : une barre de progression montre qui est calé ; cliquez **Terminer** quand ça vous va. Fonctionne aussi avec un micro à noise gate (le seuil est placé proportionnellement dans l'écart, jamais collé au plancher).
+- **Calibrer les seuils automatiquement** : le **bouton baguette** sur chaque carte règle le seuil de la personne tout seul — parlez normalement, il trouve le bon niveau (entre votre silence et votre voix) puis le fige (pas de dérive). **Calibrer tous les seuils** (bouton dans l'en-tête SCÈNES) arme tout le monde d'un coup : une barre de progression montre qui est calé ; cliquez **Terminer** quand ça vous va. Fonctionne aussi avec un micro à noise gate (le seuil est placé proportionnellement dans l'écart, jamais collé au plancher). À refaire si vous changez de **lieu** ou de **micro**.
+
+Pendant la calibration, un **bandeau de progression** s'affiche (« calé X/N ») — cliquez **Terminer** une fois satisfait :
+
+![Le dock pendant la calibration automatique](img/dock_calibration.png)
 
 Vous pouvez aussi piloter via vos **scènes OBS** et vos **raccourcis** : le dock reste volontairement épuré.
 
