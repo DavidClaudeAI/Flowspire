@@ -106,24 +106,26 @@ For each person, choose **which scenes** to show when they speak, and give each 
 
 ### Screen 3 — Directing
 
-All the **directing** settings on a single, deliberately simple screen:
+![Wizard — Directing (settings collapsed)](img/assistant_realisation.png)
+
+All the **directing** settings fit on a single, deliberately simple screen. Two things to do; the rest is tucked into a drawer.
 
 - **Wide shot (group view)**: pick the group scene. A **tip** strongly encourages you to set one — it makes directing much livelier (Flowspire alternates with the group view between turns). Without a wide shot, cutting is more static.
-- **Directing style**: pick a **built-in** style (Chill / Cool / Speed) or one of **your saved** styles. The style sets the whole temperament at once.
-- **Advanced directing settings** *(collapsed, "editable later")*: a **drawer** that unfolds the tempo (min/max shot time, anti ping-pong, silence reaction delay), the priorities when **several** speak / when **nobody** speaks, and the **sensitivity**. No need to touch it to get started — it's the exact same content as the **Directing** tab in the Advanced settings (details in section 6).
+- **Directing style**: pick a **built-in** style (Chill / Cool / Speed) or one of **your saved** styles. The style sets the **whole temperament at once**.
 
-> Managing your saved styles (create / rename / delete) is done in the **Advanced settings**; in the wizard, you only **pick** a style.
+That's enough to get going. To go further, expand **"Advanced directing settings"** *(editable later)*:
+
+![Wizard — Directing (advanced drawer expanded)](img/assistant_realisation_advanced.png)
+
+The drawer reveals the **tempo** (min/max shot time, anti ping-pong, silence reaction delay), the priorities **when several speak** / **when nobody speaks**, and the **sensitivity**. It's the exact same content as the **Directing** tab in the Advanced settings ([section 6](#6-every-setting-in-detail)) — picking a style positions all those sliders for you, and moving any slider by hand switches to **"Custom"**.
+
+> Managing your saved styles (save / rename / delete) is done in the **Advanced settings**; in the wizard, you only **pick** a style.
 
 ### Screen 4 — Calibrate the thresholds
 
-A **reminder**: there's nothing to set here. Flowspire detects who is speaking via a per-mic **threshold**, and it can find it **on its own** by listening to the voice.
+![Wizard — Calibrate the thresholds](img/assistant_calibration.png)
 
-Once the wizard is done, on the **dock**:
-
-1. Ask each guest to **speak** into their mic.
-2. Start the **auto-calibration** — **per person** (the wand button on each card) or **all thresholds at once**.
-
-Redo it whenever you change **room** or **microphone**.
+Just a **reminder**: there's **nothing to set here**. Flowspire detects who is speaking via a per-mic **threshold**, and it finds it **on its own** by listening to the voice. You'll do it in two clicks **later, once the wizard is done, from the dock** — see [section 4](#4-the-live-dock). For now, move on.
 
 ### Screen 5 — Summary
 
@@ -146,7 +148,11 @@ The dock is your real-time dashboard:
 - **The "on-air" indicator (tally)**: a **red bar** appears to the left of the scene actually being broadcast and **moves** when the directing changes shot.
 - **The wide shot** appears in the list (without an audio meter), so you can see it light up too.
 - **Click a card to force that shot**: clicking a speaker's card puts **them** on air, clicking the wide-shot card switches to the **wide shot** — a **temporary force** (auto resumes after the minimum time), just like a hotkey. Dragging the **threshold slider** stays independent (it doesn't force).
-- **Auto-calibrate thresholds**: the **wand button** on each card sets that person's threshold automatically — speak normally and it finds the right level (between your silence and your voice), then freezes (no drift). **Calibrate all thresholds** (button in the SCENES header) arms everyone at once: a progress bar shows who's done; click **Finish** when you're happy. Works with a noise-gated mic too (the level is placed proportionally in the gap, never glued to the floor).
+- **Auto-calibrate thresholds**: the **wand button** on each card sets that person's threshold automatically — speak normally and it finds the right level (between your silence and your voice), then freezes (no drift). **Calibrate all thresholds** (button in the SCENES header) arms everyone at once: a progress bar shows who's done; click **Finish** when you're happy. Works with a noise-gated mic too (the level is placed proportionally in the gap, never glued to the floor). Redo it whenever you change **room** or **microphone**.
+
+During calibration, a **progress banner** appears ("calibrated X/N") — click **Finish** when you're happy:
+
+![The dock during auto-calibration](img/dock_calibration.png)
 
 You can also drive it through your **OBS scenes** and your **hotkeys**: the dock stays deliberately uncluttered.
 
