@@ -36,7 +36,6 @@ enum class Icon {
     Github,            // lien Sponsors
     Coffee,            // lien Ko-fi
     CreditCard,        // lien PayPal
-    RotateCcw,         // reinitialiser aux defauts
     SlidersHorizontal, // sidebar : parametres generaux (reglages d'app)
     // --- Calibration auto du seuil (#3) ---
     Wand,  // bouton "calibrer" (carte + global) = reglage automatique du seuil

@@ -76,23 +76,17 @@ struct SdSettings::Impl {
     QVBoxLayout* navLay = nullptr;
     QLabel* contentTitle = nullptr;
     QVBoxLayout* contentLay = nullptr;
-    QPushButton* resetBtn = nullptr;
     int selPanel = SdSettings::TabSpeakers;
 
     bool dragging = false;
     QPoint dragOffset;
     bool centered = false;
 
-    // Le bouton "Reinitialiser aux defauts" ne concerne que les REGLAGES FINS
-    // (Rythme + Plan large) -> visible uniquement la (retour David Run 6).
-    static bool panelHasDefaults(int p) { return p == SdSettings::TabRhythm; }
-
     QString panelTitle(int p) const;
     QWidget* makeNavItem(Icon ic, const QString& label, bool active, std::function<void()> onClick,
                          const char* tint = nullptr);
     void rebuildNav();
     void showPanel(int p);
-    void resetToDefaults();
     void mountGeneral(QVBoxLayout* host); // panneau "Parametres generaux" (persistance immediate)
 
     // --- profils ---
@@ -218,29 +212,6 @@ void SdSettings::Impl::showPanel(int p) {
     }
     contentLay->addWidget(hostW);
     contentLay->addStretch();
-
-    if (resetBtn) {
-        resetBtn->setVisible(panelHasDefaults(p));
-    }
-}
-
-void SdSettings::Impl::resetToDefaults() {
-    // Reinitialise les REGLAGES FINS de la page courante (Plan large / Rythme) aux
-    // defauts. Modele "tout-sur-Enregistrer" : on remet a l'ecran, on n'ecrit pas ici.
-    const sd::core::Config def;
-    if (selPanel == SdSettings::TabRhythm) {
-        // L'onglet "Realisation" couvre desormais tempo + politique plan large : on remet TOUT
-        // le perimetre du style (+ sensibilite) au defaut, styleName compris (champ couple :
-        // sinon la pastille resterait sur un style dont les curseurs ne refletent plus rien).
-        working.timing = def.timing;
-        working.audio = def.audio;
-        working.whenMultiple = def.whenMultiple;
-        working.whenSilence = def.whenSilence;
-        working.styleName = def.styleName; // "" = Perso (reglage manuel)
-    } else {
-        return;
-    }
-    showPanel(selPanel);
 }
 
 void SdSettings::Impl::mountGeneral(QVBoxLayout* host) {
@@ -641,7 +612,7 @@ SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(ne
 
     rootLay->addWidget(body, 1);
 
-    // --- Pied : Reinitialiser (gauche) + Enregistrer et fermer (droite) ---
+    // --- Pied : Enregistrer et fermer (droite) ---
     auto* sepBot = new QFrame();
     sepBot->setFixedHeight(1);
     sepBot->setStyleSheet(QString("background:%1;").arg(th::kBorder));
@@ -654,16 +625,10 @@ SdSettings::SdSettings(QWidget* parent, Tab initialTab) : QDialog(parent), d_(ne
     auto* fLay = new QHBoxLayout(foot);
     fLay->setContentsMargins(20, 14, 20, 14);
     fLay->setSpacing(12);
-    d_->resetBtn = new QPushButton(i18n("Settings.Reset"));
-    d_->resetBtn->setIcon(icon(Icon::RotateCcw, th::kTextSecondary, 13));
-    d_->resetBtn->setCursor(Qt::PointingHandCursor);
-    d_->resetBtn->setStyleSheet(secondaryBtnQss());
-    connect(d_->resetBtn, &QPushButton::clicked, this, [this]() { d_->resetToDefaults(); });
     auto* done = new QPushButton(i18n("Settings.Done"));
     done->setCursor(Qt::PointingHandCursor);
     done->setStyleSheet(primaryBtnQss());
     connect(done, &QPushButton::clicked, this, [this]() { d_->finish(); });
-    fLay->addWidget(d_->resetBtn);
     fLay->addStretch();
     fLay->addWidget(done);
     rootLay->addWidget(foot);
