@@ -622,7 +622,8 @@ TEST_CASE("director : fallback plan large quand le locuteur n'a aucune scene") {
 }
 
 TEST_CASE("director : sans scene ni plan large, rien n'est affiche (pas de crash)") {
-    Config c; // pas de wideShotScene, speaker sans scene
+    Config c;                 // pas de wideShotScene, speaker sans scene
+    c.audio.attackFrames = 1; // EPINGLE (A "parle" des le 1er frame ; on exerce bien la branche)
     Speaker a;
     a.id = "A";
     a.audioSource = "srcA";
