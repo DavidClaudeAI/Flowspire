@@ -503,8 +503,7 @@ public:
         updateChevron();
     }
 
-    // Ajoute un widget au corps repliable (a appeler apres construction).
-    void addWidget(QWidget* w) { bodyLay_->addWidget(w); }
+    // Corps repliable : l'appelant y ajoute son contenu via body()->addWidget(...).
     QVBoxLayout* body() { return bodyLay_; }
 
     void setExpanded(bool on) {
@@ -512,7 +511,6 @@ public:
         body_->setVisible(on);
         updateChevron();
     }
-    bool expanded() const { return expanded_; }
 
 private:
     // En-tete cliquable a callback (meme pattern que ClickButton, sans Q_OBJECT).
@@ -578,6 +576,16 @@ inline QLabel* makeHint(const QString& t) {
     auto* l = new QLabel(t);
     l->setWordWrap(true);
     l->setStyleSheet(QString("color:%1; font-size:13px;").arg(theme::kTextTertiary));
+    return l;
+}
+
+// Astuce/conseil en couleur ACCENT (12px, retour a la ligne) : pendant de makeHint (gris)
+// pour les conseils qu'on veut faire RESSORTIR (inciter a definir un plan large, rappel
+// calibration). Mutualise le style sinon copie entre l'assistant et les panneaux partages.
+inline QLabel* makeAccentTip(const QString& t) {
+    auto* l = new QLabel(t);
+    l->setWordWrap(true);
+    l->setStyleSheet(QString("color:%1; font-size:12px;").arg(theme::kAccent));
     return l;
 }
 

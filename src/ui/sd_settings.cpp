@@ -195,7 +195,7 @@ void SdSettings::Impl::showPanel(int p) {
         panels->mountCameras(host);
         break;
     case SdSettings::TabRhythm:
-        // Onglet "Realisation" : tempo + politique plan large fusionnes (includeWidePolicy).
+        // Onglet "Realisation" : style + tempo + politique plan large + sensibilite (a plat).
         panels->mountRhythm(host, RhythmLayout::Advanced);
         break;
     case SdSettings::TabProfiles:

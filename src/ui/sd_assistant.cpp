@@ -361,10 +361,7 @@ void SdAssistant::Impl::populateCalibration() {
     cl->addWidget(ways);
     contentLay[4]->addWidget(card);
 
-    auto* tip = new QLabel(i18n("Calibration.Tip"));
-    tip->setWordWrap(true);
-    tip->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kAccent));
-    contentLay[4]->addWidget(tip);
+    contentLay[4]->addWidget(makeAccentTip(i18n("Calibration.Tip")));
     contentLay[4]->addStretch();
 }
 

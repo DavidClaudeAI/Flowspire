@@ -374,10 +374,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     }
     if (assistant) {
         host->addWidget(sceneCard); // plan large mis en avant, tout en haut
-        auto* wideTip = new QLabel(i18n("Realisation.WideTip"));
-        wideTip->setWordWrap(true);
-        wideTip->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kAccent));
-        host->addWidget(wideTip);
+        host->addWidget(makeAccentTip(i18n("Realisation.WideTip")));
     }
 
     // Pointeurs croises vers les 4 curseurs de rythme : servent (a) au couplage min<=max
@@ -389,7 +386,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     auto ppRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto silRowPtr = std::make_shared<SliderRow*>(nullptr);
     // Holders des 4 curseurs de "politique plan large" (eux aussi pilotes par le style, avec
-    // badges %). Restent nullptr quand includeWidePolicy == false (panneau de l'assistant).
+    // badges %). Construits dans les DEUX dispositions (la politique plan large est partout).
     auto mCurRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto mWideRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto sLastRowPtr = std::make_shared<SliderRow*>(nullptr);
@@ -484,7 +481,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
         if (*silRowPtr) {
             (*silRowPtr)->setValue(static_cast<int>(std::lround(st.silenceReactionSeconds * 2.0))); // demi-secondes
         }
-        // Politique plan large (presente seulement si includeWidePolicy ; sinon holders nuls).
+        // Politique plan large (presente dans les deux dispositions ; holders toujours peuples).
         if (*mCurRowPtr) {
             (*mCurRowPtr)->setValue(st.whenMultiple.currentSpeaker);
         }

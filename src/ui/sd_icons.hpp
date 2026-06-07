@@ -26,9 +26,9 @@ enum class Icon {
     Pencil,       // editer un bloc depuis le recap
     Users,        // recap intervenants
     Video,        // recap cameras
-    Clock,        // recap / etape rythme
+    Clock,        // recap "Realisation" (resume assistant)
     Mic,          // sources audio (etape prerequis)
-    Info,         // bandeau d'info (etape rythme)
+    Info,         // aide contextuelle (i tooltips, withInfo/makeInfoIcon)
     // --- Parametres avances + Soutenir (Run 6) ---
     Bookmark,          // sidebar : profils
     Heart,             // soutenir le projet
