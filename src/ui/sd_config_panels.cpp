@@ -353,6 +353,33 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     const bool advanced = (layout == RhythmLayout::Advanced);
     const bool assistant = !advanced;
 
+    // Scene de plan large (SETUP : depend des cameras, INDEPENDANTE du style). Construite
+    // tot pour la placer differemment selon la disposition, SANS index absolu : en ASSISTANT
+    // elle est mise EN AVANT tout en haut (+ conseil incitatif) ; en AVANCE elle garde sa
+    // place a plat (ajoutee plus bas, avec la politique plan large). Chaque disposition
+    // ajoute ses widgets dans l'ordre voulu -> pas de host->insertWidget(index) fragile.
+    auto* sceneCard = makeCard(QStringLiteral("rhyWideScene"));
+    {
+        auto* scLay = new QVBoxLayout(sceneCard);
+        scLay->setContentsMargins(14, 12, 14, 12);
+        scLay->setSpacing(8);
+        scLay->addWidget(makeGroupHeader(i18n("Wide.SceneLabel")));
+        auto* wideCombo = new ComboField();
+        wideCombo->setAllowEmpty(true, i18n("Wide.ScenePlaceholder"));
+        wideCombo->setPlaceholder(i18n("Wide.ScenePlaceholder"));
+        wideCombo->setEmptyHint(i18n("Cameras.NoSceneAvail"));
+        wideCombo->setOptions(toOptions(scenes_), QString::fromStdString(cfg_.wideShotScene));
+        wideCombo->setOnChange([this](const QString& v) { cfg_.wideShotScene = v.toStdString(); });
+        scLay->addWidget(withInfo(wideCombo, i18n("Tip.Wide.Scene")));
+    }
+    if (assistant) {
+        host->addWidget(sceneCard); // plan large mis en avant, tout en haut
+        auto* wideTip = new QLabel(i18n("Realisation.WideTip"));
+        wideTip->setWordWrap(true);
+        wideTip->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kAccent));
+        host->addWidget(wideTip);
+    }
+
     // Pointeurs croises vers les 4 curseurs de rythme : servent (a) au couplage min<=max
     // (min et max se bornent mutuellement) et (b) au selecteur de style pour faire GLISSER
     // les curseurs. shared_ptr (holders) car les lambdas (refresh/onPick) sont definies
@@ -725,33 +752,13 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     tlay->addWidget(silReactR);
     advTarget->addWidget(timing);
 
-    // === Politique plan large : scene de groupe (SETUP) + "quand 2+ parlent" / "quand
-    //     silence" (poids PILOTES PAR LE STYLE). Presente dans les DEUX dispositions. =======
+    // === Politique plan large : "quand 2+ parlent" / "quand silence" (poids PILOTES PAR LE
+    //     STYLE). La scene de groupe (SETUP) a deja ete construite plus haut. ===============
     {
-        // -- Scene de groupe : SETUP (depend des cameras), hors style --
-        auto* sceneCard = makeCard(QStringLiteral("rhyWideScene"));
-        auto* scLay = new QVBoxLayout(sceneCard);
-        scLay->setContentsMargins(14, 12, 14, 12);
-        scLay->setSpacing(8);
-        scLay->addWidget(makeGroupHeader(i18n("Wide.SceneLabel")));
-        auto* wideCombo = new ComboField();
-        wideCombo->setAllowEmpty(true, i18n("Wide.ScenePlaceholder"));
-        wideCombo->setPlaceholder(i18n("Wide.ScenePlaceholder"));
-        wideCombo->setEmptyHint(i18n("Cameras.NoSceneAvail"));
-        wideCombo->setOptions(toOptions(scenes_), QString::fromStdString(cfg_.wideShotScene));
-        wideCombo->setOnChange([this](const QString& v) { cfg_.wideShotScene = v.toStdString(); });
-        scLay->addWidget(withInfo(wideCombo, i18n("Tip.Wide.Scene")));
-        // Assistant : la scene de plan large est REMONTEE tout en haut (avant le style) + un
-        // conseil incitatif (on pousse fortement a en definir une, pour la variete). Reglages
-        // avances : a sa place, a plat.
-        if (assistant) {
-            host->insertWidget(0, sceneCard);
-            auto* wideTip = new QLabel(i18n("Realisation.WideTip"));
-            wideTip->setWordWrap(true);
-            wideTip->setStyleSheet(QString("color:%1; font-size:12px;").arg(th::kAccent));
-            host->insertWidget(1, wideTip);
-        } else {
-            host->addWidget(sceneCard);
+        // En AVANCE, la scene de plan large prend sa place ICI (apres le tempo, ordre
+        // d'origine) ; en ASSISTANT elle a deja ete mise en avant tout en haut.
+        if (advanced) {
+            advTarget->addWidget(sceneCard);
         }
 
         // -- Quand 2+ parlent : { rester / plan large } (pilote par le style) --
