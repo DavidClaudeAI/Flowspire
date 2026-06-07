@@ -104,19 +104,26 @@ Give each person a **name** and link them to their OBS **audio source** (the mic
 
 For each person, choose **which scenes** to show when they speak, and give each one a **weight** (its chance of appearing relative to that person's other scenes). The percentage is recalculated automatically.
 
-### Screen 3 — Wide shot & priorities
+### Screen 3 — Directing
 
-![Wizard — wide shot and priorities](img/assistant_4.png)
+All the **directing** settings on a single, deliberately simple screen:
 
-Designate the **wide shot scene** (the group shot) and set **when to switch to it**: the share of the wide shot when **several** people speak, and when **nobody** speaks.
+- **Wide shot (group view)**: pick the group scene. A **tip** strongly encourages you to set one — it makes directing much livelier (Flowspire alternates with the group view between turns). Without a wide shot, cutting is more static.
+- **Directing style**: pick a **built-in** style (Chill / Cool / Speed) or one of **your saved** styles. The style sets the whole temperament at once.
+- **Advanced directing settings** *(collapsed, "editable later")*: a **drawer** that unfolds the tempo (min/max shot time, anti ping-pong, silence reaction delay), the priorities when **several** speak / when **nobody** speaks, and the **sensitivity**. No need to touch it to get started — it's the exact same content as the **Directing** tab in the Advanced settings (details in section 6).
 
-### Screen 4 — Rhythm & sensitivity
+> Managing your saved styles (create / rename / delete) is done in the **Advanced settings**; in the wizard, you only **pick** a style.
 
-![Wizard — rhythm and sensitivity](img/assistant_5.png)
+### Screen 4 — Calibrate the thresholds
 
-Adjust the **tempo** (minimum/maximum shot time, delays) and the **detection** (voice threshold). **The default values work very well** — leave them to get started; you may fine-tune them later with use, we'll see then.
+A **reminder**: there's nothing to set here. Flowspire detects who is speaking via a per-mic **threshold**, and it can find it **on its own** by listening to the voice.
 
-The **voice threshold** set here is **global**: it's the common **starting point** for everyone. Then, if one mic is louder than another, you'll be able to **adjust the threshold person by person directly in the dock** (the slider under each speaker). *(Detail of each setting: [section 6](#rhythm--sensitivity).)*
+Once the wizard is done, on the **dock**:
+
+1. Ask each guest to **speak** into their mic.
+2. Start the **auto-calibration** — **per person** (the wand button on each card) or **all thresholds at once**.
+
+Redo it whenever you change **room** or **microphone**.
 
 ### Screen 5 — Summary
 
