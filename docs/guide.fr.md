@@ -200,7 +200,7 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 | Réglage | Effet | Défaut |
 | --- | --- | --- |
 | **Temps mini de plan** | Durée minimale d'affichage d'un plan avant qu'un changement soit permis (évite les coupes nerveuses). | 3 s |
-| **Temps maxi de plan** | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier. | 6 s |
+| **Temps maxi de plan** | Au-delà de cette durée sur le même plan, on rafraîchit la vue pour varier. | 8 s |
 | **Retour au plan large sur échange rapide** | Quand deux personnes se répondent du tac au tac (chacune seule à son tour), au lieu de faire l'essuie-glace on **se recule sur le plan large** le temps que ça respire, puis on repart. **0 = désactivé** ; **n'agit que si un plan large existe** (sinon c'est le temps mini qui régule). | 0 (désactivé) |
 | **Délai avant réaction au silence** | Quand **plus personne** ne parle, on **reste sur le plan courant** ce temps avant de basculer (plan large / dernier orateur). Évite de lâcher quelqu'un sur une simple respiration ; s'il reprend dans l'intervalle, on ne l'a jamais quitté. **N'affecte que le silence** : passer à un intervenant qui prend la parole reste immédiat. **« Immédiat »** = bascule sans attendre. | 1,5 s |
 **La tendance plan large** *(pilotée par le style)* :
@@ -208,8 +208,8 @@ Ajoutez **plusieurs** scènes à une personne pour obtenir de la variété (ex. 
 | Réglage | Effet | Défaut (Cool) |
 | --- | --- | --- |
 | **Scène de plan large** | La scène de groupe, montrée quand plusieurs parlent ou qu'un plan d'ensemble s'impose. **Laissez vide pour ne jamais l'utiliser** (le moteur s'adapte alors sans plan large). | — |
-| **Quand plusieurs parlent** | Poids du tirage entre *rester sur l'actuel* / *plan large*. Le **volume n'est plus un critère** (« le plus fort » a été retiré) ; mettre quelqu'un en avant se fait naturellement quand il garde la parole. | rester 5 / large 100 |
-| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. | dernier 5 / large 100 |
+| **Quand plusieurs parlent** | Poids du tirage entre *rester sur l'actuel* / *plan large*. Le **volume n'est plus un critère** (« le plus fort » a été retiré) ; mettre quelqu'un en avant se fait naturellement quand il garde la parole. | rester 10 / large 94 |
+| **Quand personne ne parle** | Poids du tirage entre *dernier orateur* / *plan large*. | dernier 10 / large 94 |
 
 **La sensibilité** *(indépendante du style — calibration micro/salle)* :
 

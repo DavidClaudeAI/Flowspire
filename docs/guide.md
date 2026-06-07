@@ -200,7 +200,7 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 | Setting | Effect | Default |
 | --- | --- | --- |
 | **Minimum shot time** | Minimum time a shot is shown before a change is allowed (avoids jittery cuts). | 3 s |
-| **Maximum shot time** | Past this time on the same shot, we refresh the view to vary it. | 6 s |
+| **Maximum shot time** | Past this time on the same shot, we refresh the view to vary it. | 8 s |
 | **Pull back to wide on fast exchanges** | When two people trade lines back and forth (each alone in turn), instead of whip-paning we **pull back to the wide shot** for a beat, then resume. **0 = disabled**; **only acts if a wide shot exists** (otherwise the minimum time governs). | 0 (disabled) |
 | **Silence reaction delay** | When **nobody** speaks, we **stay on the current shot** for this long before switching (wide shot / last speaker). Avoids dropping someone on a mere breath; if they resume within the delay, we never left them. **Only affects silence**: switching to a speaker who starts talking stays immediate. **"Immediate"** = switch without waiting. | 1.5 s |
 
@@ -209,8 +209,8 @@ Add **several** scenes to a person to get variety (e.g. *close-up 90* + *reactio
 | Setting | Effect | Default (Cool) |
 | --- | --- | --- |
 | **Wide shot scene** | The group scene, shown when several people speak or when a group shot is called for. **Leave empty to never use it** (the engine then adapts without a wide shot). | — |
-| **When several speak** | Weight of the pick between *stay on the current one* / *wide shot*. Volume is **no longer a criterion** ("the loudest" was removed); featuring someone happens naturally when they keep the floor. | stay 5 / wide 100 |
-| **When nobody speaks** | Weight of the pick between *last speaker* / *wide shot*. | last 5 / wide 100 |
+| **When several speak** | Weight of the pick between *stay on the current one* / *wide shot*. Volume is **no longer a criterion** ("the loudest" was removed); featuring someone happens naturally when they keep the floor. | stay 10 / wide 94 |
+| **When nobody speaks** | Weight of the pick between *last speaker* / *wide shot*. | last 10 / wide 94 |
 
 **Sensitivity** *(independent of the style — mic/room calibration)*:
 
