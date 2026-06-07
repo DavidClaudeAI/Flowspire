@@ -11,18 +11,13 @@ using nlohmann::json;
 
 std::vector<RhythmStyle> builtinRhythmStyles() {
     // {nom, mini, maxi, grace silence, anti ping-pong, whenMultiple{rester,large}, whenSilence{dernier,large}}
-    // Valeurs de depart (a affiner en reel). La tendance plan large fait partie du temperament :
-    // Speed reste serre quand 2+ parlent (rester >> large) ; Chill/Cool privilegient le groupe.
+    // Valeurs affinees en reel (2026-06-07). La tendance plan large fait partie du temperament :
+    // Chill/Cool privilegient FORTEMENT le groupe (10/94) ; Speed reste plus serre sur l'orateur
+    // (40/60) pour suivre l'action. Cool == les defauts d'usine (cf. config.hpp, garde le couplage).
     return {
-        {"Chill", 5.0, 10.0, 2.5, 0.0, {10, 90}, {10, 90}}, // pose : plans longs, plan large genereux
-        {"Cool", 3.0, 6.0, 1.5, 0.0, {5, 100}, {5, 100}},   // equilibre = reglage reel "Cyp Live"
-        {"Speed",
-         2.0,
-         4.0,
-         1.0,
-         5.0,
-         {65, 10},
-         {30, 70}}, // vif : serre en multi, large surtout au silence ; anti ping-pong arme
+        {"Chill", 5.0, 12.0, 2.0, 0.0, {10, 94}, {10, 94}}, // pose : plans longs, plan large tres genereux
+        {"Cool", 3.0, 8.0, 1.5, 0.0, {10, 94}, {10, 94}},   // equilibre = defauts d'usine
+        {"Speed", 2.0, 4.0, 1.0, 3.0, {40, 60}, {25, 75}},  // vif : reste plus sur l'orateur ; anti ping-pong arme
     };
 }
 
