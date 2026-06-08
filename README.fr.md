@@ -93,7 +93,7 @@ flowchart TD
     Q -->|plusieurs| O2["rester sur l'orateur · plan large"]
     Q -->|personne| O3["dernier orateur · plan large"]
     O1 & O2 & O3 --> S["🎬 Votre style de réalisation décide<br/>Chill · Cool · Speed · le vôtre<br/>(tirage pondéré + tempo + tendance plan large)"]
-    S --> N["▶ plan suivant — organique, jamais deux fois pareil"]
+    S --> N["▶ plan suivant — organique et imprévisible"]
 ```
 
 Le **style de réalisation** (Chill / Cool / Speed, ou le vôtre) règle d'un coup le tempo **et** la tendance au plan large de ces trois situations. Par-dessus, des **garde-fous** évitent la nervosité : **temps mini** d'un plan (pas de coupe sur un rire), **délai de silence** (pas de coupe sur une respiration), **temps maxi** (on rafraîchit pour varier), **retour au plan large sur échange rapide** (quand deux personnes se répondent du tac au tac, on se recule un instant sur le groupe).

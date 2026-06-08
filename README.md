@@ -93,7 +93,7 @@ flowchart TD
     Q -->|several talk| O2["stay on the speaker · wide shot"]
     Q -->|nobody| O3["last speaker · wide shot"]
     O1 & O2 & O3 --> S["🎬 Your directing style decides<br/>Chill · Cool · Speed · your own<br/>(weighted pick + tempo + wide-shot tendency)"]
-    S --> N["▶ next shot — organic, never the same twice"]
+    S --> N["▶ next shot — organic and unpredictable"]
 ```
 
 The **directing style** (Chill / Cool / Speed, or your own) sets, in one click, the tempo **and** the wide-shot tendency across these three situations. On top of that, **safeguards** prevent jitter: **minimum shot time** (no cut on a laugh), **silence delay** (no cut on a breath), **maximum shot time** (we refresh to vary), **pull back to the wide shot on fast exchanges** (when two people trade lines back and forth, we step back to the group for a beat).
