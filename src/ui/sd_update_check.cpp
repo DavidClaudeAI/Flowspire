@@ -40,9 +40,13 @@ constexpr int kNetworkTimeoutMs = 15000;
 std::string sanitizeReleaseUrl(const std::string& raw) {
     const QUrl ref(QString::fromUtf8(kReleasesPageUrl));
     const QString safePathPrefix = ref.path().section('/', 0, 2) + QStringLiteral("/releases");
-    const QUrl url(QString::fromStdString(raw), QUrl::StrictMode);
+    // adjusted(NormalizePathSegments) resout les '.'/'..' AVANT de valider : sinon un path
+    // '/owner/repo/releases/../../evil' passerait le startsWith mais le navigateur le resoudrait
+    // vers github.com/evil (open-redirect). Le !contains("/..") est un garde-fou supplementaire.
+    const QUrl url = QUrl(QString::fromStdString(raw), QUrl::StrictMode).adjusted(QUrl::NormalizePathSegments);
+    const QString path = url.path();
     if (url.isValid() && url.scheme() == QStringLiteral("https") && url.host() == ref.host() &&
-        url.path().startsWith(safePathPrefix)) {
+        path.startsWith(safePathPrefix) && !path.contains(QStringLiteral("/.."))) {
         return url.toString(QUrl::FullyEncoded).toStdString();
     }
     return kReleasesPageUrl;
