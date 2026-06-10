@@ -261,6 +261,12 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     updateBanner_->setVisible(false);
     root->addWidget(updateBanner_);
 
+    // --- Etat de la realisation (AU-DESSUS des profils, demande David) : statut auto on/off,
+    // fin et colore (vert actif / orange en pause), a la taille du titre "Realisation" (kFontLabel). ---
+    modeLabel_ = new QLabel();
+    modeLabel_->setWordWrap(true);
+    root->addWidget(modeLabel_);
+
     // --- Selecteur de profil (Run 7) : "Profil : [ nom v ] [icone]" ---
     // Bascule du profil actif en 1 clic (le select) + icone qui ouvre les
     // parametres avances directement sur l'onglet Profils (demande David).
@@ -360,10 +366,6 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
     styleBarLay->addWidget(styleButton_, 1);
     styleBarLay->addWidget(styleEdit);
     root->addWidget(styleBar_);
-
-    modeLabel_ = new QLabel();
-    modeLabel_->setWordWrap(true);
-    root->addWidget(modeLabel_);
 
     // --- Section scenes (intervenants + plan large) ---
     // En-tete "SCENES" a gauche + bouton "Calibrer tous les seuils" (#3) a droite.
@@ -1134,10 +1136,12 @@ void SdDock::updateModeLabel() {
     modeLabel_->setVisible(true);
     if (autoEnabled_) {
         modeLabel_->setText(i18n("Mode.Auto.On"));
-        modeLabel_->setStyleSheet(QString("color:%1; font-weight:600;").arg(th::kSuccess));
+        modeLabel_->setStyleSheet(
+            QString("color:%1; font-size:%2px; font-weight:400;").arg(th::kSuccess).arg(th::kFontLabel));
     } else {
         modeLabel_->setText(i18n("Mode.Auto.Off"));
-        modeLabel_->setStyleSheet(QString("color:%1; font-weight:600;").arg(th::kWarning));
+        modeLabel_->setStyleSheet(
+            QString("color:%1; font-size:%2px; font-weight:400;").arg(th::kWarning).arg(th::kFontLabel));
     }
 }
 
