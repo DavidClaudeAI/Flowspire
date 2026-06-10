@@ -496,6 +496,11 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 }
 
 SdDock::~SdDock() {
+    // L'hote (plugin-main) oublie ce dock AVANT toute destruction : il remet son pointeur global
+    // a nullptr -> une hotkey pressee pendant la fermeture ne peut plus router vers un objet mort.
+    if (onDestroyed_) {
+        onDestroyed_();
+    }
     // Retrait du callback AVANT toute destruction : plus aucun evenement frontend
     // ne sera route vers ce dock apres ce point.
     obs_frontend_remove_event_callback(frontendEventCb, this);
@@ -506,6 +511,10 @@ SdDock::~SdDock() {
         statusPushTimer_->stop(); // plus aucun envoi de statut lance pendant la destruction
     }
     monitor_.stop();
+}
+
+void SdDock::setOnDestroyed(std::function<void()> onDestroyed) {
+    onDestroyed_ = std::move(onDestroyed);
 }
 
 bool SdDock::eventFilter(QObject* watched, QEvent* event) {

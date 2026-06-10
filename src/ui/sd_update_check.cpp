@@ -22,10 +22,28 @@ namespace {
 constexpr const char* kReleasesApiUrl = "https://api.github.com/repos/DavidClaudeAI/Flowspire/releases/latest";
 constexpr const char* kReleasesPageUrl = "https://github.com/DavidClaudeAI/Flowspire/releases/latest";
 
+// Plafond de transfert : une connexion qui s'enlise (proxy casse, pare-feu DROP) ne doit pas
+// laisser la requete pendre jusqu'a la destruction du dock. Sans impact fonctionnel (async).
+constexpr int kNetworkTimeoutMs = 15000;
+
+// L'URL ouverte au clic du bandeau "Mettre a jour" provient du JSON de l'API GitHub (champ
+// html_url) : donnee NON maitrisee. Defense en profondeur derriere TLS -> on ne garde l'URL que
+// si c'est bien du https sur github.com ; sinon on retombe sur la page de releases (constante
+// sure). Empeche qu'une reponse alteree (compte compromis, proxy MITM) fasse ouvrir un schema
+// dangereux (file://, javascript:...).
+std::string sanitizeReleaseUrl(const std::string& raw) {
+    const QUrl url(QString::fromStdString(raw));
+    if (url.scheme() == QStringLiteral("https") && url.host() == QStringLiteral("github.com")) {
+        return raw;
+    }
+    return kReleasesPageUrl;
+}
+
 } // namespace
 
 void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::function<void(const UpdateInfo&)> onResult) {
     auto* nam = new QNetworkAccessManager(ctx);
+    nam->setTransferTimeout(kNetworkTimeoutMs); // ne pas laisser une connexion bloquee pendre
 
     QNetworkRequest request{QUrl(QString::fromUtf8(kReleasesApiUrl))};
     // GitHub exige un User-Agent, et on fige la version de l'API consommee.
@@ -53,7 +71,7 @@ void checkForUpdate(QObject* ctx, const std::string& currentVersion, std::functi
                         // affichage coherent avec le label "Flowspire v%1".
                         info.latestVersion = std::to_string(parsed->major) + "." + std::to_string(parsed->minor) + "." +
                                              std::to_string(parsed->patch);
-                        info.releaseUrl = json.value("html_url", std::string{kReleasesPageUrl});
+                        info.releaseUrl = sanitizeReleaseUrl(json.value("html_url", std::string{}));
                     }
                 } catch (...) {
                     // JSON inattendu -> on ne notifie pas (silencieux).

@@ -18,6 +18,9 @@ namespace {
 // Nom (brut) de la variable personnalisee a creer cote Companion. Source UNIQUE : si on
 // le change, le mettre a jour ICI et dans le guide utilisateur (section integration).
 constexpr const char* kCustomVariableName = "flowspire_active";
+// Plafond de transfert : une cible injoignable (port ferme, pare-feu DROP) ne doit pas laisser la
+// requete pendre jusqu'a la destruction du dock. Best-effort, async -> aucun impact sur le pilotage.
+constexpr int kNetworkTimeoutMs = 10000;
 } // namespace
 
 void pushRegieStatus(QObject* ctx, const std::string& host, int port, bool active) {
@@ -49,6 +52,7 @@ void pushRegieStatus(QObject* ctx, const std::string& host, int port, bool activ
     // ctx (le dock) possede le manager -> il est detruit avec lui ; aucune requete ne
     // survit au dock. La valeur est dans le query param, le corps du POST reste vide.
     auto* nam = new QNetworkAccessManager(ctx);
+    nam->setTransferTimeout(kNetworkTimeoutMs); // best-effort : ne pas laisser une cible muette bloquer
     QNetworkRequest request{url};
     request.setRawHeader("User-Agent", "Flowspire");
 
