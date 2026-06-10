@@ -42,11 +42,13 @@ std::string sanitizeReleaseUrl(const std::string& raw) {
     const QString safePathPrefix = ref.path().section('/', 0, 2) + QStringLiteral("/releases");
     // adjusted(NormalizePathSegments) resout les '.'/'..' AVANT de valider : sinon un path
     // '/owner/repo/releases/../../evil' passerait le startsWith mais le navigateur le resoudrait
-    // vers github.com/evil (open-redirect). Le !contains("/..") est un garde-fou supplementaire.
+    // vers github.com/evil (open-redirect). Frontiere de slash sur le prefixe (rejette
+    // '/releases-evil') + garde-fou !contains("/..").
     const QUrl url = QUrl(QString::fromStdString(raw), QUrl::StrictMode).adjusted(QUrl::NormalizePathSegments);
     const QString path = url.path();
     if (url.isValid() && url.scheme() == QStringLiteral("https") && url.host() == ref.host() &&
-        path.startsWith(safePathPrefix) && !path.contains(QStringLiteral("/.."))) {
+        (path == safePathPrefix || path.startsWith(safePathPrefix + QStringLiteral("/"))) &&
+        !path.contains(QStringLiteral("/.."))) {
         return url.toString(QUrl::FullyEncoded).toStdString();
     }
     return kReleasesPageUrl;
