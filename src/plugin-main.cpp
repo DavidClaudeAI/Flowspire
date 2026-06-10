@@ -126,17 +126,22 @@ static void speakerHotkeyName(int index, char* out, size_t cap) {
 }
 
 static void registerHotkeys(void) {
-    g_hkToggleAuto = obs_hotkey_register_frontend(kHkToggleAutoName, "Flowspire : activer/desactiver le pilotage auto",
-                                                  hkToggleAuto, nullptr);
+    // Libelles affiches dans les reglages de raccourcis d'OBS -> i18n native (obs_module_text),
+    // comme toute chaine visible par l'utilisateur (regle projet). Dispo sans Qt a ce stade.
+    g_hkToggleAuto =
+        obs_hotkey_register_frontend(kHkToggleAutoName, obs_module_text("Hotkey.ToggleAuto"), hkToggleAuto, nullptr);
     g_hkForceWide =
-        obs_hotkey_register_frontend(kHkForceWideName, "Flowspire : forcer le plan large", hkForceWide, nullptr);
+        obs_hotkey_register_frontend(kHkForceWideName, obs_module_text("Hotkey.ForceWide"), hkForceWide, nullptr);
 
     for (int i = 0; i < kMaxSpeakerHotkeys; ++i) {
         g_speakerHkCtx[i].index = i;
         char name[64];
         char desc[96];
         speakerHotkeyName(i, name, sizeof(name));
-        std::snprintf(desc, sizeof(desc), "Flowspire : forcer l'intervenant %d", i + 1);
+        // Format LITTERAL "%s %d" : le libelle traduit est un PREFIXE (sans specificateur), donc une
+        // traduction hostile (%s/%n a la place de %d) ne peut pas devenir une format-string. On accole
+        // le numero d'intervenant (1-based) apres le prefixe.
+        std::snprintf(desc, sizeof(desc), "%s %d", obs_module_text("Hotkey.ForceSpeaker"), i + 1);
         g_hkForceSpeaker[i] = obs_hotkey_register_frontend(name, desc, hkForceSpeaker, &g_speakerHkCtx[i]);
     }
     obs_log(LOG_INFO, "Flowspire hotkeys registered");
@@ -308,6 +313,16 @@ void obs_module_post_load(void) {
         }
 
         g_dock.store(dock, std::memory_order_release);
+        // Quand OBS detruira le dock (fermeture / rechargement du plugin), il nous le signale
+        // depuis SON destructeur, AVANT de liberer l'objet -> on remet g_dock a nullptr, mais
+        // seulement s'il pointe encore sur CE dock (compare_exchange : un rechargement ne doit pas
+        // effacer un dock plus recent). REDUIT (sans 100% fermer) la fenetre d'use-after-free a la
+        // fermeture d'OBS : le residu (presser une hotkey dans les ~ms de destruction) demanderait un
+        // verrou sur le hot-path des hotkeys, juge disproportionne (risque tres faible).
+        dock->setOnDestroyed([dock]() {
+            sd::ui::SdDock* expected = dock;
+            g_dock.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel);
+        });
         obs_log(LOG_INFO, "Flowspire dock registered");
 
         // Les hotkeys ne sont utiles qu'avec un dock vivant pour les router.

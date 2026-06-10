@@ -54,6 +54,11 @@ public:
     // frontend OBS (auto-refresh quand OBS a fini de charger / change de collection).
     void reload();
 
+    // Notifie l'hote (plugin-main) AU DEBUT du destructeur, avant toute destruction de membre :
+    // lui permet d'oublier ce dock AVANT qu'il ne meure -> REDUIT la fenetre d'use-after-free entre
+    // la destruction du dock par OBS (fermeture / rechargement) et obs_module_unload.
+    void setOnDestroyed(std::function<void()> onDestroyed);
+
 protected:
     void customEvent(QEvent* event) override;
     // Rend le badge d'etat cliquable (toggle du pilotage auto) sans en faire un bouton.
@@ -195,6 +200,9 @@ private:
     std::string lastPushedHost_;
     int lastPushedPort_ = 0;
     int shownStatus_ = -1;
+
+    // Callback "je meurs" injectee par l'hote (plugin-main) : appelee en tout debut de ~SdDock.
+    std::function<void()> onDestroyed_;
 };
 
 } // namespace sd::ui
