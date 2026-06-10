@@ -55,7 +55,7 @@ public:
     void reload();
 
     // Notifie l'hote (plugin-main) AU DEBUT du destructeur, avant toute destruction de membre :
-    // lui permet d'oublier ce dock AVANT qu'il ne meure -> ferme la fenetre d'use-after-free entre
+    // lui permet d'oublier ce dock AVANT qu'il ne meure -> REDUIT la fenetre d'use-after-free entre
     // la destruction du dock par OBS (fermeture / rechargement) et obs_module_unload.
     void setOnDestroyed(std::function<void()> onDestroyed);
 

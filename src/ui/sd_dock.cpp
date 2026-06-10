@@ -498,8 +498,8 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 }
 
 SdDock::~SdDock() {
-    // L'hote (plugin-main) oublie ce dock AVANT toute destruction : il remet son pointeur global
-    // a nullptr -> une hotkey pressee pendant la fermeture ne peut plus router vers un objet mort.
+    // L'hote (plugin-main) oublie ce dock AVANT toute destruction : il remet son pointeur global a
+    // nullptr -> limite le risque qu'une hotkey pressee pendant la fermeture route vers un objet mort.
     if (onDestroyed_) {
         onDestroyed_();
     }

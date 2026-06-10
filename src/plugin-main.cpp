@@ -138,8 +138,10 @@ static void registerHotkeys(void) {
         char name[64];
         char desc[96];
         speakerHotkeyName(i, name, sizeof(name));
-        // La valeur localisee porte un %d (intervenant 1-based) consomme par snprintf.
-        std::snprintf(desc, sizeof(desc), obs_module_text("Hotkey.ForceSpeaker"), i + 1);
+        // Format LITTERAL "%s %d" : le libelle traduit est un PREFIXE (sans specificateur), donc une
+        // traduction hostile (%s/%n a la place de %d) ne peut pas devenir une format-string. On accole
+        // le numero d'intervenant (1-based) apres le prefixe.
+        std::snprintf(desc, sizeof(desc), "%s %d", obs_module_text("Hotkey.ForceSpeaker"), i + 1);
         g_hkForceSpeaker[i] = obs_hotkey_register_frontend(name, desc, hkForceSpeaker, &g_speakerHkCtx[i]);
     }
     obs_log(LOG_INFO, "Flowspire hotkeys registered");
@@ -314,7 +316,9 @@ void obs_module_post_load(void) {
         // Quand OBS detruira le dock (fermeture / rechargement du plugin), il nous le signale
         // depuis SON destructeur, AVANT de liberer l'objet -> on remet g_dock a nullptr, mais
         // seulement s'il pointe encore sur CE dock (compare_exchange : un rechargement ne doit pas
-        // effacer un dock plus recent). Ferme la fenetre d'use-after-free a la fermeture d'OBS.
+        // effacer un dock plus recent). REDUIT (sans 100% fermer) la fenetre d'use-after-free a la
+        // fermeture d'OBS : le residu (presser une hotkey dans les ~ms de destruction) demanderait un
+        // verrou sur le hot-path des hotkeys, juge disproportionne (risque tres faible).
         dock->setOnDestroyed([dock]() {
             sd::ui::SdDock* expected = dock;
             g_dock.compare_exchange_strong(expected, nullptr, std::memory_order_acq_rel);

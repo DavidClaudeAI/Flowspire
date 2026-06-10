@@ -5,6 +5,7 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QObject>
+#include <QString>
 #include <QUrl>
 
 #include <nlohmann/json.hpp>
@@ -27,14 +28,22 @@ constexpr const char* kReleasesPageUrl = "https://github.com/DavidClaudeAI/Flows
 constexpr int kNetworkTimeoutMs = 15000;
 
 // L'URL ouverte au clic du bandeau "Mettre a jour" provient du JSON de l'API GitHub (champ
-// html_url) : donnee NON maitrisee. Defense en profondeur derriere TLS -> on ne garde l'URL que
-// si c'est bien du https sur github.com ; sinon on retombe sur la page de releases (constante
-// sure). Empeche qu'une reponse alteree (compte compromis, proxy MITM) fasse ouvrir un schema
-// dangereux (file://, javascript:...).
+// html_url) : donnee NON maitrisee. Defense en profondeur derriere TLS. On ne garde l'URL que si
+// TOUT est verifie, et on renvoie sa forme CANONIQUE (pas la chaine brute) :
+//  - StrictMode + isValid : pas de nettoyage silencieux qui ferait diverger la forme validee de
+//    la forme re-parsee a l'ouverture (faille de divergence de parseur) ;
+//  - host + CHEMIN des releases du depot (pas tout github.com) : bloque un open-redirect ;
+//  - reference (host + prefixe) derivee de kReleasesPageUrl -> un seul endroit a maintenir au
+//    renommage du depot (cf. constantes ci-dessus).
+// Sinon -> repli sur la page de releases (constante sure). Empeche d'ouvrir un schema dangereux
+// (file://, javascript:...) ou un chemin github.com arbitraire si la reponse JSON est alteree.
 std::string sanitizeReleaseUrl(const std::string& raw) {
-    const QUrl url(QString::fromStdString(raw));
-    if (url.scheme() == QStringLiteral("https") && url.host() == QStringLiteral("github.com")) {
-        return raw;
+    const QUrl ref(QString::fromUtf8(kReleasesPageUrl));
+    const QString safePathPrefix = ref.path().section('/', 0, 2) + QStringLiteral("/releases");
+    const QUrl url(QString::fromStdString(raw), QUrl::StrictMode);
+    if (url.isValid() && url.scheme() == QStringLiteral("https") && url.host() == ref.host() &&
+        url.path().startsWith(safePathPrefix)) {
+        return url.toString(QUrl::FullyEncoded).toStdString();
     }
     return kReleasesPageUrl;
 }
