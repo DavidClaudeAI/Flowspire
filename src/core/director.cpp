@@ -380,7 +380,11 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
             const std::string scene = drawSceneFromPool(sp->scenes);
             if (!scene.empty()) {
                 outScene = scene;
-                outOwner = owner;
+                // Invariant owner vide <=> plan large : le plan large global peut figurer dans le
+                // pool d'un intervenant ; s'il est tire, il reste le plan large (owner vide),
+                // comme resolveBreather et sceneInProgram. Sinon l'anti ping-pong et la
+                // memoisation raisonneraient sur un "faux proprietaire" du plan large.
+                outOwner = (scene == cfg_.wideShotScene) ? std::string{} : owner;
                 return true;
             }
         }
@@ -394,7 +398,9 @@ bool Director::resolvePlayable(const std::string& owner, bool wide, std::string&
                 const std::string scene = drawSceneFromPool(sp->scenes);
                 if (!scene.empty()) {
                     outScene = scene;
-                    outOwner = loud;
+                    // Meme invariant que ci-dessus : un plan large tire dans le pool du plus
+                    // fort n'a pas de proprietaire.
+                    outOwner = (scene == cfg_.wideShotScene) ? std::string{} : loud;
                     return true;
                 }
             }
@@ -462,7 +468,10 @@ Decision Director::forceSpeaker(double now, const std::string& speakerId) {
     if (scene.empty()) {
         return out; // pas de scene jouable pour cet intervenant.
     }
-    commit(now, scene, speakerId, /*hold=*/true, out, /*recordLeave=*/false);
+    // Invariant owner vide <=> plan large : si le tirage du pool tombe sur le plan large
+    // global, on le commite SANS proprietaire (comme resolvePlayable et resolveBreather).
+    const std::string owner = (scene == cfg_.wideShotScene) ? std::string{} : speakerId;
+    commit(now, scene, owner, /*hold=*/true, out, /*recordLeave=*/false);
     decisionKey_.clear(); // un forçage reinitialise la situation memorisee
     return out;
 }

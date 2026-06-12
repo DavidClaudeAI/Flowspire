@@ -1280,6 +1280,82 @@ TEST_CASE("director : repetition-max — la respiration re-tire dans le pool (re
     CHECK_FALSE(sawForcedWide);        // le plan large global n'est PAS force tant qu'une alternative existe
 }
 
+// --- Invariant "owner vide <=> plan large" (plan large present dans un pool) -----
+
+TEST_CASE("director : invariant owner vide — le plan large tire dans le pool d'un intervenant n'a pas de "
+          "proprietaire") {
+    // Cas reel : l'utilisateur met le plan large global DANS le pool d'un intervenant. Quand le
+    // tirage pondere tombe dessus, la Decision doit porter (plan large, owner vide), comme
+    // resolveBreather et sceneInProgram — jamais (plan large, owner=A).
+    // Pool A = A_cam(50) + Plateau(15) ; r=0.99 -> x=0.99*65 > 50 -> Plateau.
+    Director dir(repeatConfig({{"A_cam", 50}, {"Plateau", 15}}, 0), seq({0.99}));
+    const Decision d = dir.update(0.0, {{"A", mulToDb(0.9)}}); // A parle seul (Single)
+    CHECK(d.scene == "Plateau");
+    CHECK(d.owner.empty());
+    CHECK(d.switched);
+}
+
+TEST_CASE("director : invariant owner vide — forceSpeaker dont le tirage tombe sur le plan large rend un "
+          "owner vide") {
+    // Meme invariant cote forcage manuel : forcer A alors que le tirage de SON pool tombe sur le
+    // plan large global -> la Decision est (plan large, owner vide).
+    Director wideDraw(repeatConfig({{"A_cam", 50}, {"Plateau", 15}}, 0), seq({0.99}));
+    const Decision d = wideDraw.forceSpeaker(0.0, "A");
+    CHECK(d.scene == "Plateau");
+    CHECK(d.owner.empty());
+    CHECK(d.switched);
+    // Contraste : un tirage qui tombe sur une camera de A garde bien A comme proprietaire.
+    Director camDraw(repeatConfig({{"A_cam", 50}, {"Plateau", 15}}, 0), seq({0.0}));
+    const Decision d2 = camDraw.forceSpeaker(0.0, "A");
+    CHECK(d2.scene == "A_cam");
+    CHECK(d2.owner == "A");
+}
+
+TEST_CASE("director : invariant owner vide — quitter un plan large issu d'un pool n'arme PAS l'anti "
+          "ping-pong") {
+    // Non-regression : avant la correction, le plan large tire dans le pool de A portait owner=A.
+    // Basculer ensuite vers B armait ownerLeftAt_[A] a tort, et le retour rapide de A se faisait
+    // reculer sur le plan large (faux declenchement de navette). Quitter (plan large, owner vide)
+    // n'est PAS une navette (cf. commit) : le retour de A doit couper directement sur sa camera.
+    Config c;
+    c.wideShotScene = "Plateau";
+    c.timing.minShotSeconds = 1.0;
+    c.timing.maxShotSeconds = 30.0; // grand expres : aucun rafraichissement ne vient consommer le RNG
+    c.timing.silenceReactionSeconds = 0.0;
+    c.timing.pingPongWindowSeconds = 12.0; // fenetre LARGE : un faux armement se verrait forcement
+    c.audio.attackFrames = 1;              // parole detectee des le 1er frame
+    c.audio.releaseFrames = 2;             // relachement court -> transitions Single nettes
+    c.whenMultiple = {100, 0};             // multi : toujours "rester" -> pas de plan large impose pendant les
+    c.whenSilence = {100, 0};              // transitions (les frames multi/silence ne perturbent pas le scenario)
+    Speaker a;
+    a.id = "A";
+    a.name = "A";
+    a.audioSource = "sA";
+    a.scenes = {{"A_cam", 50}, {"Plateau", 50}}; // le plan large global figure dans le pool de A
+    Speaker b;
+    b.id = "B";
+    b.name = "B";
+    b.audioSource = "sB";
+    b.scenes = {{"B_close", 100}};
+    c.speakers = {a, b};
+    // RNG dans l'ordre des tirages : pool A (0.99 -> Plateau), multi, pool B, multi, pool A (0.0 -> A_cam).
+    Director dir(c, seq({0.99, 0.0, 0.0, 0.0, 0.0}));
+    const double hi = mulToDb(0.9);
+    // 1) A parle seul, le tirage de son pool tombe sur le plan large -> (Plateau, owner vide).
+    const Decision wide = dir.update(0.0, {{"A", hi}, {"B", kDbFloor}});
+    REQUIRE(wide.scene == "Plateau");
+    REQUIRE(wide.owner.empty());
+    // 2) B prend la parole -> on quitte le plan large pour B (ne doit PAS armer l'anti ping-pong).
+    dir.update(0.2, {{"A", kDbFloor}, {"B", hi}});
+    const Decision toB = dir.update(0.3, {{"A", kDbFloor}, {"B", hi}});
+    REQUIRE(toB.scene == "B_close");
+    // 3) A revient vite (dans la fenetre anti ping-pong) : pas de recul au plan large, on coupe sur lui.
+    dir.update(1.5, {{"A", hi}, {"B", kDbFloor}});
+    const Decision back = dir.update(1.6, {{"A", hi}, {"B", kDbFloor}});
+    CHECK(back.scene == "A_cam");
+    CHECK(back.owner == "A");
+}
+
 // --- Versions semantiques (systeme de mise a jour) ------------------------------
 
 TEST_CASE("version : parseSemVer accepte X.Y.Z (prefixe 'v' et espaces toleres)") {
