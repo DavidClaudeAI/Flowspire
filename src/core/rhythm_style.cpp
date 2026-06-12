@@ -24,7 +24,7 @@ std::vector<RhythmStyle> builtinRhythmStyles() {
         {"Chill", 3.5, 13.0, 1.0, 0.0, 5, {10, 94}, {10, 94}},      // pose
         {"Cool", 3.0, 10.0, 1.0, 0.0, 4, {10, 94}, {10, 94}},       // equilibre = defauts d'usine (hors repetition)
         {"Fast", 2.0, 7.0, 1.0, 4.0, 2, {25, 75}, {20, 80}},        // vif : retours frequents ; anti ping-pong arme
-        {"Very Fast", 1.5, 4.0, 1.0, 3.0, 1, {40, 60}, {25, 75}}, // nerveux : 1 plan par prise ; reste sur l'orateur
+        {"Very Fast", 1.5, 4.0, 1.0, 3.0, 1, {40, 60}, {25, 75}},   // nerveux : 1 plan par prise ; reste sur l'orateur
     };
 }
 

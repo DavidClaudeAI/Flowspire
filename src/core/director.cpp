@@ -28,8 +28,8 @@ void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
     ownerLeftAt_.clear(); // memoire anti ping-pong : repart de zero a chaque (re)config
-    silenceSince_ = -1.0;  // grace de silence : on repart "pas en silence" a chaque (re)config
-    planRepeatCount_ = 0;  // repetition-max : aucun plan encore tenu
+    silenceSince_ = -1.0; // grace de silence : on repart "pas en silence" a chaque (re)config
+    planRepeatCount_ = 0; // repetition-max : aucun plan encore tenu
     // On repart de zero puis on SEME les overrides depuis la config : le seuil
     // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
     // donc la config/JSON reste la source de verite au chargement. Un intervenant
@@ -98,7 +98,7 @@ bool Director::isPingPongBounce(double now, const std::string& owner) const {
 }
 
 bool Director::needsRepetitionBreather(const std::string& candidate) const {
-    return cfg_.timing.maxPlanRepeats > 0                      // feature active (opt-in)
+    return cfg_.timing.maxPlanRepeats > 0                     // feature active (opt-in)
            && candidate == currentScene_                      // on rejouerait EXACTEMENT le meme plan
            && currentScene_ != cfg_.wideShotScene             // le plan large lui-meme n'est pas "martele"
            && planRepeatCount_ >= cfg_.timing.maxPlanRepeats; // deja tenu N fenetres temps-max

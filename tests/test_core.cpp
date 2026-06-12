@@ -376,7 +376,7 @@ TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
     CHECK(round[0].name == "Mon debat");
     CHECK(round[0].whenMultiple.currentSpeaker == 40); // herite de Very Fast
     CHECK(round[0].pingPongWindowSeconds == doctest::Approx(3.0));
-    CHECK(round[0].maxPlanRepeats == 1);               // repetition-max capturee dans le preset perso
+    CHECK(round[0].maxPlanRepeats == 1); // repetition-max capturee dans le preset perso
     CHECK(round[1].name == "Talk pose");
     CHECK(round[1].maxShotSeconds == doctest::Approx(14.0));
     CHECK(round[1].whenSilence.wideShot == 100);
@@ -1388,7 +1388,7 @@ TEST_CASE("rhythm style : les 5 built-ins, ordre et valeurs") {
 
 TEST_CASE("rhythm style : appliquer un style a 0 DESARME l'anti ping-pong (pas seulement laisse)") {
     Config c;
-    c.timing.pingPongWindowSeconds = 12.0; // anti ping-pong arme au prealable
+    c.timing.pingPongWindowSeconds = 12.0;              // anti ping-pong arme au prealable
     const RhythmStyle posed = builtinRhythmStyles()[0]; // Very Chill (pose, anti ping-pong a 0)
     REQUIRE(posed.pingPongWindowSeconds == doctest::Approx(0.0));
     applyRhythmStyle(c, posed);

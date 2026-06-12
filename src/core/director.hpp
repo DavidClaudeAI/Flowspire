@@ -173,7 +173,7 @@ private:
     // lesquelles le MEME plan (currentScene_) est reste a l'antenne. Incremente quand un
     // rafraichissement rejoue la meme scene, remis a 1 des qu'on change de cadrage (modele A :
     // par scene, jamais par intervenant). Au-dela de cfg.timing.maxPlanRepeats, on respire sur le
-    // plan large (cf. shouldBreatheForRepetition). 0 tant qu'aucun plan n'a ete affiche.
+    // plan large (cf. needsRepetitionBreather + resolveBreather). 0 tant qu'aucun plan n'a ete affiche.
     int planRepeatCount_ = 0;
 };
 

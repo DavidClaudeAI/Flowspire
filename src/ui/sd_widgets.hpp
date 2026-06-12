@@ -214,7 +214,9 @@ inline QWidget* withInfo(QWidget* field, const QString& tip) {
 class FlowLayout : public QLayout {
 public:
     explicit FlowLayout(QWidget* parent = nullptr, int margin = 0, int hSpacing = 8, int vSpacing = 8)
-        : QLayout(parent), hSpace_(hSpacing), vSpace_(vSpacing) {
+        : QLayout(parent),
+          hSpace_(hSpacing),
+          vSpace_(vSpacing) {
         setContentsMargins(margin, margin, margin, margin);
     }
     ~FlowLayout() override {

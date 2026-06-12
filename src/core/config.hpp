@@ -40,7 +40,7 @@ struct AudioSettings {
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
-    double minShotSeconds = 3.0; // verrou anti-nervosite
+    double minShotSeconds = 3.0;  // verrou anti-nervosite
     double maxShotSeconds = 10.0; // rafraichissement du plan (= style Cool ; recale sur corpus 2026-06-12)
     // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
