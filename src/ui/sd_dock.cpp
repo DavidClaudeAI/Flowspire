@@ -318,7 +318,7 @@ SdDock::SdDock(QWidget* parent) : QWidget(parent) {
 
     // --- Selecteur de STYLE de realisation (Etape 4) : "Realisation : [ style v ]" ---
     // Change le style EN DIRECT (applique + sauve le profil actif + recharge le moteur).
-    // Menu groupe : styles FOURNIS (Chill/Cool/Speed) + separateur "Mes styles" + persos.
+    // Menu groupe : styles FOURNIS (livres) + separateur "Mes styles" + persos.
     // Masque en etat d'accueil (pas de style a regler sans config). Calque le selecteur de profil.
     styleBar_ = new QWidget();
     auto* styleBarLay = new QHBoxLayout(styleBar_);
@@ -1331,7 +1331,7 @@ void SdDock::showStyleMenu() {
                            .arg(rgba(th::kAccent, 0.25)));
     menu.setMinimumWidth(styleButton_->width());
     const std::string active = activeConfig_.styleName;
-    // Styles FOURNIS (Chill/Cool/Speed) en haut.
+    // Styles FOURNIS (livres) en haut.
     for (const auto& b : sd::core::builtinRhythmStyles()) {
         QAction* a = menu.addAction(QString::fromStdString(b.name));
         a->setCheckable(true);

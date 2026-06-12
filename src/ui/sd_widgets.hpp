@@ -17,7 +17,9 @@
 #include <QFrame>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QLayout>
 #include <QLineEdit>
+#include <QList>
 #include <QMenu>
 #include <QMouseEvent>
 #include <QPixmap>
@@ -200,6 +202,80 @@ inline QWidget* withInfo(QWidget* field, const QString& tip) {
     lay->addWidget(makeInfoIcon(tip), 0, Qt::AlignVCenter);
     return row;
 }
+
+// ===========================================================================
+// FlowLayout — dispose les enfants horizontalement et passe a la LIGNE quand la largeur
+// disponible est atteinte (style "chips / tags"). Sert a ce qu'une rangee dont le nombre
+// d'elements peut grandir (ex. les pastilles de style : 5 styles + "Perso") n'impose pas une
+// largeur mini trop grande et ne deborde pas une fenetre etroite : elle s'enroule sur plusieurs
+// lignes. Adaptation du FlowLayout canonique de Qt (hauteur calculee en fonction de la largeur).
+// Pas de Q_OBJECT (aucun signal custom) -> header-only sans moc, comme les autres widgets ici.
+// ===========================================================================
+class FlowLayout : public QLayout {
+public:
+    explicit FlowLayout(QWidget* parent = nullptr, int margin = 0, int hSpacing = 8, int vSpacing = 8)
+        : QLayout(parent), hSpace_(hSpacing), vSpace_(vSpacing) {
+        setContentsMargins(margin, margin, margin, margin);
+    }
+    ~FlowLayout() override {
+        QLayoutItem* item = nullptr;
+        while ((item = takeAt(0)) != nullptr) {
+            delete item;
+        }
+    }
+
+    void addItem(QLayoutItem* item) override { items_.append(item); }
+    int count() const override { return static_cast<int>(items_.size()); }
+    QLayoutItem* itemAt(int index) const override { return items_.value(index); }
+    QLayoutItem* takeAt(int index) override {
+        return (index >= 0 && index < items_.size()) ? items_.takeAt(index) : nullptr;
+    }
+    Qt::Orientations expandingDirections() const override { return {}; }
+    bool hasHeightForWidth() const override { return true; }
+    int heightForWidth(int width) const override { return doLayout(QRect(0, 0, width, 0), true); }
+    void setGeometry(const QRect& rect) override {
+        QLayout::setGeometry(rect);
+        doLayout(rect, false);
+    }
+    QSize sizeHint() const override { return minimumSize(); }
+    QSize minimumSize() const override {
+        QSize s;
+        for (QLayoutItem* item : items_) {
+            s = s.expandedTo(item->minimumSize());
+        }
+        const QMargins m = contentsMargins();
+        return s + QSize(m.left() + m.right(), m.top() + m.bottom());
+    }
+
+private:
+    int doLayout(const QRect& rect, bool testOnly) const {
+        const QMargins m = contentsMargins();
+        const QRect eff = rect.adjusted(m.left(), m.top(), -m.right(), -m.bottom());
+        int x = eff.x();
+        int y = eff.y();
+        int lineHeight = 0;
+        for (QLayoutItem* item : items_) {
+            const QSize hint = item->sizeHint();
+            int nextX = x + hint.width() + hSpace_;
+            if (nextX - hSpace_ > eff.right() + 1 && lineHeight > 0) {
+                x = eff.x();
+                y += lineHeight + vSpace_;
+                nextX = x + hint.width() + hSpace_;
+                lineHeight = 0;
+            }
+            if (!testOnly) {
+                item->setGeometry(QRect(QPoint(x, y), hint));
+            }
+            x = nextX;
+            lineHeight = qMax(lineHeight, hint.height());
+        }
+        return y + lineHeight - rect.y() + m.bottom();
+    }
+
+    QList<QLayoutItem*> items_;
+    int hSpace_;
+    int vSpace_;
+};
 
 // ===========================================================================
 // ClickButton — bouton cliquable custom : icone (optionnelle) + texte CENTRES via
