@@ -158,7 +158,7 @@ TEST_CASE("config : JSON tolerant aux cles absentes") {
     const Config c = fromJson(R"({"version":1,"speakers":[]})");
     CHECK(c.speakers.empty());
     CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0)); // defaut
-    CHECK(c.whenMultiple.wideShot == 94);                      // defaut (= Cool, affine 2026-06-07)
+    CHECK(c.whenMultiple.wideShot == 10);                      // defaut (= Cool, recale corpus 2026-06-12)
     CHECK(c.timing.maxPlanRepeats == 0);                       // repetition-max opt-in : desactivee par defaut
 }
 
@@ -346,16 +346,16 @@ TEST_CASE("director : anti ping-pong NE se declenche PAS sur la pause d'un orate
 
 TEST_CASE("config : un style applique (tempo + poids plan large) survit a un aller-retour JSON") {
     Config c = twoSpeakerConfig();
-    applyRhythmStyle(c, builtinRhythmStyles()[4]); // Very Fast {40,60}/{25,75}, pingPong 3, mini 1.5, repet 1
+    applyRhythmStyle(c, builtinRhythmStyles()[4]); // Very Fast {30,70}/{0,100}, pingPong 3, mini 1.5, repet 8
     const Config back = fromJson(toJson(c));
     CHECK(back.styleName == "Very Fast");
     CHECK(back.timing.minShotSeconds == doctest::Approx(1.5));
     CHECK(back.timing.pingPongWindowSeconds == doctest::Approx(3.0));
-    CHECK(back.timing.maxPlanRepeats == 1);
-    CHECK(back.whenMultiple.currentSpeaker == 40);
-    CHECK(back.whenMultiple.wideShot == 60);
-    CHECK(back.whenSilence.lastSpeaker == 25);
-    CHECK(back.whenSilence.wideShot == 75);
+    CHECK(back.timing.maxPlanRepeats == 8);
+    CHECK(back.whenMultiple.currentSpeaker == 30);
+    CHECK(back.whenMultiple.wideShot == 70);
+    CHECK(back.whenSilence.lastSpeaker == 0);
+    CHECK(back.whenSilence.wideShot == 100);
 }
 
 TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
@@ -374,9 +374,9 @@ TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
     const auto round = rhythmStyleLibraryFromJson(rhythmStyleLibraryToJson(lib));
     REQUIRE(round.size() == 2);
     CHECK(round[0].name == "Mon debat");
-    CHECK(round[0].whenMultiple.currentSpeaker == 40); // herite de Very Fast
+    CHECK(round[0].whenMultiple.currentSpeaker == 30); // herite de Very Fast
     CHECK(round[0].pingPongWindowSeconds == doctest::Approx(3.0));
-    CHECK(round[0].maxPlanRepeats == 1); // repetition-max capturee dans le preset perso
+    CHECK(round[0].maxPlanRepeats == 8); // repetition-max capturee dans le preset perso
     CHECK(round[1].name == "Talk pose");
     CHECK(round[1].maxShotSeconds == doctest::Approx(14.0));
     CHECK(round[1].whenSilence.wideShot == 100);
@@ -1412,17 +1412,22 @@ TEST_CASE("rhythm style : les 5 built-ins, ordre et valeurs") {
     CHECK(styles[3].name == "Fast");
     CHECK(styles[4].name == "Very Fast");
 
-    // "Cool" reprend les defauts livres POUR LE TEMPO -> un Config par defaut == tempo de Cool.
+    // "Cool" reprend les defauts livres (tempo ET poids plan large, alignes corpus 2026-06-12)
+    // -> un Config par defaut == Cool, sauf la repetition-max (cf. ci-dessous).
     const Config def;
     const RhythmStyle& cool = styles[2];
     CHECK(cool.minShotSeconds == doctest::Approx(def.timing.minShotSeconds));
     CHECK(cool.maxShotSeconds == doctest::Approx(def.timing.maxShotSeconds));
     CHECK(cool.silenceReactionSeconds == doctest::Approx(def.timing.silenceReactionSeconds));
     CHECK(cool.pingPongWindowSeconds == doctest::Approx(def.timing.pingPongWindowSeconds));
+    CHECK(cool.whenMultiple.currentSpeaker == def.whenMultiple.currentSpeaker);
+    CHECK(cool.whenMultiple.wideShot == def.whenMultiple.wideShot);
+    CHECK(cool.whenSilence.lastSpeaker == def.whenSilence.lastSpeaker);
+    CHECK(cool.whenSilence.wideShot == def.whenSilence.wideShot);
     // EXCEPTION opt-in : la repetition-max n'est PAS couplee aux defauts. Le defaut d'usine reste 0
-    // (desactive, retrocompat) alors que Cool porte 4 -> on l'active en choisissant un style livre.
+    // (desactive, retrocompat) alors que Cool porte 5 -> on l'active en choisissant un style livre.
     CHECK(def.timing.maxPlanRepeats == 0);
-    CHECK(cool.maxPlanRepeats == 4);
+    CHECK(cool.maxPlanRepeats == 5);
 
     // Seuls les 2 rapides arment l'anti ping-pong ; les 3 poses le laissent a 0.
     CHECK(styles[0].pingPongWindowSeconds == doctest::Approx(0.0));
@@ -1431,11 +1436,13 @@ TEST_CASE("rhythm style : les 5 built-ins, ordre et valeurs") {
     CHECK(styles[3].pingPongWindowSeconds > 0.0);
     CHECK(styles[4].pingPongWindowSeconds > 0.0);
 
-    // Du plus pose au plus vif : temps maxi ET repetition-max strictement DECROISSANTS (un style
-    // pose tolere de longs retours sur le meme plan ; un nerveux force la variete).
+    // Du plus pose au plus vif : temps maxi strictement DECROISSANT, et temps tenu sur une
+    // personne (~ maxi x repetition) strictement DECROISSANT aussi (banc 2026-06-12 : les rapides
+    // portent des repetitions HAUTES de plans courts, c'est le produit qui fait le temperament).
     for (size_t i = 1; i < styles.size(); ++i) {
         CHECK(styles[i].maxShotSeconds < styles[i - 1].maxShotSeconds);
-        CHECK(styles[i].maxPlanRepeats < styles[i - 1].maxPlanRepeats);
+        CHECK(styles[i].maxShotSeconds * styles[i].maxPlanRepeats <
+              styles[i - 1].maxShotSeconds * styles[i - 1].maxPlanRepeats);
     }
 
     // Grace de silence COMMUNE a 1 s sur tous (mesuree idiosyncratique -> non graduee).
@@ -1456,10 +1463,11 @@ TEST_CASE("rhythm style : les 5 built-ins, ordre et valeurs") {
         CHECK(s.whenSilence.lastSpeaker >= 0);
         CHECK(s.whenSilence.wideShot >= 0);
     }
-    // Politique plan large = BASELINE heritee (a departager au test live ; la data suggere l'inverse).
-    // On verifie seulement sa coherence : Very Fast reste plus "serre" que Cool quand 2+ parlent.
-    CHECK(styles[4].whenMultiple.wideShot < styles[2].whenMultiple.wideShot);
-    CHECK(styles[4].whenMultiple.currentSpeaker > styles[2].whenMultiple.currentSpeaker);
+    // Politique plan large fondee corpus (banc 2026-06-12) : les poses RESTENT sur les personnes,
+    // les rapides TRANCHENT vers le plan large (en multi comme en silence).
+    CHECK(styles[4].whenMultiple.wideShot > styles[2].whenMultiple.wideShot);
+    CHECK(styles[4].whenMultiple.currentSpeaker < styles[2].whenMultiple.currentSpeaker);
+    CHECK(styles[4].whenSilence.wideShot > styles[2].whenSilence.wideShot);
 }
 
 TEST_CASE("rhythm style : appliquer un style a 0 DESARME l'anti ping-pong (pas seulement laisse)") {

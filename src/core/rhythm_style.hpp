@@ -37,9 +37,10 @@ struct RhythmStyle {
 };
 
 // Les 5 styles LIVRES, en lecture seule, du plus pose au plus vif : Very Chill, Chill, Cool,
-// Fast, Very Fast. Gradues sur l'axe RYTHME a partir du corpus Flowspire-Lab (2026-06-12) ;
-// chacun porte aussi sa repetition-max (Very Chill 7 .. Very Fast 1). Cool == les defauts d'usine
-// (cf. config.hpp) SAUF la repetition-max (opt-in : Cool porte 4, le defaut d'usine reste 0).
+// Fast, Very Fast. Grille validee au banc Flowspire-Bench (simulation du vrai moteur, corpus
+// 57 episodes, 2026-06-12) ; chacun porte aussi sa repetition-max (hautes sur les rapides :
+// temps tenu sur une personne ~ maxi x repetition). Cool == les defauts d'usine
+// (cf. config.hpp) SAUF la repetition-max (opt-in : Cool porte 5, le defaut d'usine reste 0).
 // L'utilisateur ne les modifie pas : il part de l'un d'eux, ajuste, puis enregistre sa
 // variante dans la bibliotheque globale.
 std::vector<RhythmStyle> builtinRhythmStyles();

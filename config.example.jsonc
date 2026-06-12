@@ -78,7 +78,7 @@
                                      // (opt-in). Au-delà de N : re-tirage pondéré dans le pool de la
                                      // personne PRIVÉ de ce plan (autre cam / réaction / plan large,
                                      // selon les poids). Compte PAR SCÈNE, jamais par intervenant. Les
-                                     // styles livrés le règlent (Very Fast 1 … Very Chill 7).
+                                     // styles livrés le règlent (Cool 5 … Very Fast 8).
   },
 
   // --- Quand PLUSIEURS parlent en même temps (tirage pondéré) ---

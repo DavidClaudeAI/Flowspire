@@ -768,7 +768,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     // (0 = desactive). Entier direct (pas de demi-pas). Le sous-texte donne le temps approx tenu sur
     // une personne (= temps maxi x repetition) -> recalcule aussi quand on bouge le temps-maxi.
     auto* repR = new SliderRow(
-        i18n("Rhythm.MaxRepeats"), 0, 10, std::max(0, std::min(10, cfg_.timing.maxPlanRepeats)),
+        i18n("Rhythm.MaxRepeats"), 0, 15, std::max(0, std::min(15, cfg_.timing.maxPlanRepeats)),
         [](int v) { return v == 0 ? i18n("Rhythm.MaxRepeatsOff") : i18n("Rhythm.MaxRepeatsValue").arg(v); }, false);
     repR->setOnChange([this, applying, refresh, updateRepHint](int v) {
         cfg_.timing.maxPlanRepeats = v;

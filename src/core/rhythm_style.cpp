@@ -11,20 +11,23 @@ using nlohmann::json;
 
 std::vector<RhythmStyle> builtinRhythmStyles() {
     // {nom, mini, maxi, grace silence, anti ping-pong, repetition max, whenMultiple{rester,large},
-    //  whenSilence{dernier,large}}. Mini/maxi/repetition derives du corpus Flowspire-Lab (57 episodes,
-    //  2026-06-12) ; grace COMMUNE a 1 s (mesuree idiosyncratique, sans lien au rythme). Le "temps tenu
-    //  sur une personne" vient du DECOUPLAGE maxi x repetition (plans courts + retours), pas d'un plan fige.
-    //  Anti ping-pong : arme seulement sur les 2 rapides (valeur de depart, a figer au test live).
-    //  ⚠️ POIDS PLAN LARGE = baseline heritee ("Cyp Live"), volontairement NON tunee pour les 5 crans :
-    //     la data %large suggere l'INVERSE (poses peu de large, rapides beaucoup) -> a departager EN LIVE,
-    //     separement de cette PR (on ne flippe pas la politique large en meme temps que le rythme).
+    //  whenSilence{dernier,large}}. Valeurs issues du banc Flowspire-Bench (simulation du vrai moteur
+    //  sur des conversations calees corpus, 12 600+ runs, 2026-06-12 ; corpus = 57 episodes reels).
+    //  Principe : les styles POSES restent sur les personnes (le %large corpus est faible : ~4/4/2),
+    //  les RAPIDES tranchent vers le plan large. Anti-pompage : des poids TRANCHES (85/15, 30/70...)
+    //  battent l'oscillation 50/50 qui fait pomper l'image. Repetitions HAUTES sur les rapides : le
+    //  temps tenu sur une personne ~ maxi x repetition (~90 s Very Chill .. ~30 s Very Fast),
+    //  decroissant du plus pose au plus vif. Grace COMMUNE a 1 s (mesuree idiosyncratique, sans lien
+    //  au rythme). Anti ping-pong : arme seulement sur les 2 rapides.
+    //  ⚠️ L'ancienne baseline "Cyp Live" {10, 94} (plan large dominant partout) est REMPLACEE par ces
+    //     poids fondes corpus : la pratique reelle observee etait l'inverse de cette baseline.
     //  Cool == les defauts d'usine (cf. config.hpp) SAUF la repetition-max (opt-in : defaut d'usine 0).
     return {
-        {"Very Chill", 5.0, 15.0, 1.0, 0.0, 7, {10, 94}, {10, 94}}, // tres pose : plans longs, retours rares
-        {"Chill", 3.5, 13.0, 1.0, 0.0, 5, {10, 94}, {10, 94}},      // pose
-        {"Cool", 3.0, 10.0, 1.0, 0.0, 4, {10, 94}, {10, 94}},       // equilibre = defauts d'usine (hors repetition)
-        {"Fast", 2.0, 7.0, 1.0, 4.0, 2, {25, 75}, {20, 80}},        // vif : retours frequents ; anti ping-pong arme
-        {"Very Fast", 1.5, 4.0, 1.0, 3.0, 1, {40, 60}, {25, 75}},   // nerveux : 1 plan par prise ; reste sur l'orateur
+        {"Very Chill", 5.0, 15.0, 1.0, 0.0, 6, {85, 15}, {90, 10}}, // tres pose : on reste sur les personnes
+        {"Chill", 3.5, 13.0, 1.0, 0.0, 5, {80, 20}, {85, 15}},      // pose
+        {"Cool", 3.0, 10.0, 1.0, 0.0, 5, {90, 10}, {90, 10}},       // equilibre = defauts d'usine (hors repetition)
+        {"Fast", 2.0, 7.0, 1.0, 4.0, 6, {55, 45}, {20, 80}},        // vif : tranche vers le large ; anti ping-pong arme
+        {"Very Fast", 1.5, 4.0, 1.0, 3.0, 8, {30, 70}, {0, 100}},   // nerveux : large franc ; silence -> toujours large
     };
 }
 
