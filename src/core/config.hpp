@@ -41,7 +41,7 @@ struct AudioSettings {
 // Reglages de rythme (secondes).
 struct TimingSettings {
     double minShotSeconds = 3.0; // verrou anti-nervosite
-    double maxShotSeconds = 8.0; // rafraichissement du plan (= style Cool ; affine en reel 2026-06-07)
+    double maxShotSeconds = 10.0; // rafraichissement du plan (= style Cool ; recale sur corpus 2026-06-12)
     // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
     // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
@@ -53,8 +53,17 @@ struct TimingSettings {
     // l'a jamais quitte (reprise instantanee). 0 = reaction immediate (comportement
     // historique). N'affecte QUE le silence : un nouveau locuteur bascule normalement.
     // DISTINCT du "delai de silence" (audio.releaseFrames = a partir de quand une personne
-    // est consideree silencieuse, detection par personne). Defaut tune en reel ("Cyp Live").
-    double silenceReactionSeconds = 1.5;
+    // est consideree silencieuse, detection par personne). Defaut recale a 1.0 sur corpus (2026-06-12) :
+    // la grace de silence s'est revelee idiosyncratique (sans lien au rythme) -> une valeur commune.
+    double silenceReactionSeconds = 1.0;
+    // Repetition max d'un MEME plan (cadrage) avant respiration (re-tirage PONDERE dans le pool prive
+    // de ce plan : autre camera / plan de reaction / plan large s'il y figure). 0 =
+    // DESACTIVE (opt-in, comme l'anti ping-pong) : un profil neuf, un profil ou un preset perso
+    // anterieur a la feature garde un comportement INCHANGE (aucune respiration imposee). Compte
+    // PAR SCENE affichee, jamais par intervenant : deux cameras d'une meme personne ont chacune
+    // leur compteur, qui repart de zero des qu'on change de cadrage (modele A). Les styles livres
+    // portent leur valeur (Very Fast 1 .. Very Chill 7). Effet en secondes ~ maxShotSeconds * maxPlanRepeats.
+    int maxPlanRepeats = 0;
 };
 
 // Contexte B : plusieurs parlent en meme temps (poids relatifs : rester sur le plan courant

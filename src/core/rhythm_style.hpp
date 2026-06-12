@@ -22,22 +22,26 @@
 
 namespace sd::core {
 
-// Un style = un nom + les 4 parametres de rythme. Les defauts repliquent ceux de
-// TimingSettings (un RhythmStyle vide == config livree par defaut).
+// Un style = un nom + les 5 parametres de rythme. Les defauts repliquent EXACTEMENT ceux de
+// TimingSettings (un RhythmStyle vide == config livree par defaut) -> filet coherent quand une cle
+// manque dans un preset perso (cf. rhythmStyleLibraryFromJson).
 struct RhythmStyle {
     std::string name;                    // identifiant ET libelle affiche (nom propre, non traduit)
     double minShotSeconds = 3.0;         // verrou anti-nervosite
-    double maxShotSeconds = 6.0;         // rafraichissement du plan
-    double silenceReactionSeconds = 1.5; // grace de silence
+    double maxShotSeconds = 10.0;        // rafraichissement du plan (= defaut TimingSettings)
+    double silenceReactionSeconds = 1.0; // grace de silence (= defaut TimingSettings)
     double pingPongWindowSeconds = 0.0;  // 0 = anti ping-pong (retour au plan large) desactive
+    int maxPlanRepeats = 0;              // 0 = desactive (opt-in) ; sinon N repetitions max d'un meme plan
     MultiWeights whenMultiple;           // contexte B (2+ parlent) : { rester / plan large }
     SilenceWeights whenSilence;          // contexte C (silence)    : { dernier locuteur / plan large }
 };
 
-// Les 3 styles LIVRES, en lecture seule, du plus pose au plus vif :
-//   Chill (plans longs), Cool (= defauts "Cyp Live"), Speed (coupe nette + anti ping-pong).
+// Les 5 styles LIVRES, en lecture seule, du plus pose au plus vif : Very Chill, Chill, Cool,
+// Fast, Very Fast. Gradues sur l'axe RYTHME a partir du corpus Flowspire-Lab (2026-06-12) ;
+// chacun porte aussi sa repetition-max (Very Chill 7 .. Very Fast 1). Cool == les defauts d'usine
+// (cf. config.hpp) SAUF la repetition-max (opt-in : Cool porte 4, le defaut d'usine reste 0).
 // L'utilisateur ne les modifie pas : il part de l'un d'eux, ajuste, puis enregistre sa
-// variante dans la bibliotheque globale (etape ulterieure).
+// variante dans la bibliotheque globale.
 std::vector<RhythmStyle> builtinRhythmStyles();
 
 // Applique un style a une config : copie le TEMPO (cfg.timing : 4 params) ET la tendance

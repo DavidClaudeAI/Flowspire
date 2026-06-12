@@ -67,10 +67,18 @@
   "timing": {
     "minShotSeconds": 5.0,           // temps mini sur un plan (anti-nervosité)
     "maxShotSeconds": 12.0,          // au-delà : on rafraîchit le plan (variété)
-    "pingPongWindowSeconds": 0.0     // "retour au plan large sur échange rapide" : 0 = désactivé
+    "pingPongWindowSeconds": 0.0,    // "retour au plan large sur échange rapide" : 0 = désactivé
                                      // (opt-in). Sur une navette A↔B rapide (chacun seul à son
                                      // tour), on se recule sur le plan large le temps que ça
                                      // respire. N'agit QUE si un plan large existe.
+    "silenceReactionSeconds": 1.0,   // grâce de silence : délai avant de réagir à un blanc (on garde
+                                     // le plan courant), évite de basculer sur une simple respiration.
+                                     // 0 = réaction immédiate.
+    "maxPlanRepeats": 0              // répétition max d'un MÊME plan avant respiration. 0 = désactivé
+                                     // (opt-in). Au-delà de N : re-tirage pondéré dans le pool de la
+                                     // personne PRIVÉ de ce plan (autre cam / réaction / plan large,
+                                     // selon les poids). Compte PAR SCÈNE, jamais par intervenant. Les
+                                     // styles livrés le règlent (Very Fast 1 … Very Chill 7).
   },
 
   // --- Quand PLUSIEURS parlent en même temps (tirage pondéré) ---

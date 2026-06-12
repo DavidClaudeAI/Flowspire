@@ -125,6 +125,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     in.version = 7;
     in.audio = {-28.0, -55.0, 3, 11}; // voiceThr, volFloor, attack, release
     in.timing = {2.5, 9.0, 7.0, 4.0}; // min, max, pingPong, silenceReaction
+    in.timing.maxPlanRepeats = 6;     // 5e champ timing (detecter une cle de serialisation oubliee)
     in.whenMultiple = {40, 35};       // {rester, plan large}
     in.whenSilence = {70, 30};
     const Config out = fromJson(toJson(in));
@@ -145,6 +146,7 @@ TEST_CASE("config : round-trip JSON complet (tous les champs)") {
     CHECK(out.timing.maxShotSeconds == doctest::Approx(9.0));
     CHECK(out.timing.pingPongWindowSeconds == doctest::Approx(7.0));
     CHECK(out.timing.silenceReactionSeconds == doctest::Approx(4.0));
+    CHECK(out.timing.maxPlanRepeats == 6);
 
     CHECK(out.whenMultiple.currentSpeaker == 40);
     CHECK(out.whenMultiple.wideShot == 35);
@@ -157,6 +159,7 @@ TEST_CASE("config : JSON tolerant aux cles absentes") {
     CHECK(c.speakers.empty());
     CHECK(c.audio.voiceThresholdDb == doctest::Approx(-35.0)); // defaut
     CHECK(c.whenMultiple.wideShot == 94);                      // defaut (= Cool, affine 2026-06-07)
+    CHECK(c.timing.maxPlanRepeats == 0);                       // repetition-max opt-in : desactivee par defaut
 }
 
 TEST_CASE("config : retrocompat - ancienne cle whenMultiple.loudestSpeaker ignoree sans erreur") {
@@ -343,11 +346,12 @@ TEST_CASE("director : anti ping-pong NE se declenche PAS sur la pause d'un orate
 
 TEST_CASE("config : un style applique (tempo + poids plan large) survit a un aller-retour JSON") {
     Config c = twoSpeakerConfig();
-    applyRhythmStyle(c, builtinRhythmStyles()[2]); // Speed {40,60}/{25,75}, pingPong 3, mini 2
+    applyRhythmStyle(c, builtinRhythmStyles()[4]); // Very Fast {40,60}/{25,75}, pingPong 3, mini 1.5, repet 1
     const Config back = fromJson(toJson(c));
-    CHECK(back.styleName == "Speed");
-    CHECK(back.timing.minShotSeconds == doctest::Approx(2.0));
+    CHECK(back.styleName == "Very Fast");
+    CHECK(back.timing.minShotSeconds == doctest::Approx(1.5));
     CHECK(back.timing.pingPongWindowSeconds == doctest::Approx(3.0));
+    CHECK(back.timing.maxPlanRepeats == 1);
     CHECK(back.whenMultiple.currentSpeaker == 40);
     CHECK(back.whenMultiple.wideShot == 60);
     CHECK(back.whenSilence.lastSpeaker == 25);
@@ -356,7 +360,7 @@ TEST_CASE("config : un style applique (tempo + poids plan large) survit a un all
 
 TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
     Config speedCfg;
-    applyRhythmStyle(speedCfg, builtinRhythmStyles()[2]); // Speed
+    applyRhythmStyle(speedCfg, builtinRhythmStyles()[4]); // Very Fast
     std::vector<RhythmStyle> lib;
     lib.push_back(styleFromConfig(speedCfg, "Mon debat")); // capture du reglage courant
     RhythmStyle posed;
@@ -370,8 +374,9 @@ TEST_CASE("rhythm style : bibliotheque globale - round-trip JSON + tolerance") {
     const auto round = rhythmStyleLibraryFromJson(rhythmStyleLibraryToJson(lib));
     REQUIRE(round.size() == 2);
     CHECK(round[0].name == "Mon debat");
-    CHECK(round[0].whenMultiple.currentSpeaker == 40); // hérité de Speed
+    CHECK(round[0].whenMultiple.currentSpeaker == 40); // herite de Very Fast
     CHECK(round[0].pingPongWindowSeconds == doctest::Approx(3.0));
+    CHECK(round[0].maxPlanRepeats == 1);               // repetition-max capturee dans le preset perso
     CHECK(round[1].name == "Talk pose");
     CHECK(round[1].maxShotSeconds == doctest::Approx(14.0));
     CHECK(round[1].whenSilence.wideShot == 100);
@@ -1149,6 +1154,132 @@ TEST_CASE("director : anti ping-pong relache APRES la fenetre -> on repart sur l
     CHECK(dir.update(11.1, {{"A", hi}, {"B", kDbFloor}}).owner == "A");
 }
 
+// --- Repetition-max ("variete forcee" : cap de repetition d'un meme plan) -------
+namespace {
+// Config mono-locuteur dediee aux tests de repetition-max. `scenes` = pool de l'unique
+// intervenant "A" ; `repeats` = cfg.timing.maxPlanRepeats ; plan large "Plateau" sauf si vide.
+Config repeatConfig(std::vector<SceneWeight> scenes, int repeats, const std::string& wide = "Plateau") {
+    Config c;
+    c.wideShotScene = wide;
+    c.timing.minShotSeconds = 1.0;
+    c.timing.maxShotSeconds = 5.0;
+    c.timing.silenceReactionSeconds = 0.0;
+    c.timing.maxPlanRepeats = repeats;
+    c.audio.attackFrames = 1; // A "parle" des le 1er frame -> pas d'ecran large de demarrage
+    c.audio.releaseFrames = 8;
+    Speaker a;
+    a.id = "A";
+    a.name = "A";
+    a.audioSource = "sA";
+    a.scenes = std::move(scenes);
+    c.speakers = {a};
+    return c;
+}
+} // namespace
+
+TEST_CASE("director : repetition-max — un monologue mono-camera respire sur le plan large apres N plans") {
+    // maxPlanRepeats=2, temps-max 5 s : le meme cadrage tient 2 fenetres (10 s) puis on impose une
+    // courte respiration sur le plan large, avant de revenir sur la personne.
+    Director dir(repeatConfig({{"A_close", 100}}, 2), seq({0.0}));
+    const double hi = mulToDb(0.9);
+    double breatheAt = -1.0, t = 0.0;
+    for (int i = 0; i < 400 && breatheAt < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", hi}}); // A monologue en continu
+        if (d.scene == "Plateau") {
+            breatheAt = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(breatheAt > 0.0); // la respiration a bien eu lieu
+    CHECK(breatheAt > 9.0);   // pas avant ~2 fenetres de 5 s
+    CHECK(breatheAt < 13.0);
+    // Respiration COURTE (de l'ordre du temps-mini) puis retour sur le locuteur.
+    double backAt = -1.0;
+    for (int i = 0; i < 80 && backAt < 0.0; ++i) {
+        Decision d = dir.update(t, {{"A", hi}});
+        if (d.scene == "A_close") {
+            backAt = t;
+        }
+        t += 0.1;
+    }
+    REQUIRE(backAt > 0.0);
+    CHECK(backAt - breatheAt < 3.0);
+}
+
+TEST_CASE("director : repetition-max a 0 (opt-in off) ne respire JAMAIS — retrocompat") {
+    // Defaut/retrocompat : 0 = desactive. Un monologue, meme tres long, ne bascule jamais au plan
+    // large de force (comportement identique a avant la feature).
+    Director dir(repeatConfig({{"A_close", 100}}, 0), seq({0.0}));
+    const double hi = mulToDb(0.9);
+    bool sawWide = false;
+    double t = 0.0;
+    for (int i = 0; i < 400; ++i) {
+        if (dir.update(t, {{"A", hi}}).scene == "Plateau") {
+            sawWide = true;
+        }
+        t += 0.1;
+    }
+    CHECK_FALSE(sawWide);
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : repetition-max — modele A : 2 cameras qui alternent ne forcent PAS de respiration") {
+    // Clarification David : le compteur est PAR SCENE, jamais par intervenant. Deux cameras d'une
+    // meme personne qui alternent remettent le compteur a zero a chaque changement de cadrage ->
+    // leur alternance EST deja la variete, aucune respiration imposee (la ou un mono-camera respirerait).
+    // RNG alterne le tirage du pool (cam1 / cam2) a chaque rafraichissement.
+    Director dir(repeatConfig({{"A_cam1", 50}, {"A_cam2", 50}}, 2), seq({0.0, 0.99}));
+    const double hi = mulToDb(0.9);
+    bool sawWide = false, sawCam1 = false, sawCam2 = false;
+    double t = 0.0;
+    for (int i = 0; i < 400; ++i) {
+        const std::string s = dir.update(t, {{"A", hi}}).scene;
+        sawWide = sawWide || (s == "Plateau");
+        sawCam1 = sawCam1 || (s == "A_cam1");
+        sawCam2 = sawCam2 || (s == "A_cam2");
+        t += 0.1;
+    }
+    CHECK_FALSE(sawWide); // l'alternance des cameras suffit : pas de respiration forcee
+    CHECK(sawCam1);       // les deux cameras tournent bien
+    CHECK(sawCam2);
+}
+
+TEST_CASE("director : repetition-max sans plan large ne peut pas respirer (degradation gracieuse)") {
+    // Pas de plan large -> nulle part ou se reculer : on reste sur la personne (meme principe que
+    // l'anti ping-pong sans plan large). La contrainte ne peut tout simplement pas s'appliquer.
+    Director dir(repeatConfig({{"A_close", 100}}, 2, /*wide=*/""), seq({0.0}));
+    const double hi = mulToDb(0.9);
+    double t = 0.0;
+    for (int i = 0; i < 400; ++i) {
+        dir.update(t, {{"A", hi}});
+        t += 0.1;
+    }
+    CHECK(dir.currentScene() == "A_close");
+}
+
+TEST_CASE("director : repetition-max — la respiration re-tire dans le pool (reaction/large pondere), pas "
+          "forcement le plan large") {
+    // David : la respiration recalcule les POIDS et renvoie vers ce qui doit etre montre. Si le pool de
+    // l'intervenant contient une scene de respiration (reaction d'un autre, autre camera...), la
+    // respiration y va selon les poids -- elle ne saute PAS d'office au plan large global.
+    // Pool A = A_close(90) + B_react(10) ; plan large "Plateau" dispo mais HORS pool. maxPlanRepeats=1.
+    Director dir(repeatConfig({{"A_close", 90}, {"B_react", 10}}, 1), seq({0.0}));
+    const double hi = mulToDb(0.9);
+    std::string firstBreather;
+    bool sawForcedWide = false;
+    double t = 0.0;
+    for (int i = 0; i < 200; ++i) {
+        const std::string s = dir.update(t, {{"A", hi}}).scene; // A monologue
+        if (firstBreather.empty() && !s.empty() && s != "A_close") {
+            firstBreather = s;
+        }
+        sawForcedWide = sawForcedWide || (s == "Plateau");
+        t += 0.1;
+    }
+    CHECK(firstBreather == "B_react"); // la respiration va vers la scene du pool, pas le plan large
+    CHECK_FALSE(sawForcedWide);        // le plan large global n'est PAS force tant qu'une alternative existe
+}
+
 // --- Versions semantiques (systeme de mise a jour) ------------------------------
 
 TEST_CASE("version : parseSemVer accepte X.Y.Z (prefixe 'v' et espaces toleres)") {
@@ -1196,58 +1327,75 @@ TEST_CASE("version : isNewerVersion ne notifie que pour une version stable super
 }
 
 // --- Styles de realisation (presets de rythme) -----------------------------
-TEST_CASE("rhythm style : les 3 built-ins, ordre et valeurs") {
+TEST_CASE("rhythm style : les 5 built-ins, ordre et valeurs") {
     const auto styles = builtinRhythmStyles();
-    REQUIRE(styles.size() == 3);
-    CHECK(styles[0].name == "Chill");
-    CHECK(styles[1].name == "Cool");
-    CHECK(styles[2].name == "Speed");
+    REQUIRE(styles.size() == 5);
+    CHECK(styles[0].name == "Very Chill");
+    CHECK(styles[1].name == "Chill");
+    CHECK(styles[2].name == "Cool");
+    CHECK(styles[3].name == "Fast");
+    CHECK(styles[4].name == "Very Fast");
 
-    // "Cool" reprend EXACTEMENT les defauts livres -> un Config par defaut == style Cool.
+    // "Cool" reprend les defauts livres POUR LE TEMPO -> un Config par defaut == tempo de Cool.
     const Config def;
-    const RhythmStyle& cool = styles[1];
+    const RhythmStyle& cool = styles[2];
     CHECK(cool.minShotSeconds == doctest::Approx(def.timing.minShotSeconds));
     CHECK(cool.maxShotSeconds == doctest::Approx(def.timing.maxShotSeconds));
     CHECK(cool.silenceReactionSeconds == doctest::Approx(def.timing.silenceReactionSeconds));
     CHECK(cool.pingPongWindowSeconds == doctest::Approx(def.timing.pingPongWindowSeconds));
+    // EXCEPTION opt-in : la repetition-max n'est PAS couplee aux defauts. Le defaut d'usine reste 0
+    // (desactive, retrocompat) alors que Cool porte 4 -> on l'active en choisissant un style livre.
+    CHECK(def.timing.maxPlanRepeats == 0);
+    CHECK(cool.maxPlanRepeats == 4);
 
-    // Speed est le seul a armer l'anti ping-pong ; Chill/Cool le laissent a 0.
+    // Seuls les 2 rapides arment l'anti ping-pong ; les 3 poses le laissent a 0.
     CHECK(styles[0].pingPongWindowSeconds == doctest::Approx(0.0));
-    CHECK(styles[2].pingPongWindowSeconds > 0.0);
-    // Du plus pose au plus vif : temps maxi strictement decroissant.
-    CHECK(styles[0].maxShotSeconds > styles[1].maxShotSeconds);
-    CHECK(styles[1].maxShotSeconds > styles[2].maxShotSeconds);
+    CHECK(styles[1].pingPongWindowSeconds == doctest::Approx(0.0));
+    CHECK(styles[2].pingPongWindowSeconds == doctest::Approx(0.0));
+    CHECK(styles[3].pingPongWindowSeconds > 0.0);
+    CHECK(styles[4].pingPongWindowSeconds > 0.0);
+
+    // Du plus pose au plus vif : temps maxi ET repetition-max strictement DECROISSANTS (un style
+    // pose tolere de longs retours sur le meme plan ; un nerveux force la variete).
+    for (size_t i = 1; i < styles.size(); ++i) {
+        CHECK(styles[i].maxShotSeconds < styles[i - 1].maxShotSeconds);
+        CHECK(styles[i].maxPlanRepeats < styles[i - 1].maxPlanRepeats);
+    }
+
+    // Grace de silence COMMUNE a 1 s sur tous (mesuree idiosyncratique -> non graduee).
+    for (const auto& s : styles) {
+        CHECK(s.silenceReactionSeconds == doctest::Approx(1.0));
+    }
 
     // Invariants de TOUT built-in : maxi >= mini (sinon fromJson remonterait le maxi et le
-    // plan affiche divergerait du preset) et tous les delais >= 0. Garde-fou si un futur
-    // edit des valeurs casse un de ces invariants.
+    // plan affiche divergerait du preset) et tous les delais/poids/repetition >= 0.
     for (const auto& s : styles) {
         CHECK(s.maxShotSeconds >= s.minShotSeconds);
         CHECK(s.minShotSeconds >= 0.0);
         CHECK(s.silenceReactionSeconds >= 0.0);
         CHECK(s.pingPongWindowSeconds >= 0.0);
+        CHECK(s.maxPlanRepeats >= 0);
         CHECK(s.whenMultiple.currentSpeaker >= 0);
         CHECK(s.whenMultiple.wideShot >= 0);
         CHECK(s.whenSilence.lastSpeaker >= 0);
         CHECK(s.whenSilence.wideShot >= 0);
     }
-    // La politique plan large fait partie du temperament : Speed reste bien plus "serre"
-    // quand 2+ parlent (moins de plan large, plus "rester") que Cool.
-    CHECK(styles[2].whenMultiple.wideShot < styles[1].whenMultiple.wideShot); // Speed < Cool en large
-    CHECK(styles[2].whenMultiple.currentSpeaker >
-          styles[1].whenMultiple.currentSpeaker); // Speed reste + sur le locuteur
+    // Politique plan large = BASELINE heritee (a departager au test live ; la data suggere l'inverse).
+    // On verifie seulement sa coherence : Very Fast reste plus "serre" que Cool quand 2+ parlent.
+    CHECK(styles[4].whenMultiple.wideShot < styles[2].whenMultiple.wideShot);
+    CHECK(styles[4].whenMultiple.currentSpeaker > styles[2].whenMultiple.currentSpeaker);
 }
 
 TEST_CASE("rhythm style : appliquer un style a 0 DESARME l'anti ping-pong (pas seulement laisse)") {
     Config c;
     c.timing.pingPongWindowSeconds = 12.0; // anti ping-pong arme au prealable
-    const RhythmStyle chill = builtinRhythmStyles()[0];
-    REQUIRE(chill.pingPongWindowSeconds == doctest::Approx(0.0));
-    applyRhythmStyle(c, chill);
+    const RhythmStyle posed = builtinRhythmStyles()[0]; // Very Chill (pose, anti ping-pong a 0)
+    REQUIRE(posed.pingPongWindowSeconds == doctest::Approx(0.0));
+    applyRhythmStyle(c, posed);
     // La valeur DOIT etre ecrasee a 0 (et pas conservee) : un style "calme" coupe bien
     // l'anti ping-pong herite d'un style precedent.
     CHECK(c.timing.pingPongWindowSeconds == doctest::Approx(0.0));
-    CHECK(c.styleName == "Chill");
+    CHECK(c.styleName == "Very Chill");
 }
 
 TEST_CASE("rhythm style : applyRhythmStyle copie le tempo ET la politique plan large, marque le style") {
@@ -1260,15 +1408,16 @@ TEST_CASE("rhythm style : applyRhythmStyle copie le tempo ET la politique plan l
     c.whenMultiple = {20, 70};
     c.whenSilence = {30, 70};
 
-    const RhythmStyle speed = builtinRhythmStyles()[2];
+    const RhythmStyle speed = builtinRhythmStyles()[4]; // Very Fast (ex-"Speed")
     applyRhythmStyle(c, speed);
 
-    CHECK(c.styleName == "Speed");
+    CHECK(c.styleName == "Very Fast");
     // Tempo copie.
     CHECK(c.timing.minShotSeconds == doctest::Approx(speed.minShotSeconds));
     CHECK(c.timing.maxShotSeconds == doctest::Approx(speed.maxShotSeconds));
     CHECK(c.timing.silenceReactionSeconds == doctest::Approx(speed.silenceReactionSeconds));
     CHECK(c.timing.pingPongWindowSeconds == doctest::Approx(speed.pingPongWindowSeconds));
+    CHECK(c.timing.maxPlanRepeats == speed.maxPlanRepeats); // repetition-max copiee aussi
     // Politique plan large copiee (fait partie du temperament depuis le recentrage).
     CHECK(c.whenMultiple.currentSpeaker == speed.whenMultiple.currentSpeaker);
     CHECK(c.whenMultiple.wideShot == speed.whenMultiple.wideShot);

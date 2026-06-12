@@ -28,7 +28,8 @@ void Director::setConfig(const Config& cfg) {
     cfg_ = cfg;
     detectors_.clear();
     ownerLeftAt_.clear(); // memoire anti ping-pong : repart de zero a chaque (re)config
-    silenceSince_ = -1.0; // grace de silence : on repart "pas en silence" a chaque (re)config
+    silenceSince_ = -1.0;  // grace de silence : on repart "pas en silence" a chaque (re)config
+    planRepeatCount_ = 0;  // repetition-max : aucun plan encore tenu
     // On repart de zero puis on SEME les overrides depuis la config : le seuil
     // par intervenant (Speaker.thresholdDb) est desormais persiste dans le profil,
     // donc la config/JSON reste la source de verite au chargement. Un intervenant
@@ -94,6 +95,43 @@ bool Director::isPingPongBounce(double now, const std::string& owner) const {
         return false; // on n'a jamais quitte ce plan -> pas une navette
     }
     return (now - it->second) < cfg_.timing.pingPongWindowSeconds;
+}
+
+bool Director::needsRepetitionBreather(const std::string& candidate) const {
+    return cfg_.timing.maxPlanRepeats > 0                      // feature active (opt-in)
+           && candidate == currentScene_                      // on rejouerait EXACTEMENT le meme plan
+           && currentScene_ != cfg_.wideShotScene             // le plan large lui-meme n'est pas "martele"
+           && planRepeatCount_ >= cfg_.timing.maxPlanRepeats; // deja tenu N fenetres temps-max
+}
+
+bool Director::resolveBreather(const std::string& owner, const std::string& avoid, std::string& outScene,
+                               std::string& outOwner) {
+    // 1) Re-tirage PONDERE dans le pool de l'intervenant, PRIVE du plan sur-repete : les poids sont
+    //    recalcules sur ce qui reste (autre camera, plan de reaction, plan large s'il y figure...).
+    if (const Speaker* sp = findSpeaker(owner)) {
+        std::vector<SceneWeight> pool;
+        pool.reserve(sp->scenes.size());
+        for (const auto& sw : sp->scenes) {
+            if (sw.scene != avoid && !sw.scene.empty() && sw.weight > 0) {
+                pool.push_back(sw);
+            }
+        }
+        const std::string drawn = drawSceneFromPool(pool);
+        if (!drawn.empty()) {
+            outScene = drawn;
+            // Invariant owner vide <=> plan large : si le tirage tombe sur le plan large global (il
+            // peut figurer dans un pool), on garde owner vide, comme sceneInProgram.
+            outOwner = (drawn == cfg_.wideShotScene) ? std::string{} : owner;
+            return true;
+        }
+    }
+    // 2) Repli universel : le plan large GLOBAL, s'il existe et n'est pas le plan sur-repete.
+    if (!cfg_.wideShotScene.empty() && cfg_.wideShotScene != avoid) {
+        outScene = cfg_.wideShotScene;
+        outOwner.clear();
+        return true;
+    }
+    return false; // rien d'autre a montrer -> l'appelant garde le plan courant (degradation gracieuse)
 }
 
 Decision Director::update(double now, const std::map<std::string, double>& levelsDb) {
@@ -283,7 +321,18 @@ Decision Director::update(double now, const std::map<std::string, double>& level
         if ((now - lastSwitch_) >= cfg_.timing.maxShotSeconds) {
             std::string scene, owner;
             if (resolvePlayable(desiredOwner, desiredWide, scene, owner)) {
-                commit(now, scene, owner, hold_, out);
+                // Repetition-max : si ce rafraichissement rejouerait une fois de trop le MEME plan d'un
+                // locuteur qui monologue, on RESPIRE -> re-tirage PONDERE dans son pool prive de ce plan
+                // (autre camera, plan de reaction, plan large s'il y figure ; repli plan large global
+                // sinon). Si une respiration est jouable on la prend, sinon on garde le plan (degradation
+                // gracieuse). Limite au contexte Single : multi/silence ont deja leur variete par re-tirage.
+                std::string bScene, bOwner;
+                if (ctx == Context::Single && needsRepetitionBreather(scene) &&
+                    resolveBreather(desiredOwner, currentScene_, bScene, bOwner)) {
+                    commit(now, bScene, bOwner, /*hold=*/true, out);
+                } else {
+                    commit(now, scene, owner, hold_, out);
+                }
             }
         }
         return out;
@@ -373,6 +422,14 @@ void Director::commit(double now, const std::string& scene, const std::string& o
     // sur un forcage (recordLeave=false) : un choix manuel ne doit pas bloquer le retour auto.
     if (recordLeave && !currentOwner_.empty() && !owner.empty() && currentOwner_ != owner) {
         ownerLeftAt_[currentOwner_] = now;
+    }
+    // Repetition-max (variete forcee) : +1 si on RECOMMIT le meme plan, sinon on repart a 1. Compte
+    // par scene affichee (modele A) : changer de cadrage -- meme vers une autre camera de la meme
+    // personne -- remet le compteur a zero. Calcule AVANT d'ecraser currentScene_.
+    if (!currentScene_.empty() && scene == currentScene_) {
+        ++planRepeatCount_;
+    } else {
+        planRepeatCount_ = 1;
     }
     out.switched = (scene != currentScene_);
     currentScene_ = scene;
