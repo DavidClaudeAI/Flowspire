@@ -40,8 +40,8 @@ struct AudioSettings {
 
 // Reglages de rythme (secondes).
 struct TimingSettings {
-    double minShotSeconds = 3.0; // verrou anti-nervosite
-    double maxShotSeconds = 8.0; // rafraichissement du plan (= style Cool ; affine en reel 2026-06-07)
+    double minShotSeconds = 3.0;  // verrou anti-nervosite
+    double maxShotSeconds = 10.0; // rafraichissement du plan (= style Cool ; recale sur corpus 2026-06-12)
     // Anti ping-pong : DESACTIVE par defaut (0 = opt-in). Feature subtile, a valider
     // en live avant d'activer par defaut. Pour qu'elle agisse, la regler AU-DESSUS du
     // temps mini (spec : 12 s). Les profils existants gardent leur valeur enregistree.
@@ -53,25 +53,39 @@ struct TimingSettings {
     // l'a jamais quitte (reprise instantanee). 0 = reaction immediate (comportement
     // historique). N'affecte QUE le silence : un nouveau locuteur bascule normalement.
     // DISTINCT du "delai de silence" (audio.releaseFrames = a partir de quand une personne
-    // est consideree silencieuse, detection par personne). Defaut tune en reel ("Cyp Live").
-    double silenceReactionSeconds = 1.5;
+    // est consideree silencieuse, detection par personne). Defaut recale a 1.0 sur corpus (2026-06-12) :
+    // la grace de silence s'est revelee idiosyncratique (sans lien au rythme) -> une valeur commune.
+    double silenceReactionSeconds = 1.0;
+    // Repetition max d'un MEME plan (cadrage) avant respiration (re-tirage PONDERE dans le pool prive
+    // de ce plan : autre camera / plan de reaction / plan large s'il y figure). 0 =
+    // DESACTIVE (opt-in, comme l'anti ping-pong) : un profil neuf, un profil ou un preset perso
+    // anterieur a la feature garde un comportement INCHANGE (aucune respiration imposee). Compte
+    // PAR SCENE affichee, jamais par intervenant : deux cameras d'une meme personne ont chacune
+    // leur compteur, qui repart de zero des qu'on change de cadrage (modele A). Les styles livres
+    // portent leur valeur (Cool 5 .. Very Fast 8 : les rapides repetent plus de plans plus courts,
+    // cf. rhythm_style.cpp). Effet en secondes ~ maxShotSeconds * maxPlanRepeats.
+    int maxPlanRepeats = 0;
 };
 
 // Contexte B : plusieurs parlent en meme temps (poids relatifs : rester sur le plan courant
 // / plan large). Le VOLUME n'est PAS un critere de bascule -> pas d'option "le plus fort"
 // (le fait de parler fort ne doit pas decider qu'on vous montre). Mettre en avant une
 // personne se fait naturellement quand elle "gagne" la parole (contexte Single). Defauts
-// tunes en reel (profil "Cyp Live") : forte preference pour le plan large des que 2+ parlent.
+// alignes sur le style Cool (corpus 57 episodes, banc de simulation 2026-06-12) : on RESTE
+// sur les personnes, le plan large est une respiration rare. Ne touche que les profils
+// NEUFS : les profils existants gardent leurs valeurs enregistrees (fromJson est tolerant,
+// les cles presentes priment).
 struct MultiWeights {
-    int currentSpeaker = 10;
-    int wideShot = 94;
+    int currentSpeaker = 90;
+    int wideShot = 10;
 };
 
-// Contexte C : personne ne parle (poids relatifs). Defauts tunes en reel ("Cyp Live") :
-// on revient quasi systematiquement au plan large quand le silence s'installe.
+// Contexte C : personne ne parle (poids relatifs). Defauts alignes sur le style Cool (corpus
+// 57 episodes, banc de simulation 2026-06-12) : on reste sur le dernier locuteur, le plan
+// large est une respiration rare. Les profils existants gardent leurs valeurs enregistrees.
 struct SilenceWeights {
-    int lastSpeaker = 10;
-    int wideShot = 94;
+    int lastSpeaker = 90;
+    int wideShot = 10;
 };
 
 struct Config {

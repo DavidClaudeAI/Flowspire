@@ -385,6 +385,8 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     auto maxRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto ppRowPtr = std::make_shared<SliderRow*>(nullptr);
     auto silRowPtr = std::make_shared<SliderRow*>(nullptr);
+    auto repRowPtr = std::make_shared<SliderRow*>(nullptr); // curseur repetition-max
+    auto repHintPtr = std::make_shared<QLabel*>(nullptr);   // sous-texte "≈ N s sur une personne"
     // Holders des 4 curseurs de "politique plan large" (eux aussi pilotes par le style, avec
     // badges %). Construits dans les DEUX dispositions (la politique plan large est partout).
     auto mCurRowPtr = std::make_shared<SliderRow*>(nullptr);
@@ -411,8 +413,23 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
             (*sWideRowPtr)->setBadge(pctOf((*sWideRowPtr)->value(), sum));
         }
     };
+    // Sous-texte du curseur repetition-max : "≈ (temps maxi x repetition) s sur une personne avant
+    // respiration". Recalcule a chaque changement du temps-maxi OU de la repetition (les deux jouent
+    // sur le produit). Cache quand la repetition vaut 0 (desactivee) -> pas de duree trompeuse.
+    // Garde par holders -> no-op tant que les widgets n'existent pas.
+    auto updateRepHint = [maxRowPtr, repRowPtr, repHintPtr]() {
+        if (!*repHintPtr) {
+            return;
+        }
+        const int reps = *repRowPtr ? (*repRowPtr)->value() : 0;
+        const int maxS = *maxRowPtr ? (*maxRowPtr)->value() : 0;
+        (*repHintPtr)->setVisible(reps > 0);
+        if (reps > 0) {
+            (*repHintPtr)->setText(i18n("Rhythm.MaxRepeatsHint").arg(reps * maxS));
+        }
+    };
 
-    // === Selecteur de style de realisation (Chill / Cool / Speed / Perso) ============
+    // === Selecteur de style de realisation (styles livres + Perso) ============
     // Un style = un bundle nomme de parametres de RYTHME (cf. core/rhythm_style). Le
     // choisir fait glisser les 4 curseurs ci-dessous ; toucher un curseur repasse en
     // "Perso". `applying` neutralise ce basculement pendant l'application programmee.
@@ -438,7 +455,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
         }
     };
     // Repeint l'etat du selecteur selon le style actif (cfg_.styleName) :
-    //  - pastille livree (Chill/Cool/Speed) allumee si elle correspond ;
+    //  - pastille d'un style livre allumee si elle correspond ;
     //  - "Perso" allumee si AUCUN style (livre OU perso) n'est actif ;
     //  - le menu "Mes styles" pointe sur le style perso actif (sinon "—") ;
     //  - la ligne renommer/supprimer n'apparait que sur un style perso.
@@ -465,8 +482,9 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     };
     // Applique un style : copie ses valeurs (coeur) PUIS fait glisser les curseurs. Le
     // garde `applying` empeche ces setValue de repasser le style en "Perso".
-    auto onPick = [this, applying, refresh, minRowPtr, maxRowPtr, ppRowPtr, silRowPtr, mCurRowPtr, mWideRowPtr,
-                   sLastRowPtr, sWideRowPtr, recomputeMulti, recomputeSil](const sd::core::RhythmStyle& st) {
+    auto onPick = [this, applying, refresh, minRowPtr, maxRowPtr, ppRowPtr, silRowPtr, repRowPtr, mCurRowPtr,
+                   mWideRowPtr, sLastRowPtr, sWideRowPtr, recomputeMulti, recomputeSil,
+                   updateRepHint](const sd::core::RhythmStyle& st) {
         *applying = true;
         sd::core::applyRhythmStyle(cfg_, st);
         if (*minRowPtr) {
@@ -480,6 +498,9 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
         }
         if (*silRowPtr) {
             (*silRowPtr)->setValue(static_cast<int>(std::lround(st.silenceReactionSeconds * 2.0))); // demi-secondes
+        }
+        if (*repRowPtr) {
+            (*repRowPtr)->setValue(st.maxPlanRepeats);
         }
         // Politique plan large (presente dans les deux dispositions ; holders toujours peuples).
         if (*mCurRowPtr) {
@@ -497,6 +518,7 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
         *applying = false;
         recomputeMulti();
         recomputeSil();
+        updateRepHint();
         refresh();
     };
 
@@ -506,9 +528,13 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     slay->setSpacing(10);
     slay->addWidget(makeGroupHeader(i18n("Rhythm.StyleSection")));
     auto* chipRow = new QWidget();
-    auto* chipLay = new QHBoxLayout(chipRow);
-    chipLay->setContentsMargins(0, 0, 0, 0);
-    chipLay->setSpacing(8);
+    // FlowLayout : les pastilles s'enroulent sur plusieurs lignes si la fenetre est etroite (5
+    // styles + "Perso" ne tiennent plus sur une seule ligne) -> plus de debordement horizontal.
+    // Size policy heightForWidth : le QVBoxLayout parent reserve la hauteur des lignes enroulees.
+    QSizePolicy chipPol = chipRow->sizePolicy();
+    chipPol.setHeightForWidth(true);
+    chipRow->setSizePolicy(chipPol);
+    auto* chipLay = new FlowLayout(chipRow, 0, 8, 8);
     // Styles livres : noms propres affiches tels quels (non traduits, comme "Flowspire").
     for (const auto& st : sd::core::builtinRhythmStyles()) {
         auto* chip = new ClickButton();
@@ -522,7 +548,6 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     persoChip->setCursor(Qt::ArrowCursor);
     chips->push_back({std::string{}, persoChip});
     chipLay->addWidget(persoChip);
-    chipLay->addStretch();
     slay->addWidget(chipRow);
 
     // === "Mes styles" : selection d'un style perso enregistre (menu deroulant) ===
@@ -690,11 +715,12 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     });
     auto* maxR = new SliderRow(i18n("Rhythm.MaxShot"), 0, 60, static_cast<int>(std::lround(cfg_.timing.maxShotSeconds)),
                                fmtSeconds, false);
-    maxR->setOnChange([this, minRowPtr, applying, refresh](int v) {
+    maxR->setOnChange([this, minRowPtr, applying, refresh, updateRepHint](int v) {
         cfg_.timing.maxShotSeconds = v;
         if (*minRowPtr && (*minRowPtr)->value() > v) {
             (*minRowPtr)->setValue(v); // redescend le min au niveau du max
         }
+        updateRepHint(); // le produit temps-maxi x repetition change -> sous-texte recalcule
         if (!*applying) {
             cfg_.styleName.clear();
             refresh();
@@ -738,13 +764,35 @@ void ConfigPanels::mountRhythm(QVBoxLayout* host, RhythmLayout layout) {
     });
     silReactR->setInfo(i18n("Tip.Rhythm.SilenceReaction"));
 
+    // Repetition-max : nombre de fois max sur un MEME plan avant respiration (variete forcee). ×N
+    // (0 = desactive). Entier direct (pas de demi-pas). Le sous-texte donne le temps approx tenu sur
+    // une personne (= temps maxi x repetition) -> recalcule aussi quand on bouge le temps-maxi.
+    auto* repR = new SliderRow(
+        i18n("Rhythm.MaxRepeats"), 0, 15, std::max(0, std::min(15, cfg_.timing.maxPlanRepeats)),
+        [](int v) { return v == 0 ? i18n("Rhythm.MaxRepeatsOff") : i18n("Rhythm.MaxRepeatsValue").arg(v); }, false);
+    repR->setOnChange([this, applying, refresh, updateRepHint](int v) {
+        cfg_.timing.maxPlanRepeats = v;
+        updateRepHint();
+        if (!*applying) {
+            cfg_.styleName.clear();
+            refresh();
+        }
+    });
+    repR->setInfo(i18n("Tip.Rhythm.MaxRepeats"));
+    auto* repHint = makeHint(QString()); // texte pose par updateRepHint (cache si repetition = 0)
+
     *minRowPtr = minR;
     *maxRowPtr = maxR;
     *ppRowPtr = ppR;
     *silRowPtr = silReactR;
+    *repRowPtr = repR;
+    *repHintPtr = repHint;
+    updateRepHint(); // etat initial du sous-texte
 
     tlay->addWidget(minR);
     tlay->addWidget(maxR);
+    tlay->addWidget(repR);
+    tlay->addWidget(repHint);
     tlay->addWidget(ppR);
     tlay->addWidget(silReactR);
     advTarget->addWidget(timing);

@@ -25,6 +25,16 @@
 //     sur un plan qu'on vient de quitter (< fenetre pingPongWindowSeconds), on se RECULE
 //     sur le plan large le temps que ca respire, puis on repart. N'agit QUE si un plan
 //     large existe (sinon le temps-mini gere). Fenetre a 0 => off.
+//
+// Variete forcee (repetition-max) : pour eviter de marteler un meme cadrage quand une personne
+// monologue, on borne le nombre de fenetres temps-max consecutives passees sur le MEME plan
+// (cfg.timing.maxPlanRepeats). Au-dela, on RESPIRE : re-tirage PONDERE dans le pool de l'intervenant
+// prive du plan sur-repete (autre camera, plan de reaction, plan large s'il y figure ; repli sur le
+// plan large global sinon) -> ce n'est PAS une regle rigide "va au plan large", les poids decident.
+// Compte PAR SCENE affichee (modele A) : deux cameras d'une meme personne ont chacune leur compteur,
+// remis a zero des qu'on change de cadrage -> leur alternance suffit deja a aerer. Opt-in (0 = off,
+// retrocompat) et limite au contexte Single (mono-locuteur) ; multi/silence ont deja leur variete par
+// re-tirage. Sans aucune alternative jouable (pool d'une seule scene, pas de plan large) : on reste.
 #pragma once
 
 #include <functional>
@@ -118,6 +128,17 @@ private:
     // moins de pingPongWindowSeconds. Toujours faux si la fenetre vaut 0 (anti
     // ping-pong desactive) ou si owner est vide.
     bool isPingPongBounce(double now, const std::string& owner) const;
+    // Repetition-max : a-t-on atteint le cap de repetition sur `candidate` (le plan qu'on rejouerait) ?
+    // Vrai si la feature est active (maxPlanRepeats > 0), que `candidate` est le MEME plan que l'actuel
+    // (et que ce n'est pas le plan large) et qu'on l'a deja tenu maxPlanRepeats fenetres temps-max. Pur ;
+    // ne dit PAS s'il existe une respiration jouable -> c'est resolveBreather qui tranche.
+    bool needsRepetitionBreather(const std::string& candidate) const;
+    // Repetition-max : choisit un plan de RESPIRATION pour `owner` en EXCLUANT le plan sur-repete
+    // `avoid`, par TIRAGE PONDERE dans le pool de l'intervenant prive de `avoid` (autre camera, plan de
+    // reaction, plan large s'il y figure...). Repli sur le plan large GLOBAL si le pool n'offre rien
+    // d'autre. Renvoie false si aucune respiration n'est jouable (l'appelant garde alors le plan).
+    bool resolveBreather(const std::string& owner, const std::string& avoid, std::string& outScene,
+                         std::string& outOwner);
 
     Config cfg_;
     Rng rng_;
@@ -147,6 +168,13 @@ private:
     // Anti ping-pong : instant ou l'on a QUITTE chaque proprietaire de plan. Sert a
     // detecter une bascule "retour" trop rapide (navette) -> on prefere alors rester.
     std::map<std::string, double> ownerLeftAt_;
+
+    // Repetition-max ("variete forcee") : nombre de fenetres temps-max consecutives durant
+    // lesquelles le MEME plan (currentScene_) est reste a l'antenne. Incremente quand un
+    // rafraichissement rejoue la meme scene, remis a 1 des qu'on change de cadrage (modele A :
+    // par scene, jamais par intervenant). Au-dela de cfg.timing.maxPlanRepeats, on respire sur le
+    // plan large (cf. needsRepetitionBreather + resolveBreather). 0 tant qu'aucun plan n'a ete affiche.
+    int planRepeatCount_ = 0;
 };
 
 } // namespace sd::core

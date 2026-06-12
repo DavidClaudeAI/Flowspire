@@ -10,14 +10,24 @@ namespace sd::core {
 using nlohmann::json;
 
 std::vector<RhythmStyle> builtinRhythmStyles() {
-    // {nom, mini, maxi, grace silence, anti ping-pong, whenMultiple{rester,large}, whenSilence{dernier,large}}
-    // Valeurs affinees en reel (2026-06-07). La tendance plan large fait partie du temperament :
-    // Chill/Cool privilegient FORTEMENT le groupe (10/94) ; Speed reste plus serre sur l'orateur
-    // (40/60) pour suivre l'action. Cool == les defauts d'usine (cf. config.hpp, garde le couplage).
+    // {nom, mini, maxi, grace silence, anti ping-pong, repetition max, whenMultiple{rester,large},
+    //  whenSilence{dernier,large}}. Valeurs issues du banc Flowspire-Bench (simulation du vrai moteur
+    //  sur des conversations calees corpus, 12 600+ runs, 2026-06-12 ; corpus = 57 episodes reels).
+    //  Principe : les styles POSES restent sur les personnes (le %large corpus est faible : ~4/4/2),
+    //  les RAPIDES tranchent vers le plan large. Anti-pompage : des poids TRANCHES (85/15, 30/70...)
+    //  battent l'oscillation 50/50 qui fait pomper l'image. Repetitions HAUTES sur les rapides : le
+    //  temps tenu sur une personne ~ maxi x repetition (~90 s Very Chill .. ~30 s Very Fast),
+    //  decroissant du plus pose au plus vif. Grace COMMUNE a 1 s (mesuree idiosyncratique, sans lien
+    //  au rythme). Anti ping-pong : arme seulement sur les 2 rapides.
+    //  ⚠️ L'ancienne baseline "Cyp Live" {10, 94} (plan large dominant partout) est REMPLACEE par ces
+    //     poids fondes corpus : la pratique reelle observee etait l'inverse de cette baseline.
+    //  Cool == les defauts d'usine (cf. config.hpp) SAUF la repetition-max (opt-in : defaut d'usine 0).
     return {
-        {"Chill", 5.0, 12.0, 2.0, 0.0, {10, 94}, {10, 94}}, // pose : plans longs, plan large tres genereux
-        {"Cool", 3.0, 8.0, 1.5, 0.0, {10, 94}, {10, 94}},   // equilibre = defauts d'usine
-        {"Speed", 2.0, 4.0, 1.0, 3.0, {40, 60}, {25, 75}},  // vif : reste plus sur l'orateur ; anti ping-pong arme
+        {"Very Chill", 5.0, 15.0, 1.0, 0.0, 6, {85, 15}, {90, 10}}, // tres pose : on reste sur les personnes
+        {"Chill", 3.5, 13.0, 1.0, 0.0, 5, {80, 20}, {85, 15}},      // pose
+        {"Cool", 3.0, 10.0, 1.0, 0.0, 5, {90, 10}, {90, 10}},       // equilibre = defauts d'usine (hors repetition)
+        {"Fast", 2.0, 7.0, 1.0, 4.0, 6, {55, 45}, {20, 80}},        // vif : tranche vers le large ; anti ping-pong arme
+        {"Very Fast", 1.5, 4.0, 1.0, 3.0, 8, {30, 70}, {0, 100}},   // nerveux : large franc ; silence -> toujours large
     };
 }
 
@@ -26,6 +36,7 @@ void applyRhythmStyle(Config& cfg, const RhythmStyle& style) {
     cfg.timing.maxShotSeconds = style.maxShotSeconds;
     cfg.timing.silenceReactionSeconds = style.silenceReactionSeconds;
     cfg.timing.pingPongWindowSeconds = style.pingPongWindowSeconds;
+    cfg.timing.maxPlanRepeats = style.maxPlanRepeats;
     cfg.whenMultiple = style.whenMultiple;
     cfg.whenSilence = style.whenSilence;
     cfg.styleName = style.name;
@@ -38,6 +49,7 @@ RhythmStyle styleFromConfig(const Config& cfg, const std::string& name) {
     s.maxShotSeconds = cfg.timing.maxShotSeconds;
     s.silenceReactionSeconds = cfg.timing.silenceReactionSeconds;
     s.pingPongWindowSeconds = cfg.timing.pingPongWindowSeconds;
+    s.maxPlanRepeats = cfg.timing.maxPlanRepeats;
     s.whenMultiple = cfg.whenMultiple;
     s.whenSilence = cfg.whenSilence;
     return s;
@@ -52,6 +64,7 @@ std::string rhythmStyleLibraryToJson(const std::vector<RhythmStyle>& styles) {
             {"maxShotSeconds", s.maxShotSeconds},
             {"silenceReactionSeconds", s.silenceReactionSeconds},
             {"pingPongWindowSeconds", s.pingPongWindowSeconds},
+            {"maxPlanRepeats", s.maxPlanRepeats},
             {"whenMultiple",
              {{"currentSpeaker", s.whenMultiple.currentSpeaker}, {"wideShot", s.whenMultiple.wideShot}}},
             {"whenSilence", {{"lastSpeaker", s.whenSilence.lastSpeaker}, {"wideShot", s.whenSilence.wideShot}}},
@@ -75,6 +88,9 @@ std::vector<RhythmStyle> rhythmStyleLibraryFromJson(const std::string& text) {
             s.maxShotSeconds = js.value("maxShotSeconds", s.maxShotSeconds);
             s.silenceReactionSeconds = js.value("silenceReactionSeconds", s.silenceReactionSeconds);
             s.pingPongWindowSeconds = js.value("pingPongWindowSeconds", s.pingPongWindowSeconds);
+            // Cle absente (preset perso d'avant la feature) -> defaut 0 = desactive : le preset
+            // garde EXACTEMENT son comportement, aucune respiration imposee dans le dos.
+            s.maxPlanRepeats = js.value("maxPlanRepeats", s.maxPlanRepeats);
             if (js.contains("whenMultiple")) {
                 const auto& m = js.at("whenMultiple");
                 s.whenMultiple.currentSpeaker = m.value("currentSpeaker", s.whenMultiple.currentSpeaker);

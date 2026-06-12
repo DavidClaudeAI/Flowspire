@@ -44,7 +44,8 @@ std::string toJson(const Config& cfg) {
          {{"minShotSeconds", cfg.timing.minShotSeconds},
           {"maxShotSeconds", cfg.timing.maxShotSeconds},
           {"pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds},
-          {"silenceReactionSeconds", cfg.timing.silenceReactionSeconds}}},
+          {"silenceReactionSeconds", cfg.timing.silenceReactionSeconds},
+          {"maxPlanRepeats", cfg.timing.maxPlanRepeats}}},
         {"whenMultiple",
          {{"currentSpeaker", cfg.whenMultiple.currentSpeaker}, {"wideShot", cfg.whenMultiple.wideShot}}},
         {"whenSilence", {{"lastSpeaker", cfg.whenSilence.lastSpeaker}, {"wideShot", cfg.whenSilence.wideShot}}},
@@ -103,6 +104,9 @@ Config fromJson(const std::string& text) {
         cfg.timing.maxShotSeconds = t.value("maxShotSeconds", cfg.timing.maxShotSeconds);
         cfg.timing.pingPongWindowSeconds = t.value("pingPongWindowSeconds", cfg.timing.pingPongWindowSeconds);
         cfg.timing.silenceReactionSeconds = t.value("silenceReactionSeconds", cfg.timing.silenceReactionSeconds);
+        // Cle absente (profil anterieur a la feature) -> defaut 0 = desactive (retrocompat : rendu
+        // inchange). Compte par scene, jamais par intervenant (cf. config.hpp).
+        cfg.timing.maxPlanRepeats = t.value("maxPlanRepeats", cfg.timing.maxPlanRepeats);
     }
 
     if (j.contains("whenMultiple")) {
@@ -140,6 +144,10 @@ Config fromJson(const std::string& text) {
     // filtre isfinite deja applique au seuil par intervenant (thresholdDb).
     if (!std::isfinite(cfg.timing.silenceReactionSeconds) || cfg.timing.silenceReactionSeconds < 0.0) {
         cfg.timing.silenceReactionSeconds = 0.0;
+    }
+    // Repetition max : une valeur negative (JSON edite a la main) n'a pas de sens -> 0 (desactive).
+    if (cfg.timing.maxPlanRepeats < 0) {
+        cfg.timing.maxPlanRepeats = 0;
     }
 
     return cfg;

@@ -452,6 +452,10 @@ void SdAssistant::Impl::populateSummary() {
     realiLines << i18n("Summary.Tempo")
                       .arg(static_cast<int>(std::lround(working.timing.minShotSeconds)))
                       .arg(static_cast<int>(std::lround(working.timing.maxShotSeconds)));
+    realiLines << i18n("Summary.Repeats")
+                      .arg(working.timing.maxPlanRepeats > 0
+                               ? i18n("Rhythm.MaxRepeatsValue").arg(working.timing.maxPlanRepeats)
+                               : i18n("Rhythm.MaxRepeatsOff"));
     contentLay[5]->addWidget(recapCard(Icon::Clock, i18n("Summary.Realisation"), 3, realiLines));
 
     summaryError = new QLabel();
